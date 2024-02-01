@@ -1,4 +1,5 @@
 import enum
+import logging
 import math
 from typing import TypeVar, Generic
 
@@ -7,7 +8,6 @@ from discord import Interaction
 from discord.ext import commands
 
 from src.types.charm_types import Charm
-
 
 CharmPagerT = TypeVar("CharmPagerT")
 
@@ -25,9 +25,7 @@ class CharmCog(commands.Cog):
 
 class CharmView(discord.ui.View):
     def __init__(self, *, accept_itx: AcceptItx, timeout: float = 300):
-        super().__init__(
-            timeout=timeout
-        )
+        super().__init__(timeout=timeout)
         self.accept_itx = accept_itx
         self.author: discord.User | None = None
 
@@ -42,11 +40,7 @@ class CharmView(discord.ui.View):
 
 class CharmPager(CharmView, Generic[CharmPagerT]):
     def __init__(
-            self,
-            items: list[CharmPagerT],
-            items_per_page: int,
-            *,
-            start_page: int = 0
+        self, items: list[CharmPagerT], items_per_page: int, *, start_page: int = 0
     ):
         super().__init__(accept_itx=AcceptItx.AUTHOR_ONLY)
         self.items = items
@@ -59,19 +53,20 @@ class CharmPager(CharmView, Generic[CharmPagerT]):
             raise ValueError("items must not be empty")
         self.n_pages = math.ceil(len(items) / items_per_page)
 
+        self.message: discord.Message | None = None
 
     @discord.ui.button(emoji="\N{Black Left-Pointing Double Triangle}")
-    async def first(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def first(self, _itx: discord.Interaction, button: discord.ui.Button):
         self.page = 0
         await self.update(button)
 
     @discord.ui.button(emoji="\N{Leftwards Black Arrow}")
-    async def back(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def back(self, _itx: discord.Interaction, button: discord.ui.Button):
         self.page += 1
         await self.update(button)
 
     @discord.ui.button(emoji="\N{Cross Mark}")
-    async def close(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def close(self, _itx: discord.Interaction, button: discord.ui.Button):
         for item in self.items:
             if isinstance(item, (discord.ui.Button, discord.ui.Select)):
                 item.disabled = True
@@ -79,17 +74,18 @@ class CharmPager(CharmView, Generic[CharmPagerT]):
         await self.update(button)
 
     @discord.ui.button(emoji="\N{Rightwards Black Arrow}")
-    async def next(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def next(self, _itx: discord.Interaction, button: discord.ui.Button):
         self.page += 1
         await self.update(button)
 
-
     @discord.ui.button(emoji="\N{Black Right-Pointing Double Triangle}")
-    async def last(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def last(self, _itx: discord.Interaction, button: discord.ui.Button):
         self.page = self.n_pages - 1
         await self.update(button)
 
     async def update(self, source_button: discord.ui.Button):
+        """Called after every button press - enables and disables the appropriate buttons, and changes colors.
+        Also fetches te new embed and edits the message and view to the new content."""
         if self.page == 0:
             CharmPager.disable(self.first, self.back)
         else:
@@ -100,13 +96,31 @@ class CharmPager(CharmView, Generic[CharmPagerT]):
         else:
             CharmPager.enable(self.next, self.last)
 
+        for i in self.children:
+            if isinstance(i, discord.ui.Button):
+                if i == source_button:
+                    i.style = discord.ButtonStyle.success
+                else:
+                    i.style = discord.ButtonStyle.grey
+
+        if self.message is not None:
+            embed = await self.update_embed()
+            await self.message.edit(embed=embed, view=self)
+        else:
+            logging.warning(
+                f"Pager has no message attached (CharmPagerT: {CharmPagerT}), cannot update message"
+            )
+
+    async def update_embed(self) -> discord.Embed:
+        """To be implemented by children classes"""
+        raise NotImplemented
+
     @staticmethod
     def enable(*buttons: discord.ui.Button):
         for button in buttons:
             button.disabled = False
-            
+
     @staticmethod
     def disable(*buttons: discord.ui.Button):
         for button in buttons:
             button.disabled = True
-
