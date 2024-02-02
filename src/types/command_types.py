@@ -129,35 +129,24 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
             button.disabled = True
 
 
-def add_extras(**extras) -> Callable[[CommandT], CommandT]:
-    def decorator(cmd: CommandT) -> CommandT:
+def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras)-> Callable[[Any], CommandT]:
+    def inner(func: Any):
+        cmd = ctype(name=name)(func)
         cmd.extras = extras
-        return cmd
-
-    return decorator
-
-
-def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras) -> Callable[[Any], CommandT]:
-    def decorator(func) -> CommandT:
-        partial = ctype(func, name=name)
-        cmd = add_extras(**extras)(partial)
 
         if isinstance(cmd, commands.Group):
+            cmd.command = child
 
-            def fix_subcommanding(cmd_name: str | None = None):
-                # this will have the same `extras` as the parent command
-                parent: commands.Group = cmd
+    return inner
 
-                def decorator_inner(sub_func) -> CommandT:
-                    # create a regular command, then apply the parent's extras to it
-                    basic_cmd = parent.command(name=name)(sub_func)
-                    return add_extras(**parent.extras)(basic_cmd)
 
-            cmd.command = fix_subcommanding
-
+def child(parent: commands.Group, name: str | None = None) -> Callable[[Any], CommandT]:
+    def inner(func: Any) -> CommandT:
+        cmd = parent.command(name=name)(func)
+        cmd.extras = parent.extras
         return cmd
 
-    return decorator
+    return inner
 
 
 def vanir_command(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.Command]:
