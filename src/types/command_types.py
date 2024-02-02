@@ -143,8 +143,17 @@ def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras) -> C
         cmd = add_extras(**extras)(partial)
 
         if isinstance(cmd, commands.Group):
-            # TODO: Overwrite Group.command() to apply `add_extras` to the subcommand
-            pass
+
+            def fix_subcommanding(cmd_name: str | None = None):
+                # this will have the same `extras` as the parent command
+                parent: commands.Group = cmd
+
+                def decorator_inner(sub_func) -> CommandT:
+                    # create a regular command, then apply the parent's extras to it
+                    basic_cmd = parent.command(name=name)(sub_func)
+                    return add_extras(**parent.extras)(basic_cmd)
+
+            cmd.command = fix_subcommanding
 
         return cmd
 
