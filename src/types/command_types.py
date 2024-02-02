@@ -1,15 +1,17 @@
 import enum
+import functools
 import logging
 import math
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 
 import discord
 from discord import Interaction
 from discord.ext import commands
 
-from src.types.charm_types import Charm
+from src.types.core_types import Vanir, VanirContext
 
-CharmPagerT = TypeVar("CharmPagerT")
+VanirPagerT = TypeVar("VanirPagerT")
+VanirFuncT = TypeVar("VanirFuncT", bound=Callable)
 
 
 class AcceptItx(enum.Enum):
@@ -18,12 +20,35 @@ class AcceptItx(enum.Enum):
     NOT_AUTHOR = 2
 
 
-class CharmCog(commands.Cog):
-    def __init__(self, charm: Charm):
-        self.charm = charm
+class VanirCog(commands.Cog):
+    def __init__(self, bot: Vanir):
+        self.vanir = bot
+        self.hidden: bool = False  # gets set to true if the class is decorated by @hidden
 
 
-class CharmView(discord.ui.View):
+def vanir_command(name: str | None = None, **kwargs):
+    """Adds the default `extras` to the function"""
+    def deco(func: VanirFuncT) -> commands.Command:
+        func = commands.command(name=name, **kwargs)(func)
+        return func
+
+    return deco
+
+
+def cog_hidden(cls: type[VanirCog]):
+    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
+
+    def cls_init(self: VanirCog, bot: Vanir):
+        """Overwrites the cog's init"""
+        super().__init__(bot)
+        self.__init__(bot)  # call any code which is already here
+        self.hidden = True
+
+    cls.__init__ = cls_init
+    return cls
+
+
+class VanirView(discord.ui.View):
     def __init__(self, *, accept_itx: AcceptItx, timeout: float = 300):
         super().__init__(timeout=timeout)
         self.accept_itx = accept_itx
@@ -38,9 +63,9 @@ class CharmView(discord.ui.View):
             return itx.user.id != self.author.id
 
 
-class CharmPager(CharmView, Generic[CharmPagerT]):
+class VanirPager(VanirView, Generic[VanirPagerT]):
     def __init__(
-        self, items: list[CharmPagerT], items_per_page: int, *, start_page: int = 0
+            self, items: list[VanirPagerT], items_per_page: int, *, start_page: int = 0
     ):
         super().__init__(accept_itx=AcceptItx.AUTHOR_ONLY)
         self.items = items
@@ -87,14 +112,14 @@ class CharmPager(CharmView, Generic[CharmPagerT]):
         """Called after every button press - enables and disables the appropriate buttons, and changes colors.
         Also fetches te new embed and edits the message and view to the new content."""
         if self.page == 0:
-            CharmPager.disable(self.first, self.back)
+            VanirPager.disable(self.first, self.back)
         else:
-            CharmPager.enable(self.first, self.back)
+            VanirPager.enable(self.first, self.back)
 
         if self.page == self.n_pages - 1:
-            CharmPager.disable(self.next, self.last)
+            VanirPager.disable(self.next, self.last)
         else:
-            CharmPager.enable(self.next, self.last)
+            VanirPager.enable(self.next, self.last)
 
         for i in self.children:
             if isinstance(i, discord.ui.Button):
@@ -108,7 +133,7 @@ class CharmPager(CharmView, Generic[CharmPagerT]):
             await self.message.edit(embed=embed, view=self)
         else:
             logging.warning(
-                f"Pager has no message attached (CharmPagerT: {CharmPagerT}), cannot update message"
+                f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
             )
 
     async def update_embed(self) -> discord.Embed:

@@ -1,12 +1,16 @@
 import asyncio
 
-from src.types.charm_types import Charm
+from src.types.core_types import Vanir
 from src.env import DISCORD_TOKEN
+from logging_setup import logging_setup
+
+from src.ext.docs import Docs
 
 
 async def main():
-    charm = Charm()
-    await charm.start(token=DISCORD_TOKEN)
+    bot = Vanir()
+    await bot.start(token=DISCORD_TOKEN)
 
 if __name__ == "__main__":
+    logging_setup()
     asyncio.run(main())

@@ -7,15 +7,15 @@ from discord.ext import commands
 
 import logging
 
-from src.types.util_types import CharmSession
+from src.types.util_types import VanirSession
 
 
-class Charm(commands.Bot):
+class Vanir(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=None, tree_cls=CharmTree, intents=discord.Intents.none()
+            command_prefix=None, tree_cls=VanirTree, intents=discord.Intents.none()
         )
-        self.session: CharmSession = CharmSession()
+        self.session: VanirSession = VanirSession()
 
     async def get_context(
         self,
@@ -23,8 +23,8 @@ class Charm(commands.Bot):
         /,
         *,
         cls: Any = None,
-    ) -> "CharmContext":
-        return await super().get_context(origin, cls=CharmContext)
+    ) -> "VanirContext":
+        return await super().get_context(origin, cls=VanirContext)
 
     async def setup_hook(self) -> None:
         # Load all cogs in `./src/ext` extension files
@@ -35,20 +35,19 @@ class Charm(commands.Bot):
         extension_path = ".\\src\\ext"
         for path in os.listdir(extension_path):
             if path.endswith(".py"):
-                print(path)
-                before = set(self.cogs)
-                await self.load_extension(path[:-3])
-                after = set(self.cogs)
+                before = set(self.cogs.values())
+                await self.load_extension(f"src.ext.{path[:-3]}")
+                after = set(self.cogs.values())
                 for ext in after - before:
                     yield ext
 
 
-class CharmTree(discord.app_commands.CommandTree):
+class VanirTree(discord.app_commands.CommandTree):
     def __init__(self, client: discord.Client) -> None:
         super().__init__(client=client, fallback_to_global=True)
 
 
-class CharmContext(commands.Context):
+class VanirContext(commands.Context):
     def embed(
         self,
         title: str | None,

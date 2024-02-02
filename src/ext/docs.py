@@ -1,17 +1,28 @@
 from discord.ext import commands
 
 from src import util
-from src.types.charm_types import Charm, CharmContext
-from src.types.command_types import CharmCog
-
-docs = commands.HybridGroup(name="docs")
+from src.types.core_types import Vanir, VanirContext
+from src.types.command_types import VanirCog, VanirCommand
 
 
-class Docs(CharmCog):
-    @docs.command(name="project")
+class Docs(VanirCog):
+
+    # @commands.hybrid_command(cls=VanirCommand)
+    # async def hybrid_test(self, ctx: VanirContext):
+    #     pass
+
+    @commands.command(cls=VanirCommand)
+    async def nonhybrid_test(self, ctx: VanirContext):
+        pass
+
+    @commands.hybrid_group()
+    async def docs(self, ctx: VanirContext):
+        pass
+
+    @docs.command()
     async def project(
             self,
-            ctx: CharmContext,
+            ctx: VanirContext,
             slug: str
     ) -> None:
         """
@@ -21,7 +32,7 @@ class Docs(CharmCog):
         """
         slug = util.ensure_slug(slug)
 
-        response = await self.charm.session.docs_get(f"/projects/{slug}")
+        response = await self.vanir.session.docs_get(f"/projects/{slug}")
         if not response.ok:
             raise ValueError(f"Could not get project: Code {response.status} from readthedocs.org API")
 
@@ -47,5 +58,5 @@ class Docs(CharmCog):
         await ctx.send(embed=embed)
 
 
-async def setup(bot: Charm):
+async def setup(bot: Vanir):
     await bot.add_cog(Docs(bot))

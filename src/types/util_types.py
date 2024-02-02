@@ -3,7 +3,7 @@ import aiohttp
 from src.env import READ_THE_DOCS_API_KEY
 
 
-class CharmSession(aiohttp.ClientSession):
+class VanirSession(aiohttp.ClientSession):
     def __init__(self):
         super().__init__(
             raise_for_status=False,
