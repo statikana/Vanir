@@ -1,17 +1,17 @@
 import enum
-import functools
 import logging
 import math
-from typing import TypeVar, Generic, Callable
+from typing import TypeVar, Generic, Callable, Any
 
 import discord
 from discord import Interaction
 from discord.ext import commands
+from discord.ext.commands import Command, Cog
 
-from src.types.core_types import Vanir, VanirContext
+from src.types.core_types import Vanir
 
 VanirPagerT = TypeVar("VanirPagerT")
-VanirFuncT = TypeVar("VanirFuncT", bound=Callable)
+CommandT = TypeVar("CommandT", bound=commands.Command)
 
 
 class AcceptItx(enum.Enum):
@@ -24,28 +24,6 @@ class VanirCog(commands.Cog):
     def __init__(self, bot: Vanir):
         self.vanir = bot
         self.hidden: bool = False  # gets set to true if the class is decorated by @hidden
-
-
-def vanir_command(name: str | None = None, **kwargs):
-    """Adds the default `extras` to the function"""
-    def deco(func: VanirFuncT) -> commands.Command:
-        func = commands.command(name=name, **kwargs)(func)
-        return func
-
-    return deco
-
-
-def cog_hidden(cls: type[VanirCog]):
-    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
-
-    def cls_init(self: VanirCog, bot: Vanir):
-        """Overwrites the cog's init"""
-        super().__init__(bot)
-        self.__init__(bot)  # call any code which is already here
-        self.hidden = True
-
-    cls.__init__ = cls_init
-    return cls
 
 
 class VanirView(discord.ui.View):
@@ -149,3 +127,54 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
     def disable(*buttons: discord.ui.Button):
         for button in buttons:
             button.disabled = True
+
+
+def add_extras(**extras) -> Callable[[CommandT], CommandT]:
+    def decorator(cmd: CommandT) -> CommandT:
+        cmd.extras = extras
+        return cmd
+
+    return decorator
+
+
+def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras) -> Callable[[Any], CommandT]:
+    def decorator(func) -> CommandT:
+        partial = CommandT(func, name=name)
+        cmd = add_extras(hidden=True)(partial)
+
+        if isinstance(cmd, commands.Group):
+            # TODO: Overwrite Group.command() to apply `add_extras` to the subcommand
+            pass
+
+        return cmd
+
+    return decorator
+
+
+def vanir_command(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.Command]:
+    return _deco_factory(commands.Command, name, hidden=hidden)
+
+
+def vanir_hybrid_command(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.HybridCommand]:
+    return _deco_factory(commands.HybridCommand, name, hidden=hidden)
+
+
+def vanir_group(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.Group]:
+    return _deco_factory(commands.Group, name, hidden=hidden)
+
+
+def vanir_hybrid_group(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.HybridGroup]:
+    return _deco_factory(commands.HybridGroup, name, hidden=hidden)
+
+
+def cog_hidden(cls: type[VanirCog]):
+    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
+
+    def cls_init(self: VanirCog, bot: Vanir):
+        """Overwrites the cog's init"""
+        super().__init__(bot)
+        self.__init__(bot)  # call any code which is already here
+        self.hidden = True
+
+    cls.__init__ = cls_init
+    return cls

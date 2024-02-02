@@ -2,20 +2,12 @@ from discord.ext import commands
 
 from src import util
 from src.types.core_types import Vanir, VanirContext
-from src.types.command_types import VanirCog, VanirCommand
+from src.types.command_types import VanirCog, vanir_hybrid_group, vanir_hybrid_command
 
 
 class Docs(VanirCog):
 
-    # @commands.hybrid_command(cls=VanirCommand)
-    # async def hybrid_test(self, ctx: VanirContext):
-    #     pass
-
-    @commands.command(cls=VanirCommand)
-    async def nonhybrid_test(self, ctx: VanirContext):
-        pass
-
-    @commands.hybrid_group()
+    @vanir_hybrid_group()
     async def docs(self, ctx: VanirContext):
         pass
 
