@@ -139,8 +139,8 @@ def add_extras(**extras) -> Callable[[CommandT], CommandT]:
 
 def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras) -> Callable[[Any], CommandT]:
     def decorator(func) -> CommandT:
-        partial = CommandT(func, name=name)
-        cmd = add_extras(hidden=True)(partial)
+        partial = ctype(func, name=name)
+        cmd = add_extras(**extras)(partial)
 
         if isinstance(cmd, commands.Group):
             # TODO: Overwrite Group.command() to apply `add_extras` to the subcommand
