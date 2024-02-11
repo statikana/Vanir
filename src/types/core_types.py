@@ -7,7 +7,7 @@ from discord.ext import commands
 
 import logging
 
-from src.types.db_types import StarBoardDB
+from src.types.db_types import StarBoard
 from src.types.util_types import VanirSession
 
 
@@ -33,7 +33,7 @@ class Vanir(commands.Bot):
         async for cog in self.add_cogs():
             logging.info(f"Loaded {cog.qualified_name}")
 
-        self.db_starboard: StarBoardDB = await StarBoardDB.create()
+        self.db_starboard: StarBoard = await StarBoard.create()
 
     async def add_cogs(self) -> Generator[commands.Cog, None, None]:
         extension_path = ".\\src\\ext"
