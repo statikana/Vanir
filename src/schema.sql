@@ -1,6 +1,3 @@
--- DROP TABLE IF EXISTS starboard_data CASCADE ;
--- DROP TABLE IF EXISTS starboard_posts CASCADE ;
-
 CREATE TABLE IF NOT EXISTS starboard_data (
     guild_id BIGINT PRIMARY KEY NOT NULL, -- what guild the data belongs to
     channel_id BIGINT, -- the channel that the starboard is connected to, can be null
@@ -17,6 +14,3 @@ CREATE TABLE IF NOT EXISTS starboard_posts (
     PRIMARY KEY (original_id)
 );
 
-SELECT * FROM starboard_data;
-
-SELECT * FROM starboard_posts;
