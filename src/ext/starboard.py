@@ -13,6 +13,55 @@ class StarBoard(VanirCog):
     def __init__(self, bot: Vanir):
         super().__init__(bot)
 
+    @vanir_group()
+    async def starboard(self, ctx: VanirContext):
+        pass
+
+    @inherit
+    @starboard.command()
+    async def setup(
+        self,
+        ctx: VanirContext,
+        channel: discord.TextChannel,
+        threshold: Range[int, 1] = 2,
+    ):
+        """
+        Sets up the starboard for your server
+
+        :param ctx:
+        :param channel: The channel to send starboard posts to.
+        :param threshold: The number of :star: reactions a message needs to be posted.
+        """
+        if (
+            channel.permissions_for(ctx.me).send_messages
+            and not ctx.me.guild_permissions.administrator
+        ):
+            raise ValueError("I'm not allowed to send messages there!")
+
+        await self.bot.db_starboard.set_starboard_channel(
+            ctx.guild.id, channel.id, threshold
+        )
+        embed = ctx.embed(
+            title="Starboard Set Up!",
+        )
+        embed.add_field(name="Channel", value=f"<#{channel.id}>")
+        embed.add_field(name="Star Post Threshold", value=threshold)
+        await ctx.send(embed=embed)
+
+    @inherit
+    @starboard.command()
+    async def remove(self, ctx: VanirContext):
+        """
+        Removes the starboard configuration for your server
+
+        :param ctx:
+        """
+        await self.bot.db_starboard.remove_data(ctx.guild.id)
+        embed = ctx.embed(
+            title="Starboard Removed", description="Starboard successfully removed."
+        )
+        await ctx.send(embed=embed)
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         starboard: StarBoardDB = self.bot.db_starboard
@@ -148,43 +197,6 @@ class StarBoard(VanirCog):
 
         else:
             await existing_post.edit(content=f":star: {n_stars}")
-
-    @vanir_group()
-    async def starboard(self, ctx: VanirContext):
-        pass
-
-    @inherit
-    @starboard.command()
-    async def setup(
-        self,
-        ctx: VanirContext,
-        channel: discord.TextChannel,
-        threshold: Range[int, 1] = 2,
-    ):
-        if (
-            channel.permissions_for(ctx.me).send_messages
-            and not ctx.me.guild_permissions.administrator
-        ):
-            raise ValueError("I'm not allowed to send messages there!")
-
-        await self.bot.db_starboard.set_starboard_channel(
-            ctx.guild.id, channel.id, threshold
-        )
-        embed = ctx.embed(
-            title="Starboard Set Up!",
-        )
-        embed.add_field(name="Channel", value=f"<#{channel.id}>")
-        embed.add_field(name="Star Post Threshold", value=threshold)
-        await ctx.send(embed=embed)
-
-    @inherit
-    @starboard.command()
-    async def remove(self, ctx: VanirContext):
-        await self.bot.db_starboard.remove_data(ctx.guild.id)
-        embed = ctx.embed(
-            title="Starboard Removed", description="Starboard successfully removed."
-        )
-        await ctx.send(embed=embed)
 
 
 async def setup(bot: Vanir):
