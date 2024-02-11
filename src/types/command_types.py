@@ -1,4 +1,5 @@
 import enum
+import functools
 import logging
 import math
 from typing import TypeVar, Generic, Callable, Any
@@ -6,7 +7,6 @@ from typing import TypeVar, Generic, Callable, Any
 import discord
 from discord import Interaction
 from discord.ext import commands
-from discord.ext.commands import Command, Cog
 
 from src.types.core_types import Vanir
 
@@ -22,8 +22,10 @@ class AcceptItx(enum.Enum):
 
 class VanirCog(commands.Cog):
     def __init__(self, bot: Vanir):
-        self.vanir = bot
-        self.hidden: bool = False  # gets set to true if the class is decorated by @hidden
+        self.bot = bot
+        self.hidden: bool = (
+            False  # gets set to true if the class is decorated by @hidden
+        )
 
 
 class VanirView(discord.ui.View):
@@ -43,7 +45,7 @@ class VanirView(discord.ui.View):
 
 class VanirPager(VanirView, Generic[VanirPagerT]):
     def __init__(
-            self, items: list[VanirPagerT], items_per_page: int, *, start_page: int = 0
+        self, items: list[VanirPagerT], items_per_page: int, *, start_page: int = 0
     ):
         super().__init__(accept_itx=AcceptItx.AUTHOR_ONLY)
         self.items = items
@@ -129,50 +131,48 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
             button.disabled = True
 
 
-def _deco_factory(ctype: type[CommandT], name: str | None = None, **extras)-> Callable[[Any], CommandT]:
+def _deco_factory(
+    ctype: type[CommandT], name: str | None = None, **extras
+) -> Callable[[Any], CommandT]:
     def inner(func: Any):
-        cmd = ctype(name=name)(func)
+        cmd = ctype(func, name=name)
         cmd.extras = extras
 
-        if isinstance(cmd, commands.Group):
-            cmd.command = child
-
-    return inner
-
-
-def child(parent: commands.Group, name: str | None = None) -> Callable[[Any], CommandT]:
-    def inner(func: Any) -> CommandT:
-        cmd = parent.command(name=name)(func)
-        cmd.extras = parent.extras
         return cmd
 
     return inner
 
 
-def vanir_command(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.Command]:
-    return _deco_factory(commands.Command, name, hidden=hidden)
-
-
-def vanir_hybrid_command(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.HybridCommand]:
+def vanir_command(
+    name: str | None = None, *, hidden: bool = False
+) -> Callable[[Any], commands.HybridCommand]:
     return _deco_factory(commands.HybridCommand, name, hidden=hidden)
 
 
-def vanir_group(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.Group]:
-    return _deco_factory(commands.Group, name, hidden=hidden)
-
-
-def vanir_hybrid_group(name: str | None = None, *, hidden: bool = False) -> Callable[[Any], commands.HybridGroup]:
+def vanir_group(
+    name: str | None = None, *, hidden: bool = False
+) -> Callable[[Any], commands.HybridGroup]:
     return _deco_factory(commands.HybridGroup, name, hidden=hidden)
 
 
 def cog_hidden(cls: type[VanirCog]):
     """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
+    original_init = cls.__init__
 
-    def cls_init(self: VanirCog, bot: Vanir):
-        """Overwrites the cog's init"""
-        super().__init__(bot)
-        self.__init__(bot)  # call any code which is already here
+    @functools.wraps(original_init)
+    def wrapper(self: VanirCog, bot: Vanir) -> None:
+        original_init(self, bot)
         self.hidden = True
 
-    cls.__init__ = cls_init
+    cls.__init__ = wrapper
     return cls
+
+
+def inherit(cmd: commands.Command):
+    if cmd.parent is not None:
+        parent: commands.HybridGroup = cmd.parent  # type: ignore
+        cmd.hidden = parent.hidden
+        cmd.extras = parent.extras
+        cmd.checks = parent.checks
+
+    return cmd

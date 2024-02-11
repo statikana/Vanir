@@ -7,15 +7,17 @@ from discord.ext import commands
 
 import logging
 
+from src.types.db_types import StarBoardDB
 from src.types.util_types import VanirSession
 
 
 class Vanir(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=None, tree_cls=VanirTree, intents=discord.Intents.none()
+            command_prefix="~~", tree_cls=VanirTree, intents=discord.Intents.all()
         )
         self.session: VanirSession = VanirSession()
+        self.db_starboard: StarBoardDB = StarBoardDB(self)
 
     async def get_context(
         self,
@@ -53,7 +55,7 @@ class VanirContext(commands.Context):
         title: str | None,
         description: str | None = None,
         color: discord.Color = discord.Color.dark_teal(),
-        url: str | None = None
+        url: str | None = None,
     ) -> discord.Embed:
         if title is None and description is None:
             raise ValueError("Must provide either a title or a description")
@@ -62,8 +64,8 @@ class VanirContext(commands.Context):
 
         # %B %-d, %H:%M -> September 8, 13:59 UTC
         embed.set_footer(
-            text=f"{self.author.global_name or self.author.name} @ {datetime.datetime.utcnow().strftime('%B %-d, %H:%M')} UTC",
-            icon_url=self.author.display_icon.url,
+            text=f"{self.author.global_name or self.author.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+            icon_url=self.author.display_avatar.url,
         )
 
         if url is not None:
