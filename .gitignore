@@ -2,3 +2,4 @@
 env.py
 .gitattributes
 __pycache__
+qodana.yaml

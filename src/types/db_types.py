@@ -14,5 +14,5 @@ class StarBoardDB:
 
     async def get_starboard_channel(self, guild_id: int):
         await self.connection.fetchrow(
-            "SELECT channel_id FROM starboards WHERE guild_id = $1", guild_id
+            "SELECT channel_id FROM starboard WHERE guild_id = $1", guild_id
         )
