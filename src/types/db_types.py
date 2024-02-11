@@ -1,8 +1,6 @@
 import asyncpg
-from discord import RawReactionActionEvent
 
 from src import env
-from discord.ext import commands
 
 
 class StarBoard:
@@ -79,6 +77,13 @@ class StarBoard:
             n_stars,
         )
 
+    async def remove_starboard_post(self, starboard_post_id: int):
+        await self.connection.execute(
+            "DELETE FROM starboard_posts WHERE "
+            "starboard_post_id = $1",
+            starboard_post_id
+        )
+
     async def get_threshold(self, guild_id: int) -> int | None:
         return await self.connection.fetchval(
             "SELECT threshold FROM starboard_data WHERE guild_id = $1", guild_id
@@ -91,7 +96,7 @@ class StarBoard:
             threshold,
         )
 
-    async def remove(self, guild_id: int) -> None:
+    async def remove_data(self, guild_id: int) -> None:
         await self.connection.execute(
             "DELETE FROM starboard_data WHERE guild_id = $1", guild_id
         )

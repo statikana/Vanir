@@ -33,7 +33,9 @@ class StarBoard(VanirCog):
         n_stars: int = await starboard.add_star(
             payload.guild_id, payload.message_id, payload.user_id
         )
+
         # find if there is already an existing starboard post for the message
+
         existing_post_id: int = await starboard.get_starboard_post_id(
             payload.message_id
         )
@@ -56,7 +58,14 @@ class StarBoard(VanirCog):
                     )
 
                 # get message content
-                message = await original_channel.fetch_message(payload.message_id)
+                try:
+                    message = await original_channel.fetch_message(payload.message_id)
+                except discord.NotFound:
+                    raise RuntimeError("Could not find content of reacted message")
+                real_stars = discord.utils.find(lambda r: r.emoji == "\N{White Medium Star}", message.reactions)
+                if real_stars is None:
+                    return  # what?
+                n_stars = real_stars.count
 
                 embed = discord.Embed(
                     description=message.content, color=discord.Color.gold()
@@ -96,8 +105,13 @@ class StarBoard(VanirCog):
                 pass  # nothing else to do
 
         else:  # we need to update the existing post
-            existing_post = await starboard_channel.fetch_message(existing_post_id)
-            await existing_post.edit(content=f":star: {n_stars}")
+            try:
+                existing_post = await starboard_channel.fetch_message(existing_post_id)
+                await existing_post.edit(content=f":star: {n_stars}")
+            except discord.NotFound:
+                await starboard.remove_starboard_post(existing_post_id)
+                return
+                # this will create a new one next reaction
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -118,13 +132,19 @@ class StarBoard(VanirCog):
         if existing_post_id is None:
             return
 
-        existing_post = await self.bot.get_channel(starboard_channel_id).fetch_message(
-            existing_post_id
-        )
+        try:
+            existing_post = await self.bot.get_channel(starboard_channel_id).fetch_message(
+                existing_post_id
+            )
+        except discord.NotFound:
+            # starboard post deleted
+            await starboard.remove_starboard_post(existing_post_id)
+            return
 
         if n_stars < threshold:
 
             await existing_post.delete()
+            await starboard.remove_starboard_post(existing_post_id)
 
         else:
             await existing_post.edit(content=f":star: {n_stars}")
@@ -160,7 +180,7 @@ class StarBoard(VanirCog):
     @inherit
     @starboard.command()
     async def remove(self, ctx: VanirContext):
-        await self.bot.db_starboard.remove(ctx.guild.id)
+        await self.bot.db_starboard.remove_data(ctx.guild.id)
         embed = ctx.embed(
             title="Starboard Removed", description="Starboard successfully removed."
         )
