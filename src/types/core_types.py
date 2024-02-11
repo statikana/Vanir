@@ -16,7 +16,7 @@ class Vanir(commands.Bot):
         super().__init__(
             command_prefix="~~", tree_cls=VanirTree, intents=discord.Intents.all()
         )
-        self.db_starboard = None
+        self.db_starboard = StarBoard()
         self.session: VanirSession = VanirSession()
 
     async def get_context(
@@ -33,7 +33,7 @@ class Vanir(commands.Bot):
         async for cog in self.add_cogs():
             logging.info(f"Loaded {cog.qualified_name}")
 
-        self.db_starboard: StarBoard = await StarBoard.create()
+        await self.db_starboard.connect()
 
     async def add_cogs(self) -> Generator[commands.Cog, None, None]:
         extension_path = ".\\src\\ext"
