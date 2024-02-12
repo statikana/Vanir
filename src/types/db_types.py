@@ -79,9 +79,8 @@ class StarBoard:
 
     async def remove_starboard_post(self, starboard_post_id: int):
         await self.connection.execute(
-            "DELETE FROM starboard_posts WHERE "
-            "starboard_post_id = $1",
-            starboard_post_id
+            "DELETE FROM starboard_posts WHERE " "starboard_post_id = $1",
+            starboard_post_id,
         )
 
     async def get_threshold(self, guild_id: int) -> int | None:

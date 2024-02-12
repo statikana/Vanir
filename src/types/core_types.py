@@ -14,7 +14,10 @@ from src.types.util_types import VanirSession
 class Vanir(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix="~~", tree_cls=VanirTree, intents=discord.Intents.all()
+            command_prefix="~~",
+            tree_cls=VanirTree,
+            intents=discord.Intents.all(),
+            help_command=None,
         )
         self.db_starboard = StarBoard()
         self.session: VanirSession = VanirSession()
@@ -68,6 +71,30 @@ class VanirContext(commands.Context):
         embed.set_footer(
             text=f"{self.author.global_name or self.author.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
             icon_url=self.author.display_avatar.url,
+        )
+
+        if url is not None:
+            embed.url = url
+        return embed
+
+    @staticmethod
+    def syn_embed(
+        title: str | None,
+        description: str | None = None,
+        color: discord.Color = discord.Color.dark_teal(),
+        url: str | None = None,
+        *,
+        author: discord.User,
+    ) -> discord.Embed:
+        if title is None and description is None:
+            raise ValueError("Must provide either a title or a description")
+
+        embed = discord.Embed(title=title, description=description, color=color)
+
+        # %B %-d, %H:%M -> September 8, 13:59 UTC
+        embed.set_footer(
+            text=f"{author.global_name or author.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+            icon_url=author.display_avatar.url,
         )
 
         if url is not None:

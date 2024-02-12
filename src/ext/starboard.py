@@ -2,14 +2,16 @@ import logging
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import Range
+from discord.ext.commands import param, Range
 
-from src.types.command_types import VanirCog, inherit, vanir_group
+from src.types.command_types import VanirCog, inherit, vanir_group, vpar
 from src.types.core_types import Vanir, VanirContext
 from src.types.db_types import StarBoard as StarBoardDB
 
 
 class StarBoard(VanirCog):
+    """Automate a StarBoard channel, featuring popular posts in any channel"""
+
     def __init__(self, bot: Vanir):
         super().__init__(bot)
 
@@ -22,16 +24,13 @@ class StarBoard(VanirCog):
     async def setup(
         self,
         ctx: VanirContext,
-        channel: discord.TextChannel,
-        threshold: Range[int, 1] = 2,
+        channel: discord.TextChannel = vpar("The channel to send starboard posts to"),
+        threshold: Range[int, 1] = vpar(
+            "The amount of :star: reactions a message needs to have before being sent to the channel",
+            1,
+        ),
     ):
-        """
-        Sets up the starboard for your server
-
-        :param ctx:
-        :param channel: The channel to send starboard posts to.
-        :param threshold: The number of :star: reactions a message needs to be posted.
-        """
+        """Sets up the starboard for your server"""
         if (
             channel.permissions_for(ctx.me).send_messages
             and not ctx.me.guild_permissions.administrator
@@ -51,11 +50,7 @@ class StarBoard(VanirCog):
     @inherit
     @starboard.command()
     async def remove(self, ctx: VanirContext):
-        """
-        Removes the starboard configuration for your server
-
-        :param ctx:
-        """
+        """Removes the starboard configuration for your server"""
         await self.bot.db_starboard.remove_data(ctx.guild.id)
         embed = ctx.embed(
             title="Starboard Removed", description="Starboard successfully removed."
@@ -111,7 +106,9 @@ class StarBoard(VanirCog):
                     message = await original_channel.fetch_message(payload.message_id)
                 except discord.NotFound:
                     raise RuntimeError("Could not find content of reacted message")
-                real_stars = discord.utils.find(lambda r: r.emoji == "\N{White Medium Star}", message.reactions)
+                real_stars = discord.utils.find(
+                    lambda r: r.emoji == "\N{White Medium Star}", message.reactions
+                )
                 if real_stars is None:
                     return  # what?
                 n_stars = real_stars.count
@@ -182,9 +179,9 @@ class StarBoard(VanirCog):
             return
 
         try:
-            existing_post = await self.bot.get_channel(starboard_channel_id).fetch_message(
-                existing_post_id
-            )
+            existing_post = await self.bot.get_channel(
+                starboard_channel_id
+            ).fetch_message(existing_post_id)
         except discord.NotFound:
             # starboard post deleted
             await starboard.remove_starboard_post(existing_post_id)

@@ -1,5 +1,6 @@
 import enum
 import functools
+import inspect
 import logging
 import math
 from typing import TypeVar, Generic, Callable, Any
@@ -9,6 +10,8 @@ from discord import Interaction
 from discord.ext import commands
 
 from src.types.core_types import Vanir
+
+empty = inspect.Parameter.empty
 
 VanirPagerT = TypeVar("VanirPagerT")
 CommandT = TypeVar("CommandT", bound=commands.Command)
@@ -29,18 +32,24 @@ class VanirCog(commands.Cog):
 
 
 class VanirView(discord.ui.View):
-    def __init__(self, *, accept_itx: AcceptItx, timeout: float = 300):
+    def __init__(
+        self,
+        *,
+        user: discord.User,
+        accept_itx: AcceptItx = AcceptItx.AUTHOR_ONLY,
+        timeout: float = 300,
+    ):
         super().__init__(timeout=timeout)
         self.accept_itx = accept_itx
-        self.author: discord.User | None = None
+        self.user: discord.User = user
 
     async def interaction_check(self, itx: Interaction, /) -> bool:
         if self.accept_itx == AcceptItx.AUTHOR_ONLY:
-            return itx.user.id == self.author.id
+            return itx.user.id == self.user.id
         if self.accept_itx == AcceptItx.ANY:
             return True
         if self.accept_itx == AcceptItx.NOT_AUTHOR:
-            return itx.user.id != self.author.id
+            return itx.user.id != self.user.id
 
 
 class VanirPager(VanirView, Generic[VanirPagerT]):
@@ -176,3 +185,27 @@ def inherit(cmd: commands.Command):
         cmd.checks = parent.checks
 
     return cmd
+
+
+def vpar(
+    desc: str,
+    default: Any = empty,
+    dis_default: str = empty,
+    *,
+    conv: Any = empty,
+    dis_name: Any = empty,
+):
+    """A more compact `ext.commands.param`
+
+    :param desc: The description of the parameter
+    :param default: The default value of the parameter
+    :param dis_default: What the default value appears as to the user
+    :param conv: The converter class for the parameter
+    :param dis_name: The name of the parameter which appears to the user"""
+    return commands.param(
+        description=desc,
+        default=default,
+        displayed_default=dis_default,
+        converter=conv,
+        displayed_name=dis_name,
+    )
