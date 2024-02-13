@@ -2,24 +2,27 @@ import datetime
 import os
 from typing import Generator, Any
 
+import aiohttp
+import asyncpg
 import discord
 from discord.ext import commands
 
 import logging
 
-from src.types.db_types import StarBoard
-from src.types.util_types import VanirSession
+from src import env
+from src.types.database import StarBoard, Currency
 
 
 class Vanir(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix="~~",
+            command_prefix="]",
             tree_cls=VanirTree,
             intents=discord.Intents.all(),
             help_command=None,
         )
         self.db_starboard = StarBoard()
+        self.db_currency = Currency()
         self.session: VanirSession = VanirSession()
 
     async def get_context(
@@ -36,7 +39,9 @@ class Vanir(commands.Bot):
         async for cog in self.add_cogs():
             logging.info(f"Loaded {cog.qualified_name}")
 
-        await self.db_starboard.connect()
+        connection = await asyncpg.connect(**env.PSQL_CONNECTION)
+        self.db_starboard.start(connection)
+        self.db_currency.start(connection)
 
     async def add_cogs(self) -> Generator[commands.Cog, None, None]:
         extension_path = ".\\src\\ext"
@@ -59,11 +64,17 @@ class VanirContext(commands.Context):
         self,
         title: str | None,
         description: str | None = None,
-        color: discord.Color = discord.Color.dark_teal(),
+        color: discord.Color = None,
         url: str | None = None,
     ) -> discord.Embed:
         if title is None and description is None:
             raise ValueError("Must provide either a title or a description")
+
+        if color is None:
+            if isinstance(self.author, discord.Member):
+                color = self.author.top_role.color
+            else:
+                color = discord.Color.light_embed()
 
         embed = discord.Embed(title=title, description=description, color=color)
 
@@ -81,13 +92,19 @@ class VanirContext(commands.Context):
     def syn_embed(
         title: str | None,
         description: str | None = None,
-        color: discord.Color = discord.Color.dark_teal(),
+        color: discord.Color = None,
         url: str | None = None,
         *,
-        author: discord.User,
+        author: discord.User | discord.Member,
     ) -> discord.Embed:
         if title is None and description is None:
             raise ValueError("Must provide either a title or a description")
+
+        if color is None:
+            if isinstance(author, discord.Member):
+                color = author.top_role.color
+            else:
+                color = discord.Color.light_embed()
 
         embed = discord.Embed(title=title, description=description, color=color)
 
@@ -100,3 +117,13 @@ class VanirContext(commands.Context):
         if url is not None:
             embed.url = url
         return embed
+
+
+class VanirSession(aiohttp.ClientSession):
+    def __init__(self):
+        super().__init__(
+            raise_for_status=False,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0"
+            },
+        )

@@ -14,3 +14,7 @@ CREATE TABLE IF NOT EXISTS starboard_posts (
     PRIMARY KEY (original_id)
 );
 
+CREATE TABLE IF NOT EXISTS currency_data (
+    user_id BIGINT NOT NULL,
+    balance BIGINT NOT NULL CONSTRAINT positive_balance CHECK (balance >= 0)
+);

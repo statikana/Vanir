@@ -2,8 +2,14 @@ import discord
 from discord import InteractionResponse
 from discord.ext import commands
 
-from src.types.command_types import cog_hidden, VanirCog, vanir_group, VanirView
-from src.types.core_types import VanirContext, Vanir
+from src.types.command import cog_hidden, VanirCog, vanir_group, VanirView
+from src.types.core import VanirContext, Vanir
+from src.types.util import (
+    MessageStateCache,
+    MessageState,
+    update_movement_buttons,
+    update_as_forking_movement,
+)
 from src.util import (
     format_dict,
     discover_cog,
@@ -21,11 +27,14 @@ class Help(VanirCog):
 
         # Cogs -> Modules
         embed = await self.get_cog_display_embed(ctx)
-        sel = CogDisplaySelect(ctx.bot, self)
+        sel = CogDisplaySelect(ctx, self)
 
-        view = VanirView(user=ctx.author).add_item(sel)
+        view = VanirView(user=ctx.author)
+        view.add_item(sel)
 
-        await ctx.send(embed=embed, view=view)
+        view.state_cache = MessageStateCache()
+
+        await ctx.reply(embed=embed, view=view)
 
     async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
         embed = ctx.embed(
@@ -84,7 +93,7 @@ class Help(VanirCog):
         for name, param in command.params.items():
             data = {"Required": "Yes" if param.required else "No"}
             if not param.required:
-                data["Default"] = param.default
+                data["Default"] = param.displayed_default or param.default
             embed.add_field(
                 name=f"__`{name}`__: `{get_param_annotation(param)}`",
                 value=f"*{param.description}*\n{format_dict(data)}",
@@ -94,16 +103,16 @@ class Help(VanirCog):
         return embed
 
     async def get_command_info_select(
-        self, itx: discord.Interaction, command: commands.Command
+        self, ctx: VanirContext, command: commands.Command
     ):
-        return CogInfoSelect(self.bot, self, command.cog)
+        return CogInfoSelect(ctx, self, command.cog)
 
 
-class CogDisplaySelect(discord.ui.Select):
+class CogDisplaySelect(discord.ui.Select[VanirView]):
     """Creates a select which displays all cogs in the bot"""
 
-    def __init__(self, bot: Vanir, instance: Help):
-        self.bot = bot
+    def __init__(self, ctx: VanirContext, instance: Help):
+        self.ctx = ctx
         self.instance = instance
         options = [
             discord.SelectOption(
@@ -112,34 +121,44 @@ class CogDisplaySelect(discord.ui.Select):
                 value=c.qualified_name,
                 emoji=getattr(c, "emoji", "\N{Black Question Mark Ornament}"),
             )
-            for c in get_display_cogs(self.bot)
+            for c in get_display_cogs(self.ctx.bot)
         ]
         super().__init__(options=options, placeholder="Select a Module")
 
     async def callback(self, itx: discord.Interaction):
+        """Goes to `cog info`"""
+        # print("COG DISPLAY SELECT cb")
         selected = self.values[0]
-        cog = self.bot.get_cog(selected)
+        cog = self.ctx.bot.get_cog(selected)
 
         embed = await self.instance.get_cog_info_embed(itx, cog)
-        sel = CogInfoSelect(self.bot, self.instance, cog)
+        sel = CogInfoSelect(self.ctx, self.instance, cog)
+
+        # Creates a new cache from the button's message (bot help message)
+        self.view.state_cache.cache(MessageState.from_message(itx.message))
+        current_cache = self.view.state_cache
+        current_cache.forking_movement()
 
         view = VanirView(user=itx.user)
         view.add_item(sel)
+        view.state_cache = current_cache
+
+        update_as_forking_movement(view)
 
         await InteractionResponse(itx).defer()
         await itx.message.edit(embed=embed, view=view)
 
 
-class CogInfoSelect(discord.ui.Select):
+class CogInfoSelect(discord.ui.Select[VanirView]):
     """Creates a select which displays commands in a cog"""
 
-    def __init__(self, bot: Vanir, instance: Help, cog: commands.Cog):
-        self.bot = bot
+    def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog):
+        self.ctx = ctx
         self.instance = instance
         options = [
             discord.SelectOption(
                 label=c.qualified_name,
-                description=f"{c.description or 'No Description'}",
+                description=f"{c.description or c.short_doc or 'No Description'}",
                 value=c.qualified_name,
             )
             for c in discover_cog(cog)
@@ -147,14 +166,14 @@ class CogInfoSelect(discord.ui.Select):
         super().__init__(options=options, placeholder="Select a Command")
 
     async def callback(self, itx: discord.Interaction):
+        """Goes to `command info`"""
         selected = self.values[0]
-        command = self.bot.get_command(selected)
+        command = self.ctx.bot.get_command(selected)
 
         embed = await self.instance.get_command_info_embed(itx, command)
-        sel = await self.instance.get_command_info_select(itx, command)
+        sel = await self.instance.get_command_info_select(self.ctx, command)
 
         view = VanirView(user=itx.user)
-        view.user = itx.user
         view.add_item(sel)
 
         await InteractionResponse(itx).defer()

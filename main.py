@@ -1,6 +1,6 @@
 import asyncio
 
-from src.types.core_types import Vanir
+from src.types.core import Vanir
 from src.env import DISCORD_TOKEN
 from logging_setup import logging_setup
 

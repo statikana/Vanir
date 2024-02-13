@@ -3,13 +3,15 @@ import functools
 import inspect
 import logging
 import math
-from typing import TypeVar, Generic, Callable, Any
+from typing import TypeVar, Generic, Callable, Any, Coroutine, Awaitable
+from asyncio import iscoroutinefunction
 
 import discord
-from discord import Interaction
+from discord import Interaction, InteractionResponse
 from discord.ext import commands
 
-from src.types.core_types import Vanir
+from src.types.core import Vanir
+from src.types.util import MessageStateCache
 
 empty = inspect.Parameter.empty
 
@@ -35,28 +37,80 @@ class VanirView(discord.ui.View):
     def __init__(
         self,
         *,
-        user: discord.User,
-        accept_itx: AcceptItx = AcceptItx.AUTHOR_ONLY,
+        user: discord.User | None = None,
+        state_cache: MessageStateCache = MessageStateCache(),
+        accept_itx: (
+            AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
+        ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
     ):
         super().__init__(timeout=timeout)
         self.accept_itx = accept_itx
-        self.user: discord.User = user
+        self.user = user
+        self.state_cache = state_cache
 
     async def interaction_check(self, itx: Interaction, /) -> bool:
-        if self.accept_itx == AcceptItx.AUTHOR_ONLY:
-            return itx.user.id == self.user.id
-        if self.accept_itx == AcceptItx.ANY:
-            return True
-        if self.accept_itx == AcceptItx.NOT_AUTHOR:
-            return itx.user.id != self.user.id
+        async def inner():
+            if isinstance(self.accept_itx, AcceptItx):
+                if self.accept_itx == AcceptItx.ANY:
+                    return True
+                if self.user is None:
+                    raise ValueError(
+                        "If view does not accept every interaction and uses AcceptItx, .user must be set."
+                    )
+                if self.accept_itx == AcceptItx.AUTHOR_ONLY:
+                    return itx.user.id == self.user.id
+                if self.accept_itx == AcceptItx.NOT_AUTHOR:
+                    return itx.user.id != self.user.id
+                return False
+            else:
+                if iscoroutinefunction(self.accept_itx):
+                    return await self.accept_itx(itx)
+                return self.accept_itx(itx)
+
+        result = await inner()
+        if result is False:
+            try:
+                await itx.response.send_message(
+                    "You can't interact with this", ephemeral=True
+                )
+            except discord.InteractionResponded:
+                await itx.followup.send("You can't interact with this", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}", disabled=True)
+    async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
+
+        # the way the `.response` property is defined on discord.Interaction messes with my linter
+        # this is the same thing, kind of
+        # (it still doesn't work if I don't defer or do itx.response.defer())
+        await InteractionResponse(itx).defer()
+
+        # move the cache to the previous position
+        self.state_cache.index -= 1
+
+        await self.state_cache.load(itx.message)
+
+    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}", disabled=True)
+    async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
+        await InteractionResponse(itx).defer()
+
+        self.state_cache.index += 1
+
+        await self.state_cache.load(itx.message)
 
 
 class VanirPager(VanirView, Generic[VanirPagerT]):
     def __init__(
-        self, items: list[VanirPagerT], items_per_page: int, *, start_page: int = 0
+        self,
+        user: discord.User,
+        items: list[VanirPagerT],
+        items_per_page: int,
+        *,
+        start_page: int = 0,
     ):
-        super().__init__(accept_itx=AcceptItx.AUTHOR_ONLY)
+        super().__init__(user=user)
         self.items = items
         self.items_per_page = items_per_page
 

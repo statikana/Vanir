@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from src.types.command_types import VanirCog, cog_hidden, vanir_group, inherit
-from src.types.core_types import VanirContext
+from src.types.command import VanirCog, cog_hidden, vanir_group, inherit
+from src.types.core import VanirContext
 
 
 @cog_hidden
@@ -24,12 +24,18 @@ class Dev(VanirCog):
         else:
             await self.bot.tree.sync()
 
-        await ctx.send(embed=ctx.embed("Synced"))
+        await ctx.reply(embed=ctx.embed("Synced"))
 
     @inherit
     @dev.command()
     async def echo(self, ctx: VanirContext, *, message: str):
-        await ctx.send(message)
+        await ctx.reply(message)
+
+    @inherit
+    @dev.command()
+    async def setbal(self, ctx: VanirContext, user: discord.User, amount: int):
+        await self.bot.db_currency.set_balance(user.id, amount)
+        await ctx.reply(f"{user.id} -> {amount}")
 
 
 async def setup(bot):

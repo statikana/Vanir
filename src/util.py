@@ -9,15 +9,21 @@ def ensure_slug(slug: str) -> str:
     return re.sub(r"[^a-z0-9\-]", "", slug).lower().strip(" .-")
 
 
-def format_dict(data: dict[Any, Any], miss_keys: list[Any] = None) -> str:
+def format_dict(
+    data: dict[Any, Any], miss_keys: list[Any] = None, linesplit: bool = False
+) -> str:
     if miss_keys is None:
         miss_keys = []
     lines: list[str] = []
     for k, v in data.items():
         if k not in miss_keys:
-            lines.append(f"**{k}**: *{v}*")
+            v_str = f"*{v}*"
         else:
-            lines.append(f"**{k}**: {v}")
+            v_str = f"{v}"
+        if linesplit:
+            lines.append(f"**{k}**:\n. . . {v_str}")
+        else:
+            lines.append(f"**{k}**: {v_str}")
 
     return "\n".join(lines)
 

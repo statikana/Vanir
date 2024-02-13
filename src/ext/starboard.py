@@ -4,9 +4,9 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import param, Range
 
-from src.types.command_types import VanirCog, inherit, vanir_group, vpar
-from src.types.core_types import Vanir, VanirContext
-from src.types.db_types import StarBoard as StarBoardDB
+from src.types.command import VanirCog, inherit, vanir_group, vpar
+from src.types.core import Vanir, VanirContext
+from src.types.database import StarBoard as StarBoardDB
 
 
 class StarBoard(VanirCog):
@@ -45,7 +45,7 @@ class StarBoard(VanirCog):
         )
         embed.add_field(name="Channel", value=f"<#{channel.id}>")
         embed.add_field(name="Star Post Threshold", value=threshold)
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
     @inherit
     @starboard.command()
@@ -55,7 +55,7 @@ class StarBoard(VanirCog):
         embed = ctx.embed(
             title="Starboard Removed", description="Starboard successfully removed."
         )
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
