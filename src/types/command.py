@@ -11,7 +11,7 @@ from discord import Interaction, InteractionResponse
 from discord.ext import commands
 
 from src.types.core import Vanir
-from src.types.util import MessageStateCache
+from src.types.util import MessageState
 
 empty = inspect.Parameter.empty
 
@@ -38,7 +38,6 @@ class VanirView(discord.ui.View):
         self,
         *,
         user: discord.User | None = None,
-        state_cache: MessageStateCache = MessageStateCache(),
         accept_itx: (
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
@@ -47,7 +46,6 @@ class VanirView(discord.ui.View):
         super().__init__(timeout=timeout)
         self.accept_itx = accept_itx
         self.user = user
-        self.state_cache = state_cache
 
     async def interaction_check(self, itx: Interaction, /) -> bool:
         async def inner():
@@ -79,26 +77,73 @@ class VanirView(discord.ui.View):
             return False
         return True
 
-    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}", disabled=True)
+
+class AutoCachedView(VanirView):
+    def __init__(
+        self,
+        *,
+        user: discord.User | None = None,
+        accept_itx: (
+            AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
+        ) = AcceptItx.AUTHOR_ONLY,
+        timeout: float = 300,
+    ):
+        super().__init__(
+            user=user,
+            accept_itx=accept_itx,
+            timeout=timeout
+        )
+
+        self.states: list[MessageState] = []
+        self.state_index: int | None = None
+
+    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}")
     async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
+        print("previous_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
 
-        # the way the `.response` property is defined on discord.Interaction messes with my linter
-        # this is the same thing, kind of
-        # (it still doesn't work if I don't defer or do itx.response.defer())
-        await InteractionResponse(itx).defer()
+        if self.state_index is None:
+            await self.collect(itx)
+            self.state_index = len(self.states) - 2  # jump back behind the new cached
+        else:
+            self.state_index -= 1
+        await self.update_to_state(itx)
 
-        # move the cache to the previous position
-        self.state_cache.index -= 1
-
-        await self.state_cache.load(itx.message)
-
-    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}", disabled=True)
+    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}")
     async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
-        await InteractionResponse(itx).defer()
+        print("next_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
 
-        self.state_cache.index += 1
+        if self.state_index == len(self.states) - 1:
+            print("----- CANNOT MOVE FORWARD, need new cache objects")
+        else:
+            self.state_index += 1
+        await self.update_to_state(itx)
 
-        await self.state_cache.load(itx.message)
+    async def update_to_state(self, itx: discord.Interaction):
+        print("update_to_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
+        await itx.response.defer()
+        state = self.states[self.state_index]
+
+        for c in self.children:
+            self.remove_item(c)
+
+        for c in state.items:
+            self.add_item(c)
+
+        await itx.message.edit(
+            content=state.content,
+            embeds=state.embeds,
+            view=self
+        )
+
+    async def collect(self, itx: discord.Interaction):
+        msg = itx.message
+        self.states.append(MessageState(msg.content, msg.embeds, self.children))
+        if self.state_index is not None:
+            # we are already in the cache - remove whatever is ahead
+            self.states = self.states[:self.state_index+1]
+        self.state_index = None  # we ae now living outside of the cache, no index
+
+        print("collect", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
 
 
 class VanirPager(VanirView, Generic[VanirPagerT]):

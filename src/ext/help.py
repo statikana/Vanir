@@ -4,12 +4,7 @@ from discord.ext import commands
 
 from src.types.command import cog_hidden, VanirCog, vanir_group, VanirView
 from src.types.core import VanirContext, Vanir
-from src.types.util import (
-    MessageStateCache,
-    MessageState,
-    update_movement_buttons,
-    update_as_forking_movement,
-)
+
 from src.util import (
     format_dict,
     discover_cog,
@@ -31,8 +26,6 @@ class Help(VanirCog):
 
         view = VanirView(user=ctx.author)
         view.add_item(sel)
-
-        view.state_cache = MessageStateCache()
 
         await ctx.reply(embed=embed, view=view)
 
@@ -134,16 +127,8 @@ class CogDisplaySelect(discord.ui.Select[VanirView]):
         embed = await self.instance.get_cog_info_embed(itx, cog)
         sel = CogInfoSelect(self.ctx, self.instance, cog)
 
-        # Creates a new cache from the button's message (bot help message)
-        self.view.state_cache.cache(MessageState.from_message(itx.message))
-        current_cache = self.view.state_cache
-        current_cache.forking_movement()
-
         view = VanirView(user=itx.user)
         view.add_item(sel)
-        view.state_cache = current_cache
-
-        update_as_forking_movement(view)
 
         await InteractionResponse(itx).defer()
         await itx.message.edit(embed=embed, view=view)
