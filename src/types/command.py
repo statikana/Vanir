@@ -3,11 +3,11 @@ import functools
 import inspect
 import logging
 import math
-from typing import TypeVar, Generic, Callable, Any, Coroutine, Awaitable
+from typing import TypeVar, Generic, Callable, Any, Awaitable
 from asyncio import iscoroutinefunction
 
 import discord
-from discord import Interaction, InteractionResponse
+from discord import Interaction
 from discord.ext import commands
 
 from src.types.core import Vanir
@@ -87,6 +87,7 @@ class AutoCachedView(VanirView):
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
+        items: list[discord.ui.Item]
     ):
         super().__init__(
             user=user,
@@ -94,12 +95,17 @@ class AutoCachedView(VanirView):
             timeout=timeout
         )
 
+        for k in items:
+            self.add_item(k)
+
         self.states: list[MessageState] = []
         self.state_index: int | None = None
 
-    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}")
+        self.previous_state.disabled = True
+        self.next_state.disabled = True
+
+    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}", row=1)
     async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
-        print("previous_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
 
         if self.state_index is None:
             await self.collect(itx)
@@ -108,18 +114,13 @@ class AutoCachedView(VanirView):
             self.state_index -= 1
         await self.update_to_state(itx)
 
-    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}")
+    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}", row=1)
     async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
-        print("next_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
 
-        if self.state_index == len(self.states) - 1:
-            print("----- CANNOT MOVE FORWARD, need new cache objects")
-        else:
-            self.state_index += 1
+        self.state_index += 1
         await self.update_to_state(itx)
 
     async def update_to_state(self, itx: discord.Interaction):
-        print("update_to_state", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
         await itx.response.defer()
         state = self.states[self.state_index]
 
@@ -128,6 +129,10 @@ class AutoCachedView(VanirView):
 
         for c in state.items:
             self.add_item(c)
+
+        # because the buttons are all the same object, by changing the object in memory here, it changes EVERYWHERE
+
+        await self.check_buttons()
 
         await itx.message.edit(
             content=state.content,
@@ -141,9 +146,15 @@ class AutoCachedView(VanirView):
         if self.state_index is not None:
             # we are already in the cache - remove whatever is ahead
             self.states = self.states[:self.state_index+1]
-        self.state_index = None  # we ae now living outside of the cache, no index
 
-        print("collect", self.state_index, len(self.states), ','.join(k.embeds[0].title for k in self.states))
+        # we are now living outside of the cache, no index
+        self.state_index = None
+        await self.check_buttons()
+
+    async def check_buttons(self):
+        # at the back of the cache or there is no cache (it is redundant to check for cache count here but meh)
+        self.previous_state.disabled = self.state_index == 0 or len(self.states) == 0
+        self.next_state.disabled = self.state_index is None or self.state_index == len(self.states) - 1
 
 
 class VanirPager(VanirView, Generic[VanirPagerT]):

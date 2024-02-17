@@ -2,7 +2,7 @@ import discord
 from discord import InteractionResponse
 from discord.ext import commands
 
-from src.types.command import cog_hidden, VanirCog, vanir_group, VanirView
+from src.types.command import cog_hidden, VanirCog, vanir_group, AutoCachedView
 from src.types.core import VanirContext, Vanir
 
 from src.util import (
@@ -24,8 +24,7 @@ class Help(VanirCog):
         embed = await self.get_cog_display_embed(ctx)
         sel = CogDisplaySelect(ctx, self)
 
-        view = VanirView(user=ctx.author)
-        view.add_item(sel)
+        view = AutoCachedView(user=ctx.author, items=[sel])
 
         await ctx.reply(embed=embed, view=view)
 
@@ -101,7 +100,7 @@ class Help(VanirCog):
         return CogInfoSelect(ctx, self, command.cog)
 
 
-class CogDisplaySelect(discord.ui.Select[VanirView]):
+class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
     """Creates a select which displays all cogs in the bot"""
 
     def __init__(self, ctx: VanirContext, instance: Help):
@@ -116,25 +115,26 @@ class CogDisplaySelect(discord.ui.Select[VanirView]):
             )
             for c in get_display_cogs(self.ctx.bot)
         ]
-        super().__init__(options=options, placeholder="Select a Module")
+        super().__init__(options=options, placeholder="Select a Module", row=0)
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `cog info`"""
         # print("COG DISPLAY SELECT cb")
+        await self.view.collect(itx)
         selected = self.values[0]
         cog = self.ctx.bot.get_cog(selected)
 
         embed = await self.instance.get_cog_info_embed(itx, cog)
         sel = CogInfoSelect(self.ctx, self.instance, cog)
 
-        view = VanirView(user=itx.user)
-        view.add_item(sel)
+        self.view.remove_item(self)
+        self.view.add_item(sel)
 
         await InteractionResponse(itx).defer()
-        await itx.message.edit(embed=embed, view=view)
+        await itx.message.edit(embed=embed, view=self.view)
 
 
-class CogInfoSelect(discord.ui.Select[VanirView]):
+class CogInfoSelect(discord.ui.Select[AutoCachedView]):
     """Creates a select which displays commands in a cog"""
 
     def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog):
@@ -148,21 +148,22 @@ class CogInfoSelect(discord.ui.Select[VanirView]):
             )
             for c in discover_cog(cog)
         ]
-        super().__init__(options=options, placeholder="Select a Command")
+        super().__init__(options=options, placeholder="Select a Command", row=0)
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `command info`"""
+        await self.view.collect(itx)
         selected = self.values[0]
         command = self.ctx.bot.get_command(selected)
 
         embed = await self.instance.get_command_info_embed(itx, command)
         sel = await self.instance.get_command_info_select(self.ctx, command)
 
-        view = VanirView(user=itx.user)
-        view.add_item(sel)
+        self.view.remove_item(self)
+        self.view.add_item(sel)
 
         await InteractionResponse(itx).defer()
-        await itx.message.edit(embed=embed, view=view)
+        await itx.message.edit(embed=embed, view=self.view)
 
 
 async def setup(bot: Vanir):

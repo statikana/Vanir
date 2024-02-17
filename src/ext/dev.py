@@ -42,9 +42,7 @@ class Dev(VanirCog):
     @inherit
     @dev.command()
     async def vt(self, ctx: VanirContext):
-        view = AutoCachedView(
-            user=ctx.author
-        )
+        view = AutoCachedView(user=ctx.author)
         view.add_item(BasicSel())
         embed = ctx.embed(title="FIRST")
         await ctx.reply(embed=embed, view=view)
@@ -64,8 +62,12 @@ class BasicSel(discord.ui.Select[AutoCachedView]):
             title=self.values[0],
             author=itx.user
         )
-        self.view.remove_item(self)
-        await InteractionResponse(itx).edit_message(embed=embed, view=self.view)
+        embed1 = VanirContext.syn_embed(
+            title="SECOND EMBED",
+            author=itx.user
+        )
+
+        await InteractionResponse(itx).edit_message(embeds=[embed, embed1], view=self.view)
 
 
 async def setup(bot):
