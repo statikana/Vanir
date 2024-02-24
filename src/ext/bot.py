@@ -1,4 +1,5 @@
 import inspect
+import pathlib
 
 import discord
 
@@ -50,7 +51,7 @@ class Bot(VanirCog):
         )
         embed.add_field(
             name="File",
-            value=path[path.rfind("\\")+1:],
+            value=f"`{pathlib.Path(path).name}`",
             inline=False
         )
         embed.add_field(
