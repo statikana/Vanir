@@ -16,7 +16,7 @@ from src.types.database import StarBoard, Currency
 class Vanir(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix="]",
+            command_prefix=commands.when_mentioned_or("\\"),
             tree_cls=VanirTree,
             intents=discord.Intents.all(),
             help_command=None,

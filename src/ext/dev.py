@@ -42,43 +42,6 @@ class Dev(VanirCog):
         await self.bot.db_currency.set_balance(user.id, amount)
         await ctx.reply(f"{user.id} -> {amount}")
 
-    @inherit
-    @dev.command()
-    async def vt(self, ctx: VanirContext):
-        view = AutoCachedView(user=ctx.author)
-        view.add_item(BasicSel())
-        embed = ctx.embed(title="FIRST")
-        await ctx.reply(embed=embed, view=view)
-
-    @inherit
-    @dev.command()
-    async def ping(self, ctx: VanirContext):
-        delays = {
-            "\N{Shinto Shrine} Discord Gateway": self.bot.latency,
-            "\N{Earth Globe Americas} Web Requests": await timeit(self.bot.session.get, "google.com"),
-            "\N{Elephant} PGSQL Database": timeit(self.bot.db_currency.get, "SELECT 0")
-        }
-        embed = ctx.embed(
-            "Pong! \N{Table Tennis Paddle and Ball}"
-        )
-        for name, delay in delays.items():
-            embed.add_field(name=name, value=f"`{delay*1000:.3f}ms`")
-
-        await ctx.send(embed=embed)
-
-
-async def timeit(func, *args):
-    if iscoroutinefunction(func):
-        start = time.time()
-        await func(*args)
-    else:
-        start = time.time()
-        func(*args)
-
-    return time.time() - start
-
-
-
 
 class BasicSel(discord.ui.Select[AutoCachedView]):
     def __init__(self):

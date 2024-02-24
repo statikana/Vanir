@@ -7,7 +7,7 @@ from src.types.command import VanirCog, cog_hidden
 
 @cog_hidden
 class Errors(VanirCog):
-    @commands.Cog.listener()
+    # @commands.Cog.listener()
     async def on_command_error(self, ctx: VanirContext, error: commands.CommandError):
         if isinstance(error, commands.CommandInvokeError):
             print(f"Ignoring error in {ctx.command.qualified_name}: {error}")
