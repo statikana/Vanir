@@ -47,6 +47,11 @@ class Dev(VanirCog):
         embed = ctx.embed(title="FIRST")
         await ctx.reply(embed=embed, view=view)
 
+    @inherit
+    @dev.command()
+    async def ping(self, ctx: VanirContext):
+        await ctx.reply("pong!")
+
 
 class BasicSel(discord.ui.Select[AutoCachedView]):
     def __init__(self):
