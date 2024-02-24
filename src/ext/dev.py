@@ -1,3 +1,6 @@
+import time
+from asyncio import iscoroutinefunction
+
 import discord
 from discord import InteractionResponse
 from discord.ext import commands
@@ -50,7 +53,31 @@ class Dev(VanirCog):
     @inherit
     @dev.command()
     async def ping(self, ctx: VanirContext):
-        await ctx.reply("pong!")
+        delays = {
+            "\N{Shinto Shrine} Discord Gateway": self.bot.latency,
+            "\N{Earth Globe Americas} Web Requests": await timeit(self.bot.session.get, "google.com"),
+            "\N{Elephant} PGSQL Database": timeit(self.bot.db_currency.get, "SELECT 0")
+        }
+        embed = ctx.embed(
+            "Pong! \N{Table Tennis Paddle and Ball}"
+        )
+        for name, delay in delays.items():
+            embed.add_field(name=name, value=f"`{delay*1000:.3f}ms`")
+
+        await ctx.send(embed=embed)
+
+
+async def timeit(func, *args):
+    if iscoroutinefunction(func):
+        start = time.time()
+        await func(*args)
+    else:
+        start = time.time()
+        func(*args)
+
+    return time.time() - start
+
+
 
 
 class BasicSel(discord.ui.Select[AutoCachedView]):
