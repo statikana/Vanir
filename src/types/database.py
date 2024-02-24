@@ -1,7 +1,5 @@
 import asyncpg
 
-from src import env
-
 
 class DBBase:
     def __init__(self):

@@ -138,10 +138,11 @@ class VanirSession(aiohttp.ClientSession):
 
         url = "https://api-free.deepl.com/v2"
 
-        headers.update({
-            "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
-            "Content-Type": "application/json "
-        })
+        headers.update(
+            {
+                "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
+                "Content-Type": "application/json ",
+            }
+        )
 
         return await self.post(url + path, headers=headers, json=json)
-

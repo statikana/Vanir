@@ -32,14 +32,16 @@ class Language(VanirCog):
                         style=discord.ButtonStyle.url,
                         label=f"{audio_file[audio_file.rfind('-')+1:audio_file.rfind('.')].upper()} Pronunciation",
                         emoji="\N{Speaker with Three Sound Waves}",
-                        url=audio_file
+                        url=audio_file,
                     )
                 )
 
         def format_def(index, definition):
             fmt_definition = f"**{i + 1}.** {discord.utils.escape_markdown(definition['definition'])}"
             if "example" in definition:
-                fmt_definition += f"\n\t> *{discord.utils.escape_markdown(definition['example'])}*"
+                fmt_definition += (
+                    f"\n\t> *{discord.utils.escape_markdown(definition['example'])}*"
+                )
             return fmt_definition
 
         for meaning in json["meanings"]:
@@ -57,28 +59,26 @@ class Language(VanirCog):
                     definitions.append(f"\n***> ... {n_broken} definitions trimmed***")
                     break
 
-            value = '\n'.join(definitions)[:1024]
+            value = "\n".join(definitions)[:1024]
 
             embed.add_field(
-                name=f"as ***{meaning['partOfSpeech']}***",
-                value=value,
-                inline=False
+                name=f"as ***{meaning['partOfSpeech']}***", value=value, inline=False
             )
 
         await ctx.send(embed=embed, view=view)
 
     @commands.hybrid_command()
     @app_commands.autocomplete(
-        source_lang=langcode_autocomplete,
-        target_lang=langcode_autocomplete
+        source_lang=langcode_autocomplete, target_lang=langcode_autocomplete
     )
     @commands.cooldown(2, 60, commands.BucketType.user)
     async def translate(
-            self,
-            ctx: VanirContext, *,
-            text: str = vpar("The text to translate"),
-            source_lang: str = vpar("The language to translate from", "AUTO"),
-            target_lang: str = vpar("The language to translate to", "EN")
+        self,
+        ctx: VanirContext,
+        *,
+        text: str = vpar("The text to translate"),
+        source_lang: str = vpar("The language to translate from", "AUTO"),
+        target_lang: str = vpar("The language to translate to", "EN"),
     ):
         """Translates the text to `target_lang` - default is English"""
         if isinstance(source_lang, commands.Parameter):
@@ -98,9 +98,13 @@ class Language(VanirCog):
             json["source_lang"] = source_lang
 
         if source_lang not in LANGUAGE_INDEX and source_lang != "AUTO":
-            raise ValueError(f"{source_lang} is not a valid language code. Please utilize the autocomplete")
+            raise ValueError(
+                f"{source_lang} is not a valid language code. Please utilize the autocomplete"
+            )
         if target_lang not in LANGUAGE_INDEX:
-            raise ValueError(f"{target_lang} is not a valid language code. Please utilize the autocomplete")
+            raise ValueError(
+                f"{target_lang} is not a valid language code. Please utilize the autocomplete"
+            )
 
         response = await self.bot.session.deepl("/translate", json=json)
         response.raise_for_status()
@@ -111,19 +115,9 @@ class Language(VanirCog):
         source = LANGUAGE_INDEX[tsl["detected_source_language"]]
         target = LANGUAGE_INDEX[target_lang]
 
-        embed = ctx.embed(
-            title=f"{source} -> {target}"
-        )
-        embed.add_field(
-            name=f"{source} - Original",
-            value=text,
-            inline=False
-        )
-        embed.add_field(
-            name=f"{target} - Translated",
-            value=tsl["text"],
-            inline=False
-        )
+        embed = ctx.embed(title=f"{source} -> {target}")
+        embed.add_field(name=f"{source} - Original", value=text, inline=False)
+        embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
         await ctx.send(embed=embed)
 
 

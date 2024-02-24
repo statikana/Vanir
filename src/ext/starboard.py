@@ -2,7 +2,7 @@ import logging
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import param, Range
+from discord.ext.commands import Range
 
 from src.types.command import VanirCog, inherit, vanir_group, vpar
 from src.types.core import Vanir, VanirContext

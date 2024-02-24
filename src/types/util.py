@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import discord
 from discord.app_commands import Choice
-from fuzzywuzzy import fuzz
 
 
 LANGUAGE_INDEX = {
@@ -40,6 +39,7 @@ LANGUAGE_INDEX = {
     "ZH": "Chinese",
 }
 
+
 @dataclass
 class MessageState:
     content: str
@@ -65,9 +65,11 @@ async def timeit(func, *args):
 
 
 async def langcode_autocomplete(itx: discord.Interaction, current: str):
-    options = [
-        Choice(name=f"{v} [{k}]", value=k)
-        for k, v in LANGUAGE_INDEX.items()
-    ][:25]
-    options = sorted(filter(lambda c: current.lower() in c.name.lower(), options), key=lambda c: c.name)
+    options = [Choice(name=f"{v} [{k}]", value=k) for k, v in LANGUAGE_INDEX.items()][
+        :25
+    ]
+    options = sorted(
+        filter(lambda c: current.lower() in c.name.lower(), options),
+        key=lambda c: c.name,
+    )
     return options
