@@ -67,7 +67,7 @@ class Help(VanirCog):
 
         if other_commands:
             embed.add_field(
-                name=f"...{len(other_commands)} Other Command{'s' if len(other_commands) > 1 else ''}",
+                name=f"{len(other_commands)} Miscellaneous Command{'s' if len(other_commands) > 1 else ''}",
                 value="\n".join(f"`/{o.qualified_name}`" for o in other_commands),
             )
 

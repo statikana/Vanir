@@ -247,28 +247,56 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
             button.disabled = True
 
 
-def _deco_factory(
-    ctype: type[CommandT], name: str | None = None, **extras
-) -> Callable[[Any], CommandT]:
+def vanir_command(hidden: bool = False) -> Callable[[Any], commands.HybridCommand]:
     def inner(func: Any):
-        cmd = ctype(func, name=name)
-        cmd.extras = extras
+        func = autopopulate(func)
+        cmd = commands.HybridCommand(func)
+        cmd.hidden = hidden
+        cmd = _inherit(cmd)
 
         return cmd
 
     return inner
 
 
-def vanir_command(
-    name: str | None = None, *, hidden: bool = False
-) -> Callable[[Any], commands.HybridCommand]:
-    return _deco_factory(commands.HybridCommand, name, hidden=hidden)
+class VanirHybridGroup(commands.HybridGroup):
+    def command(self):
+        def inner(func):
+            func = autopopulate(func)
+            command = commands.HybridGroup.command(self)(func)
+            command = _inherit(command)
+            return command
+
+        return inner
 
 
-def vanir_group(
-    name: str | None = None, *, hidden: bool = False
-) -> Callable[[Any], commands.HybridGroup]:
-    return _deco_factory(commands.HybridGroup, name, hidden=hidden)
+def vanir_group(hidden: bool = False) -> Callable[[Any], VanirHybridGroup]:
+    def inner(func: Any):
+        cmd = VanirHybridGroup(func)
+        cmd.hidden = hidden
+
+        return cmd
+
+    return inner
+
+
+def autopopulate(func):
+    params = inspect.signature(func).parameters.copy()
+    try:
+        del params["self"]
+    except KeyError:
+        pass
+    try:
+        del params["ctx"]
+    except KeyError:
+        pass
+
+    descriptions = {name: getattr(param.default, "description", None) or "no description" for name, param in params.items()}
+    try:
+        func.__discord_app_commands_param_description__.update(descriptions)
+    except AttributeError:
+        func.__discord_app_commands_param_description__ = descriptions
+    return func
 
 
 def cog_hidden(cls: type[VanirCog]):
@@ -284,7 +312,7 @@ def cog_hidden(cls: type[VanirCog]):
     return cls
 
 
-def inherit(cmd: commands.Command):
+def _inherit(cmd: commands.HybridCommand):
     if cmd.parent is not None:
         parent: commands.HybridGroup = cmd.parent  # type: ignore
         cmd.hidden = parent.hidden
@@ -292,27 +320,3 @@ def inherit(cmd: commands.Command):
         cmd.checks = parent.checks
 
     return cmd
-
-
-def vpar(
-    desc: str,
-    default: Any = empty,
-    dis_default: str = empty,
-    *,
-    conv: Any = empty,
-    dis_name: Any = empty,
-):
-    """A more compact `ext.commands.param`
-
-    :param desc: The description of the parameter
-    :param default: The default value of the parameter
-    :param dis_default: What the default value appears as to the user
-    :param conv: The converter class for the parameter
-    :param dis_name: The name of the parameter which appears to the user"""
-    return commands.param(
-        description=desc,
-        default=default,
-        displayed_default=dis_default,
-        converter=conv,
-        displayed_name=dis_name,
-    )

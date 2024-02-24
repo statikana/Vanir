@@ -4,13 +4,15 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Range
 
-from src.types.command import VanirCog, inherit, vanir_group, vpar
+from src.types.command import VanirCog, _inherit, vanir_group, autopopulate
 from src.types.core import Vanir, VanirContext
 from src.types.database import StarBoard as StarBoardDB
 
 
 class StarBoard(VanirCog):
     """Automate a StarBoard channel, featuring popular posts in any channel"""
+
+    emoji = "\N{White Medium Star}"
 
     def __init__(self, bot: Vanir):
         super().__init__(bot)
@@ -19,15 +21,16 @@ class StarBoard(VanirCog):
     async def starboard(self, ctx: VanirContext):
         pass
 
-    @inherit
     @starboard.command()
     async def setup(
         self,
         ctx: VanirContext,
-        channel: discord.TextChannel = vpar("The channel to send starboard posts to"),
-        threshold: Range[int, 1] = vpar(
-            "The amount of :star: reactions a message needs to have before being sent to the channel",
-            1,
+        channel: discord.TextChannel = commands.param(
+            description="The channel to send starboard posts to"
+        ),
+        threshold: Range[int, 1] = commands.param(
+            description="The amount of :star: reactions a message needs to have before being sent to the channel",
+            default=1,
         ),
     ):
         """Sets up the starboard for your server"""
@@ -47,7 +50,6 @@ class StarBoard(VanirCog):
         embed.add_field(name="Star Post Threshold", value=threshold)
         await ctx.reply(embed=embed)
 
-    @inherit
     @starboard.command()
     async def remove(self, ctx: VanirContext):
         """Removes the starboard configuration for your server"""

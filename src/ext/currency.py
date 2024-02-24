@@ -1,13 +1,16 @@
 import discord
+from discord.ext import commands
 
 from src.types.core import Vanir, VanirContext
-from src.types.command import VanirCog, vanir_group, vpar, VanirView
+from src.types.command import VanirCog, vanir_group, VanirView, autopopulate
 from src.types.database import Currency as DBCurrency
 from src.util import format_dict
 
 
 class Currency(VanirCog):
     """A custom currency system"""
+
+    emoji = "\N{Coin}"
 
     @vanir_group()
     async def coins(self, ctx: VanirContext):
@@ -18,8 +21,10 @@ class Currency(VanirCog):
     async def balance(
         self,
         ctx: VanirContext,
-        user: discord.User = vpar(
-            "Whose balance to view", lambda ctx: ctx.author, dis_default="you"
+        user: discord.User = commands.param(
+            description="Whose balance to view",
+            default=lambda ctx: ctx.author,
+            displayed_default="you",
         ),
     ):
         """Get yours, or someone else's balance'"""
@@ -32,8 +37,10 @@ class Currency(VanirCog):
     async def give(
         self,
         ctx: VanirContext,
-        user: discord.User = vpar("Who to send the funds to"),
-        amount: int = vpar("How many coins to send"),
+        user: discord.User = commands.param(description="Who to send the funds to"),
+        amount: commands.Range[int, 1] = commands.param(
+            description="How many coins to send"
+        ),
     ):
         """Give some coins to another user"""
         if amount < 0:
@@ -67,9 +74,12 @@ class Currency(VanirCog):
     async def request(
         self,
         ctx: VanirContext,
-        user: discord.User = vpar("Who to request funds from"),
-        amount: int = vpar("How many coins to request"),
+        user: discord.User = commands.param(description="Who to request funds from"),
+        amount: commands.Range[int, 1] = commands.param(
+            description="How many coins to request"
+        ),
     ):
+        """Request coins from another user"""
         from_bal = await self.bot.db_currency.balance(user.id)
         if from_bal < amount:
             raise ValueError(

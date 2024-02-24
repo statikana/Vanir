@@ -3,15 +3,24 @@ from discord.ext import commands
 
 from discord import app_commands
 
-from src.types.command import vanir_command, VanirCog, vpar, VanirView
+from src.types.command import vanir_command, VanirCog, VanirView, autopopulate
 from src.types.core import VanirContext, Vanir
 from src.types.util import langcode_autocomplete, LANGUAGE_INDEX
 
 
 class Language(VanirCog):
+    """Definitions / Translations"""
+
+    emoji = "\N{Open Book}"
 
     @vanir_command()
-    async def define(self, ctx: VanirContext, *, term: str):
+    async def define(
+        self,
+        ctx: VanirContext,
+        *,
+        term: str = commands.param(description="The term to define"),
+    ):
+        """Defines a word"""
         url = "https://api.dictionaryapi.dev/api/v2/entries/en/"
         response = await self.bot.session.get(url + term)
         response.raise_for_status()
@@ -76,11 +85,15 @@ class Language(VanirCog):
         self,
         ctx: VanirContext,
         *,
-        text: str = vpar("The text to translate"),
-        source_lang: str = vpar("The language to translate from", "AUTO"),
-        target_lang: str = vpar("The language to translate to", "EN"),
+        text: str = commands.param(description="The text to translate"),
+        source_lang: str = commands.param(
+            description="The language to translate from", default="AUTO"
+        ),
+        target_lang: str = commands.param(
+            description="The language to translate to", default="EN"
+        ),
     ):
-        """Translates the text to `target_lang` - default is English"""
+        """Translates the text from one language to another"""
         if isinstance(source_lang, commands.Parameter):
             source_lang = source_lang.default
         if isinstance(target_lang, commands.Parameter):
