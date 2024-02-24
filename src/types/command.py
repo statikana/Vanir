@@ -87,13 +87,16 @@ class AutoCachedView(VanirView):
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
-        items: list[discord.ui.Item]
+        items: list[discord.ui.Item] = None
     ):
         super().__init__(
             user=user,
             accept_itx=accept_itx,
             timeout=timeout
         )
+
+        if items is None:
+            items = []
 
         for k in items:
             self.add_item(k)

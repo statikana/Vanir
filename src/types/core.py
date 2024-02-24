@@ -46,6 +46,7 @@ class Vanir(commands.Bot):
     async def add_cogs(self) -> Generator[commands.Cog, None, None]:
         extension_path = "./src/ext"
         for path in os.listdir(extension_path):
+
             if path.endswith(".py"):
                 before = set(self.cogs.values())
                 await self.load_extension(f"src.ext.{path[:-3]}")
