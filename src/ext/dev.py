@@ -5,7 +5,14 @@ import discord
 from discord import InteractionResponse
 from discord.ext import commands
 
-from src.types.command import VanirCog, cog_hidden, vanir_group, inherit, AutoCachedView, VanirView
+from src.types.command import (
+    VanirCog,
+    cog_hidden,
+    vanir_group,
+    inherit,
+    AutoCachedView,
+    VanirView,
+)
 from src.types.core import VanirContext
 from src.types.util import MessageState
 
@@ -47,22 +54,18 @@ class BasicSel(discord.ui.Select[AutoCachedView]):
     def __init__(self):
         super().__init__(
             placeholder="choose",
-            options=[discord.SelectOption(label=k) for k in ["grape", "raisin"]]
+            options=[discord.SelectOption(label=k) for k in ["grape", "raisin"]],
         )
 
     async def callback(self, itx: discord.Interaction):
         await self.view.collect(itx)
         print("post change", self.view.states)
-        embed = VanirContext.syn_embed(
-            title=self.values[0],
-            author=itx.user
-        )
-        embed1 = VanirContext.syn_embed(
-            title="SECOND EMBED",
-            author=itx.user
-        )
+        embed = VanirContext.syn_embed(title=self.values[0], author=itx.user)
+        embed1 = VanirContext.syn_embed(title="SECOND EMBED", author=itx.user)
 
-        await InteractionResponse(itx).edit_message(embeds=[embed, embed1], view=self.view)
+        await InteractionResponse(itx).edit_message(
+            embeds=[embed, embed1], view=self.view
+        )
 
 
 async def setup(bot):

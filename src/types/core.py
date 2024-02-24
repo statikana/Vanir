@@ -10,6 +10,7 @@ from discord.ext import commands
 import logging
 
 from src import env
+from src.env import DEEPL_API_KEY
 from src.types.database import StarBoard, Currency
 
 
@@ -128,3 +129,19 @@ class VanirSession(aiohttp.ClientSession):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0"
             },
         )
+
+    async def deepl(self, path: str, headers: dict = None, json: dict = None):
+        if headers is None:
+            headers = {}
+        if json is None:
+            json = {}
+
+        url = "https://api-free.deepl.com/v2"
+
+        headers.update({
+            "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
+            "Content-Type": "application/json "
+        })
+
+        return await self.post(url + path, headers=headers, json=json)
+

@@ -87,13 +87,9 @@ class AutoCachedView(VanirView):
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
-        items: list[discord.ui.Item] = None
+        items: list[discord.ui.Item] = None,
     ):
-        super().__init__(
-            user=user,
-            accept_itx=accept_itx,
-            timeout=timeout
-        )
+        super().__init__(user=user, accept_itx=accept_itx, timeout=timeout)
 
         if items is None:
             items = []
@@ -137,18 +133,14 @@ class AutoCachedView(VanirView):
 
         await self.check_buttons()
 
-        await itx.message.edit(
-            content=state.content,
-            embeds=state.embeds,
-            view=self
-        )
+        await itx.message.edit(content=state.content, embeds=state.embeds, view=self)
 
     async def collect(self, itx: discord.Interaction):
         msg = itx.message
         self.states.append(MessageState(msg.content, msg.embeds, self.children))
         if self.state_index is not None:
             # we are already in the cache - remove whatever is ahead
-            self.states = self.states[:self.state_index+1]
+            self.states = self.states[: self.state_index + 1]
 
         # we are now living outside of the cache, no index
         self.state_index = None
@@ -157,7 +149,9 @@ class AutoCachedView(VanirView):
     async def check_buttons(self):
         # at the back of the cache or there is no cache (it is redundant to check for cache count here but meh)
         self.previous_state.disabled = self.state_index == 0 or len(self.states) == 0
-        self.next_state.disabled = self.state_index is None or self.state_index == len(self.states) - 1
+        self.next_state.disabled = (
+            self.state_index is None or self.state_index == len(self.states) - 1
+        )
 
 
 class VanirPager(VanirView, Generic[VanirPagerT]):
