@@ -8,6 +8,7 @@ from asyncio import iscoroutinefunction
 
 import discord
 from discord import Interaction
+from discord._types import ClientT
 from discord.ext import commands
 
 from src.types.core import Vanir
@@ -176,37 +177,46 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
         self.message: discord.Message | None = None
 
-    @discord.ui.button(emoji="\N{Black Left-Pointing Double Triangle}")
-    async def first(self, _itx: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(emoji="\N{Black Left-Pointing Double Triangle}", disabled=True)
+    async def first(self, itx: discord.Interaction, button: discord.ui.Button):
         self.page = 0
-        await self.update(button)
+        await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{Leftwards Black Arrow}")
-    async def back(self, _itx: discord.Interaction, button: discord.ui.Button):
-        self.page += 1
-        await self.update(button)
+    @discord.ui.button(emoji="\N{Leftwards Black Arrow}", disabled=True)
+    async def back(self, itx: discord.Interaction, button: discord.ui.Button):
+        self.page -= 1
+        await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{Cross Mark}")
-    async def close(self, _itx: discord.Interaction, button: discord.ui.Button):
-        for item in self.items:
+    @discord.ui.button(emoji="\N{Cross Mark}", style=discord.ButtonStyle.danger)
+    async def finish(self, itx: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
             if isinstance(item, (discord.ui.Button, discord.ui.Select)):
                 item.disabled = True
 
-        await self.update(button)
+        await self.update(itx, button)
+        self.stop()
 
-    @discord.ui.button(emoji="\N{Rightwards Black Arrow}")
-    async def next(self, _itx: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(emoji="\N{Black Rightwards Arrow}", disabled=True)
+    async def next(self, itx: discord.Interaction, button: discord.ui.Button):
         self.page += 1
-        await self.update(button)
+        await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{Black Right-Pointing Double Triangle}")
-    async def last(self, _itx: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(emoji="\N{Black Right-Pointing Double Triangle}", disabled=True)
+    async def last(self, itx: discord.Interaction, button: discord.ui.Button):
         self.page = self.n_pages - 1
-        await self.update(button)
+        await self.update(itx, button)
 
-    async def update(self, source_button: discord.ui.Button):
+    @discord.ui.button(label="GOTO", emoji="\N{Direct Hit}")
+    async def custom(self, itx: discord.Interaction, button: discord.Button):
+        modal = CustomPageModal(itx, self)
+        await itx.response.send_modal(modal)
+
+    async def update(self, itx: discord.Interaction = None, source_button: discord.ui.Button = None):
         """Called after every button press - enables and disables the appropriate buttons, and changes colors.
         Also fetches te new embed and edits the message and view to the new content."""
+        if self.finish.disabled:
+            await itx.response.edit_message(view=self)
+            return
         if self.page == 0:
             VanirPager.disable(self.first, self.back)
         else:
@@ -217,16 +227,24 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         else:
             VanirPager.enable(self.next, self.last)
 
-        for i in self.children:
-            if isinstance(i, discord.ui.Button):
-                if i == source_button:
-                    i.style = discord.ButtonStyle.success
-                else:
-                    i.style = discord.ButtonStyle.grey
+        if source_button is not None:
+            for i in self.children:
+                if isinstance(i, discord.ui.Button):
+                    if i == source_button:
+                        i.style = discord.ButtonStyle.success
+                    else:
+                        if i.emoji.name != "\N{Cross Mark}":
+                            i.style = discord.ButtonStyle.grey
 
         if self.message is not None:
             embed = await self.update_embed()
-            await self.message.edit(embed=embed, view=self)
+            if itx is not None:
+                try:
+                    await itx.response.edit_message(embed=embed, view=self)
+                except discord.InteractionResponded:
+                    await itx.edit_original_response(embed=embed, view=self)
+            else:
+                await self.message.edit(embed=embed,  view=self)
         else:
             logging.warning(
                 f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
@@ -245,6 +263,26 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
     def disable(*buttons: discord.ui.Button):
         for button in buttons:
             button.disabled = True
+
+
+class CustomPageModal(discord.ui.Modal):
+    def __init__(self, itx: discord.Interaction, view: VanirPager):
+        super().__init__(title="Select Page")
+        self.view = view
+        self.page_input = discord.ui.TextInput(label=f"Please enter a page number between 1 and {view.n_pages}")
+        self.page_input.required = True
+        self.add_item(self.page_input)
+
+    async def on_submit(self, itx: discord.Interaction):
+        value = self.page_input.value
+        try:
+            value = int(value)
+        except TypeError:
+            raise ValueError("Please enter a number")
+        if not (1 <= value <= self.view.n_pages):
+            raise ValueError(f"Please enter a page number between 1 and {self.view.n_pages}")
+        self.view.page = value - 1
+        await self.view.update(itx=itx, source_button=VanirPager.custom)
 
 
 def vanir_command(hidden: bool = False) -> Callable[[Any], commands.HybridCommand]:

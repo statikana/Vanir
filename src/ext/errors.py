@@ -10,8 +10,7 @@ class Errors(VanirCog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: VanirContext, error: commands.CommandError):
         if isinstance(error, commands.CommandInvokeError):
-            print(f"Ignoring error in {ctx.command.qualified_name}: {error}")
-            return
+            raise error
 
         embed = ctx.embed(
             title=f"Error - `{type(error).__name__}`: {error}",
