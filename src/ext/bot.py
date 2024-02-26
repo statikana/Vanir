@@ -30,12 +30,21 @@ class Bot(VanirCog):
         for name, delay in delays.items():
             embed.add_field(name=name, value=f"`{delay*1000:.3f}ms`", inline=False)
 
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
     @vanir_command()
-    async def source(self, ctx: VanirContext, *, item: str = commands.param(description="The item to view. This can be a command or Module", default=None)):
+    async def source(
+        self,
+        ctx: VanirContext,
+        *,
+        item: str = commands.param(
+            description="The item to view. This can be a command or Module",
+            default=None,
+        ),
+    ):
+        """Retrieves a command's full source code (from github.com/StatHusky13/Vanir)"""
         root = "https://github.com/StatHusky13/Vanir/tree/main"
-        line_preview_limit = 25
+        line_preview_limit = 40
 
         # attempt to find the object
         command = self.bot.get_command(item)
@@ -62,10 +71,11 @@ class Bot(VanirCog):
         )
 
         # the lines are already '\n' postfix
-        snippet = "".join(l for l in lines[:line_preview_limit])[:1024]
+        snippet = "".join(l for l in lines[:line_preview_limit])[:4000]
         if n_lines > line_preview_limit:
             snippet += "\n... [Snippet Cut Off]"
-        embed.add_field(name="Code Preview", value=f"```py\n{snippet}\n```")
+
+        embed.description = f"```py\n{snippet}\n```"
 
         view = VanirView()
         view.add_item(
@@ -74,7 +84,7 @@ class Bot(VanirCog):
             )
         )
 
-        await ctx.send(embed=embed, view=view)
+        await ctx.reply(embed=embed, view=view)
 
 
 async def setup(bot: Vanir):

@@ -211,7 +211,9 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         modal = CustomPageModal(itx, self)
         await itx.response.send_modal(modal)
 
-    async def update(self, itx: discord.Interaction = None, source_button: discord.ui.Button = None):
+    async def update(
+        self, itx: discord.Interaction = None, source_button: discord.ui.Button = None
+    ):
         """Called after every button press - enables and disables the appropriate buttons, and changes colors.
         Also fetches te new embed and edits the message and view to the new content."""
         if self.finish.disabled:
@@ -244,7 +246,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                 except discord.InteractionResponded:
                     await itx.edit_original_response(embed=embed, view=self)
             else:
-                await self.message.edit(embed=embed,  view=self)
+                await self.message.edit(embed=embed, view=self)
         else:
             logging.warning(
                 f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
@@ -269,7 +271,9 @@ class CustomPageModal(discord.ui.Modal):
     def __init__(self, itx: discord.Interaction, view: VanirPager):
         super().__init__(title="Select Page")
         self.view = view
-        self.page_input = discord.ui.TextInput(label=f"Please enter a page number between 1 and {view.n_pages}")
+        self.page_input = discord.ui.TextInput(
+            label=f"Please enter a page number between 1 and {view.n_pages}"
+        )
         self.page_input.required = True
         self.add_item(self.page_input)
 
@@ -280,7 +284,9 @@ class CustomPageModal(discord.ui.Modal):
         except TypeError:
             raise ValueError("Please enter a number")
         if not (1 <= value <= self.view.n_pages):
-            raise ValueError(f"Please enter a page number between 1 and {self.view.n_pages}")
+            raise ValueError(
+                f"Please enter a page number between 1 and {self.view.n_pages}"
+            )
         self.view.page = value - 1
         await self.view.update(itx=itx, source_button=VanirPager.custom)
 
@@ -329,7 +335,10 @@ def autopopulate(func):
     except KeyError:
         pass
 
-    descriptions = {name: getattr(param.default, "description", None) or "no description" for name, param in params.items()}
+    descriptions = {
+        name: getattr(param.default, "description", None) or "no description"
+        for name, param in params.items()
+    }
     try:
         func.__discord_app_commands_param_description__.update(descriptions)
     except AttributeError:

@@ -74,7 +74,7 @@ class Language(VanirCog):
                 name=f"as ***{meaning['partOfSpeech']}***", value=value, inline=False
             )
 
-        await ctx.send(embed=embed, view=view)
+        await ctx.reply(embed=embed, view=view)
 
     @commands.hybrid_command()
     @app_commands.autocomplete(
@@ -85,7 +85,11 @@ class Language(VanirCog):
         self,
         ctx: VanirContext,
         *,
-        text: str = commands.param(description="The text to translate"),
+        text: str = commands.param(
+            description="The text to translate",
+            default=None,
+            displayed_default="Reference message's text",
+        ),
         source_lang: str = commands.param(
             description="The language to translate from", default="AUTO"
         ),
@@ -98,6 +102,24 @@ class Language(VanirCog):
             source_lang = source_lang.default
         if isinstance(target_lang, commands.Parameter):
             target_lang = target_lang.default
+
+        if text is None:
+            if ctx.message.reference is not None:
+                full_ref = await ctx.channel.fetch_message(
+                    ctx.message.reference.message_id
+                )
+                text = full_ref.content
+            else:
+                async for m in ctx.channel.history(limit=20):
+                    if (
+                        m.id != ctx.message.id
+                        and m.content
+                        and not m.content.startswith(ctx.prefix)
+                    ):
+                        text = m.content
+                        break
+                else:
+                    raise ValueError("No text could be found.")
 
         source_lang = source_lang.upper()
         target_lang = target_lang.upper()
@@ -131,7 +153,7 @@ class Language(VanirCog):
         embed = ctx.embed(title=f"{source} -> {target}")
         embed.add_field(name=f"{source} - Original", value=text, inline=False)
         embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
-        await ctx.send(embed=embed)
+        await ctx.reply(embed=embed)
 
 
 async def setup(bot: Vanir):

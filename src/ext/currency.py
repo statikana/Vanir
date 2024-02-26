@@ -55,8 +55,8 @@ class Currency(VanirCog):
 
         data = {
             f"Amount": f"`{amount}`\N{Coin}",
-            f"{ctx.author.name} [ID {ctx.author.id}]": f"{from_bal}\N{Coin} -> {from_bal-amount:,}\N{Coin}",  # from
-            f"{user.name} [ID {user.id}]": f"{to_bal}\N{Coin} -> {to_bal + amount:,}\N{Coin}",  # to
+            f"{ctx.author.name} [ID {ctx.author.id}]": f"{from_bal:,}\N{Coin} -> {from_bal-amount:,}\N{Coin}",  # from
+            f"{user.name} [ID {user.id}]": f"{to_bal:,}\N{Coin} -> {to_bal + amount:,}\N{Coin}",  # to
         }
 
         embed = ctx.embed(
@@ -138,9 +138,9 @@ class GiveCoinsView(VanirView):
         )
 
         data = {
-            f"Amount": f"{self.amount}\N{Coin}",
-            f"{self.from_user.name} [ID {self.from_user.id}]": f"{self.from_bal}\N{Coin} -> {new_from:,}\N{Coin}",
-            f"{self.to_user.name} [ID {self.to_user.id}": f"{self.to_bal}\N{Coin} -> {new_to:,}\N{Coin}",
+            f"Amount": f"`{self.amount}`\N{Coin}",
+            f"{self.from_user.name} [ID {self.from_user.id}]": f"{self.from_bal:,}\N{Coin} -> {new_from:,}\N{Coin}",
+            f"{self.to_user.name} [ID {self.to_user.id}": f"{self.to_bal:,}\N{Coin} -> {new_to:,}\N{Coin}",
         }
         embed = VanirContext.syn_embed(
             title=f"Transferred {self.amount:,}\N{Coin} to {self.to_user.name}",

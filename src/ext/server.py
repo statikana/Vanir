@@ -11,17 +11,16 @@ class Server(VanirCog):
         members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)
         paginator = ServerPager(ctx.author, members, 10)
         embed = await paginator.update_embed()
-        paginator.message = await ctx.send(embed=embed, view=paginator)
+        paginator.message = await ctx.reply(embed=embed, view=paginator)
         await paginator.update()
 
 
 class ServerPager(VanirPager[discord.Member]):
     async def update_embed(self) -> discord.Embed:
-        members = self.items[self.page*self.items_per_page:(self.page+1)*self.items_per_page]
-        embed = VanirContext.syn_embed(
-            title="New Members",
-            author=self.user
-        )
+        members = self.items[
+            self.page * self.items_per_page : (self.page + 1) * self.items_per_page
+        ]
+        embed = VanirContext.syn_embed(title="New Members", author=self.user)
         display = []
         for m in members:
             just = 25
