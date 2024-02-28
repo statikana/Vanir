@@ -291,10 +291,15 @@ class CustomPageModal(discord.ui.Modal):
         await self.view.update(itx=itx, source_button=VanirPager.custom)
 
 
-def vanir_command(hidden: bool = False) -> Callable[[Any], commands.HybridCommand]:
+def vanir_command(
+    hidden: bool = False, aliases: list[str] = None
+) -> Callable[[Any], commands.HybridCommand]:
+    if aliases is None:
+        aliases = []
+
     def inner(func: Any):
         func = autopopulate(func)
-        cmd = commands.HybridCommand(func)
+        cmd = commands.HybridCommand(func, aliases=aliases)
         cmd.hidden = hidden
         cmd = _inherit(cmd)
 

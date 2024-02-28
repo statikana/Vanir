@@ -1,6 +1,7 @@
 import re
 from asyncio import iscoroutinefunction
 from typing import Callable, Any, Coroutine
+import texttable
 
 import discord
 from discord import InteractionResponse
@@ -22,6 +23,7 @@ from src.util import (
     get_display_cogs,
     get_param_annotation,
     closest_name,
+    fbool,
 )
 
 
@@ -38,7 +40,7 @@ class Help(VanirCog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @vanir_command()
+    @vanir_command(aliases=["sf"])
     @commands.cooldown(2, 60, commands.BucketType.user)
     async def snowflake(self, ctx: VanirContext, snowflake: str):
         regex = re.compile(r"^[0-9]{15,20}$")
@@ -103,8 +105,8 @@ class Help(VanirCog):
             inline=False,
         )
         data = {
-            "Is Bot": user.bot,
-            "Is System": user.system,
+            "Bot?": user.bot,
+            "System?": user.system,
         }
 
         if member is not None:
@@ -119,29 +121,32 @@ class Help(VanirCog):
             )
         # discord.Permissions.value
         await self.add_sf_data(embed, user.id)
+
+        embed.set_image(url=(member or user).display_avatar.url)
+
         return embed
 
-    async def channel_info_embed(self, ctx: VanirContext, channel: discord.abc.GuildChannel):
+    async def channel_info_embed(
+        self, ctx: VanirContext, channel: discord.abc.GuildChannel
+    ):
         embed = ctx.embed(
-            title=channel.name,
-            description=f"ID: `{channel.id}"
+            title=f"{str(channel.type).replace('_', ' ').title()} Channel: {channel.name}",
+            description=f"ID: `{channel.id}`",
         )
+
+        embed.add_field(name="Jump URL", value=f"[[JUMP]]({channel.jump_url})")
 
         if channel.category is not None:
             cat = channel.category
             data = {
                 "Name": cat.name,
-                "ID": cat.id,
+                "ID": f"`{cat.id}`",
                 "Created At": f"<t:{int(cat.created_at.timestamp())}:R>",
                 "NSFW?": cat.is_nsfw(),
-                "Jump": f"[Jump URL]({cat.jump_url})"
             }
-            embed.add_field(
-                name="Category Data",
-                value=format_dict(data)
-            )
-        
-        await self.add_permission_data(ctx, embed, channel.permissions_for(ctx.me))
+            embed.add_field(name="Category Data", value=format_dict(data))
+
+        await self.add_permission_data(ctx, embed, channel)
         await self.add_sf_data(embed, channel.id)
         return embed
 
@@ -165,25 +170,88 @@ class Help(VanirCog):
             "SF Generation ID": f"`{generation}`",
         }
 
-        embed.add_field(name="Snowflake Info", value=format_dict(data))
+        embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
 
-    async def add_permission_data(self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel):
-        me = channel.permissions_for(ctx.me)
+    async def add_permission_data(
+        self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel
+    ):
+        default = channel.permissions_for(ctx.guild.default_role)
         you = channel.permissions_for(ctx.author)
-        permissions = ( 
-            "administrator",
-            "manage_messages",
-            "send_messages",
-            "manage_reactions",
-            "add_reactions",
-            
+        me = channel.permissions_for(ctx.me)
+
+        all_permissions = [
+            "view_channel",
+            "manage_channels",
+            "manage_permissions",
+            "manage_webhooks",
+            "create_instant_invite",
+        ]
+        if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            all_permissions.extend(
+                [
+                    "connect",
+                    "speak",
+                    "use_soundboard",
+                    "use_voice_activation",
+                    "priority_speaker",
+                    "mute_members",
+                    "deafen_members",
+                    "move_members",
+                ]
+            )
+        if isinstance(channel, discord.TextChannel):
+            all_permissions.extend(
+                [
+                    "send_messages",
+                    "send_messages_in_threads",
+                    "create_public_threads",
+                    "create_private_threads",
+                    "embed_links",
+                    "attach_files",
+                    "add_reactions",
+                    "use_external_emojis",
+                    "use_external_stickers",
+                    "mention_everyone",
+                    "manage_messages",
+                    "manage_threads",
+                    "read_message_history",
+                    "send_tts_messages",
+                    "use_application_commands",
+                    "send_voice_messages",
+                ]
+            )
+
+        all_permissions.sort()
+        table = texttable.Texttable(max_width=0)
+        max_len_perm_name = max(len(p) for p in all_permissions)
+
+        table.header(["permission", "you", "me", "everyone"])
+        table.set_header_align(["r", "l", "l", "l"])
+        table.set_cols_align(["r", "l", "l", "l"])
+        table.set_cols_dtype(["t", "b", "b", "b"])
+
+        table.set_deco(texttable.Texttable.BORDER | texttable.Texttable.HEADER)
+        for permission in all_permissions:
+            d_bool = ["No", "Yes"]
+            table.add_row(
+                [
+                    permission.replace("_", " ").title(),
+                    getattr(you, permission),
+                    getattr(me, permission),
+                    getattr(default, permission),
+                ]
+            )
+        drawn = table.draw()
+        drawn = drawn.replace("True", f"{fbool(True)} ").replace(
+            "False", f"{fbool(False)}   "
         )
-        data = {
-            "add_reactions": f"You: {you.add_reactions} [Me: {me.add_reactions}]",
-            "administrator": f"You: {you.administrator} [Me: {me.administrator}]",
-            "send_messages": f"You: {you.send_messages} [Me: {me.send_messages}]",
-            "manage_messages": f"You: {you.manage_messages} [Me: {me.manage_messages}]"
-        }
+        embed.description += f"**```ansi\n{drawn}```**"
+
+        # embed.add_field(
+        #     name="Calculated Permissions: You | Me",
+        #     value=format_dict(data),
+        #     inline=False
+        # )
 
     async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
         embed = ctx.embed(

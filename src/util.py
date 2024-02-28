@@ -7,6 +7,7 @@ from enum import Enum
 from urllib.parse import urlparse
 
 import discord
+from discord.app_commands import Choice
 from discord.ext import commands
 from wand.image import Image
 
@@ -25,6 +26,40 @@ from assets.color_db import COLORS
 class Convention(Enum):
     DECIMAL = 0
     BINARY = 1
+
+
+LANGUAGE_INDEX = {
+    "AR": "Arabic",
+    "BG": "Bulgarian",
+    "CS": "Czech",
+    "DA": "Danish",
+    "DE": "German",
+    "EL": "Greek",
+    "EN": "English",
+    "ES": "Spanish",
+    "ET": "Estonian",
+    "FI": "Finnish",
+    "FR": "French",
+    "HU": "Hungarian",
+    "ID": "Indonesian",
+    "IT": "Italian",
+    "JA": "Japanese",
+    "KO": "Korean",
+    "LT": "Lithuanian",
+    "LV": "Latvian",
+    "NB": "Norwegian",
+    "NL": "Dutch",
+    "PL": "Polish",
+    "PT": "Portuguese",
+    "RO": "Romanian",
+    "RU": "Russian",
+    "SK": "Slovak",
+    "SL": "Slovenian",
+    "SV": "Swedish",
+    "TR": "Turkish",
+    "UK": "Ukrainian",
+    "ZH": "Chinese",
+}
 
 
 def ensure_slug(slug: str) -> str:
@@ -221,3 +256,32 @@ def closest_name(start_hex: str) -> tuple[str, int]:
             best = col, dif
 
     return best
+
+
+def fbool(b: bool):
+    if b:
+        text = ctext("Yes", text_col=32)  # green for True
+    else:
+        text = ctext("No", text_col=31)  # Red for False
+    text += "\u001b[0m"
+    return text
+
+
+async def langcode_autocomplete(itx: discord.Interaction, current: str):
+    options = [Choice(name=f"{v} [{k}]", value=k) for k, v in LANGUAGE_INDEX.items()][
+        :25
+    ]
+    options = sorted(
+        filter(lambda c: current.lower() in c.name.lower(), options),
+        key=lambda c: c.name,
+    )
+    return options
+
+
+def ctext(text: str, fmt: int = 0, text_col: int = 30, bg_col: int = None):
+    start = f"\u001b[{fmt}"
+    if text_col:
+        start += f";{text_col}"
+    if bg_col:
+        start += f";{bg_col}"
+    return f"{start}m{text}"
