@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from src.types.core import Vanir, VanirContext
-from src.types.command import VanirCog, vanir_group, VanirView, autopopulate
+from src.types.command import VanirCog, vanir_group, VanirView
 from src.types.database import Currency as DBCurrency
 from src.util import format_dict
 

@@ -10,9 +10,7 @@ import discord
 from discord.ext import commands
 from wand.image import Image
 from urllib.parse import urlparse
-
 from src.types.core import VanirContext
-from src.util import find_content
 
 MediaSource = TypeVar("MediaSource", cv2.Mat, Image)
 
@@ -159,7 +157,7 @@ class MediaConverter:
     image_formats = ("jpeg", "jpg", "png", "gif")
 
     async def convert(
-        self, ctx: VanirContext, atch: discord.Attachment | None
+        self, ctx: commands.Context, atch: discord.Attachment | None
     ) -> MediaInterface:
         data = await find_content(ctx, ctx.message)
         if data is not None:
@@ -178,3 +176,47 @@ class MediaConverter:
                 return data
 
         raise ValueError("Could not locate any image information")
+
+
+async def find_content(
+    ctx: VanirContext, msg: discord.Message
+) -> MediaInterface | None:
+    for atch in msg.attachments:
+        mime = atch.content_type
+        info = MediaInfo.from_atch(atch)
+        if mime.startswith("video/"):
+            return await VideoInterface.create(atch, info)
+        elif mime.startswith("image/"):
+            return await ImageInterface.create(atch, info)
+        # else:
+        #     raise ValueError(f"Unsupported media type: {mime}")
+
+    uri_regex = re.compile(
+        r"https?://([a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+"
+    )
+    urls = uri_regex.findall(msg.content)
+    if urls:
+        url = urls[0]  # only test the first URL
+        parsed = urlparse(url)
+        path = parsed.path
+        try:
+            extension = path[path.rfind(".") + 1 :].lower()
+            if (
+                extension
+                not in MediaConverter.image_formats + MediaConverter.video_formats
+            ):
+                raise ValueError
+
+            response = await ctx.bot.session.get(url, allow_redirects=False)
+            blob = await response.read()
+            info = MediaInfo(f"image/{extension}", blob.__sizeof__())
+            if extension in MediaConverter.image_formats:
+                info = MediaInfo(f"image/{extension}", blob.__sizeof__())
+                return await ImageInterface.from_blob(url, blob, info)
+            else:
+                info = MediaInfo(f"video/{extension}", blob.__sizeof__())
+                return await VideoInterface.from_blob(url, blob, info)
+        except ValueError:
+            pass
+
+    return None
