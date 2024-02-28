@@ -73,5 +73,3 @@ async def langcode_autocomplete(itx: discord.Interaction, current: str):
         key=lambda c: c.name,
     )
     return options
-
-

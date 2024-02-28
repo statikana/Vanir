@@ -11,7 +11,13 @@ from discord.ext import commands
 from wand.image import Image
 
 from src.types.core import VanirContext
-from src.types.media import MediaConverter, MediaInfo, MediaInterface, ImageInterface, VideoInterface
+from src.types.media import (
+    MediaConverter,
+    MediaInfo,
+    MediaInterface,
+    ImageInterface,
+    VideoInterface,
+)
 
 from assets.color_db import COLORS
 
