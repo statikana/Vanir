@@ -54,6 +54,7 @@ class Vanir(commands.Bot):
                 after = set(self.cogs.values())
                 for ext in after - before:
                     yield ext
+        await self.load_extension("jishaku")
 
 
 class VanirTree(discord.app_commands.CommandTree):
@@ -62,6 +63,8 @@ class VanirTree(discord.app_commands.CommandTree):
 
 
 class VanirContext(commands.Context):
+    bot: Vanir
+
     def embed(
         self,
         title: str | None,

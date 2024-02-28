@@ -1,8 +1,23 @@
 import inspect
+import math
 from datetime import datetime
 from typing import Any
 import re
+from enum import Enum
+
+import discord
 from discord.ext import commands
+from wand.image import Image
+
+from src.types.core import VanirContext
+from src.types.media import MediaInfo, MediaInterface, ImageInterface, VideoInterface
+
+from assets.color_db import COLORS
+
+
+class Convention(Enum):
+    DECIMAL = 0
+    BINARY = 1
 
 
 def ensure_slug(slug: str) -> str:
@@ -82,3 +97,120 @@ def get_param_annotation(param: inspect.Parameter) -> str:
         else:
             return f"{range_min} <= {rtype_name} <= {range_max}"
     return str(ptype)
+
+
+async def assure_working(ctx: VanirContext, media: MediaInterface):
+    embed = ctx.embed(
+        title="... working",
+    )
+    embed.add_field(
+        name="File MIME Type [Input]",
+        value=f"`{media.initial_info.mime_type}` [Supported]",
+        inline=False,
+    )
+    embed.add_field(
+        name="File Size [Input]",
+        value=f"`{fmt_size(media.initial_info.size, Convention.BINARY)}` **|** `{fmt_size(media.initial_info.size, Convention.DECIMAL)}`",
+        inline=False,
+    )
+    return await ctx.reply(embed=embed)
+
+
+async def send_file(
+    ctx: VanirContext,
+    source_cmd: commands.HybridCommand,
+    msg: discord.Message,
+    media: MediaInterface,
+):
+    embed = msg.embeds[0]
+    embed.title = f"{source_cmd.qualified_name.title()} Completed"
+    new_info = await get_media_info(media)
+    embed.add_field(
+        name="File MIME Type [Output]",
+        value=f"`{new_info.mime_type}` [Supported]",
+        inline=False,
+    )
+    embed.add_field(
+        name="File Size [Output]",
+        value=f"`{fmt_size(new_info.size, Convention.BINARY)}` **|** `{fmt_size(new_info.size, Convention.DECIMAL)}`",
+        inline=False,
+    )
+
+    await msg.edit(embed=embed, attachments=[await media.to_file()])
+
+
+async def get_media_info(media: MediaInterface):
+    blob = await media.read()
+    if isinstance(media, ImageInterface):
+        img = Image(blob=blob)
+        return MediaInfo(f"image/{img.format}", img.length_of_bytes)
+    elif isinstance(media, VideoInterface):
+        url = media.url.geturl()
+        fmt = url[url.rfind(".") + 1 :]
+        return MediaInfo(f"image/{fmt}", len(blob))
+
+
+def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY):
+    if cvtn == Convention.BINARY:
+        # 2**0  = 0       -> 0 (  B)
+        # 2**10 = 1024    -> 1 (KiB)
+        # 2**20 = 1048576 -> 2 (MiB)
+        # ...
+        size_factor = math.log(n_bytes, 2) // 10
+    else:
+        # 1000**0 = 0       -> 0 ( B)
+        # 1000**1 = 1000    -> 1 (KB)
+        # 1000**2 = 1000000 -> 2 (MB)
+        # ...
+        size_factor = math.log(n_bytes, 1000) // 1
+
+    ext: str
+    match round(size_factor):  # round only gets rid of the floating `.0`
+        case 0:
+            ext = "B"
+        case 1:
+            ext = "KiB"
+        case 2:
+            ext = "MiB"
+        case 3:
+            ext = "GiB"
+        case 4:
+            ext = "TiB"
+        case 5:
+            ext = "PiB"
+        case 6:
+            ext = "EiB"
+        case 7:
+            ext = "ZiB"
+        case 8:
+            ext = "YiB"
+        case _:
+            ext = "..."
+
+    if cvtn == Convention.BINARY:
+        n_bytes_factored = float(n_bytes) / (2 ** (10 * size_factor))
+    else:
+        n_bytes_factored = float(n_bytes) / (1000**size_factor)
+        ext = ext.replace("i", "")
+        ext = ext[:1].lower() + ext[1:]
+
+    nb_fmt = round(n_bytes_factored, 3)
+    if nb_fmt // 1 == nb_fmt:
+        nb_fmt = int(nb_fmt)
+
+    return f"{nb_fmt} {ext}"
+
+
+def closest_name(start_hex: str) -> tuple[str, int]:
+    start = int(start_hex, 16)
+    best: tuple[str, int] | None = None
+    for col, (check_hex, _) in COLORS.items():
+        if best is None:
+            best = col, abs(int(check_hex[1:], 16) - start)
+
+        dif = abs(int(check_hex[1:], 16) - start)
+
+        if dif < best[1]:
+            best = col, dif
+
+    return best

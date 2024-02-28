@@ -3,7 +3,9 @@ from discord.ext import commands
 
 from src.types.command import VanirCog, vanir_command
 from src.types.core import VanirContext, Vanir
-from src.types.media import MediaConverter
+from src.types.media import MediaConverter, MediaInterface
+from src.types.util import find_content
+from src.util import assure_working, send_file
 
 
 class Media(VanirCog):
@@ -11,50 +13,22 @@ class Media(VanirCog):
     async def rot(
         self,
         ctx: VanirContext,
-        media_file: discord.Attachment | None = commands.param(
+        media_atch: discord.Attachment | None = commands.param(
             description="The media to rotate",
             default=None,
             displayed_default="Recently sent media",
         ),
         degrees: commands.Range[int, 0, 360] = commands.param(
             description="How far to rotate (CW). Videos only support multiples of 90",
-            default=45,
+            default=90,
         ),
     ):
         """Rotate media"""
-        media = await MediaConverter().convert(ctx, media_file)
+
+        media = await MediaConverter().convert(ctx, media_atch)
+        msg = await assure_working(ctx, media)
         await media.rotate(degrees)
-        await ctx.reply(file=await media.to_file())
-
-    @vanir_command()
-    async def flip(
-        self,
-        ctx: VanirContext,
-        media_file: discord.Attachment | None = commands.param(
-            description="The media to flip",
-            default=None,
-            displayed_default="Recently sent media",
-        ),
-    ):
-        """Flip media on the x-axis"""
-        media = await MediaConverter().convert(ctx, media_file)
-        await media.flip()
-        await ctx.reply(file=await media.to_file())
-
-    @vanir_command()
-    async def flop(
-        self,
-        ctx: VanirContext,
-        media_file: discord.Attachment | None = commands.param(
-            description="The media to flop",
-            default=None,
-            displayed_default="Recently sent media",
-        ),
-    ):
-        """Flop media on the y-axis"""
-        media = await MediaConverter().convert(ctx, media_file)
-        await media.flop()
-        await ctx.reply(file=await media.to_file())
+        await send_file(ctx, self.rot, msg, media)
 
 
 async def setup(bot: Vanir):

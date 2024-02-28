@@ -1,7 +1,15 @@
 import discord
+from enum import Enum
+
+from discord.ext import commands
 
 from src.types.command import VanirCog, VanirPager, vanir_command
 from src.types.core import VanirContext, Vanir
+
+
+class TypeThing(Enum):
+    A = 15
+    B = "ok"
 
 
 class Server(VanirCog):
@@ -13,6 +21,10 @@ class Server(VanirCog):
         embed = await paginator.update_embed()
         paginator.message = await ctx.reply(embed=embed, view=paginator)
         await paginator.update()
+
+    @commands.command()
+    async def log(self, ctx: VanirContext, type_filter: TypeThing = None):
+        await ctx.reply(f"{type_filter}")
 
 
 class ServerPager(VanirPager[discord.Member]):
