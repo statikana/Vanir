@@ -87,11 +87,12 @@ class Help(VanirCog):
 
     async def user_info_embed(self, ctx: VanirContext, user: discord.User):
         member = ctx.guild.get_member_named(user.name)
+
         embed = ctx.embed(title=f"{user.name}", description=f"ID: `{user.id}`")
         created_ts = int(user.created_at.timestamp())
         embed.add_field(
             name="Created At",
-            value=f"<t:{created_ts}:T> [<t:{created_ts}:R>]",
+            value=f"<t:{created_ts}:F> [<t:{created_ts}:R>]",
             inline=False,
         )
         embed.add_field(
@@ -120,6 +121,30 @@ class Help(VanirCog):
         await self.add_sf_data(embed, user.id)
         return embed
 
+    async def channel_info_embed(self, ctx: VanirContext, channel: discord.abc.GuildChannel):
+        embed = ctx.embed(
+            title=channel.name,
+            description=f"ID: `{channel.id}"
+        )
+
+        if channel.category is not None:
+            cat = channel.category
+            data = {
+                "Name": cat.name,
+                "ID": cat.id,
+                "Created At": f"<t:{int(cat.created_at.timestamp())}:R>",
+                "NSFW?": cat.is_nsfw(),
+                "Jump": f"[Jump URL]({cat.jump_url})"
+            }
+            embed.add_field(
+                name="Category Data",
+                value=format_dict(data)
+            )
+        
+        await self.add_permission_data(ctx, embed, channel.permissions_for(ctx.me))
+        await self.add_sf_data(embed, channel.id)
+        return embed
+
     async def snowflake_info_embed(self, ctx: VanirContext, snowflake: int):
         embed = ctx.embed("No Object Found")
         await self.add_sf_data(embed, snowflake)
@@ -134,13 +159,31 @@ class Help(VanirCog):
             int(as_bin[17:22], 2),
         )
         data = {
-            "Created At": f"<t:{time}:T> [<t:{time}:R>]",
+            "Created At": f"<t:{time}:F> [<t:{time}:R>]",
             "Worker ID": f"`{worker}`",
             "Process ID": f"`{process}`",
             "SF Generation ID": f"`{generation}`",
         }
 
         embed.add_field(name="Snowflake Info", value=format_dict(data))
+
+    async def add_permission_data(self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel):
+        me = channel.permissions_for(ctx.me)
+        you = channel.permissions_for(ctx.author)
+        permissions = ( 
+            "administrator",
+            "manage_messages",
+            "send_messages",
+            "manage_reactions",
+            "add_reactions",
+            
+        )
+        data = {
+            "add_reactions": f"You: {you.add_reactions} [Me: {me.add_reactions}]",
+            "administrator": f"You: {you.administrator} [Me: {me.administrator}]",
+            "send_messages": f"You: {you.send_messages} [Me: {me.send_messages}]",
+            "manage_messages": f"You: {you.manage_messages} [Me: {me.manage_messages}]"
+        }
 
     async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
         embed = ctx.embed(
