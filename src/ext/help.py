@@ -14,7 +14,6 @@ from src.types.command import (
     vanir_command,
 )
 from src.types.core import VanirContext, Vanir
-from src.types.util import find_content
 
 from src.util import (
     format_dict,

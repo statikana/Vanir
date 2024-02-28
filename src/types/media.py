@@ -12,6 +12,7 @@ from wand.image import Image
 from urllib.parse import urlparse
 
 from src.types.core import VanirContext
+from src.util import find_content
 
 MediaSource = TypeVar("MediaSource", cv2.Mat, Image)
 

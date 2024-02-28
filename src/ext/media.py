@@ -4,7 +4,6 @@ from discord.ext import commands
 from src.types.command import VanirCog, vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.media import MediaConverter, MediaInterface
-from src.types.util import find_content
 from src.util import assure_working, send_file
 
 
