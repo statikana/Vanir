@@ -79,7 +79,7 @@ class Help(VanirCog):
         await ctx.reply(embed=embed)
         return True
 
-    async def maybecoro_get(self, method: Callable[[int], ...], snowflake: int):
+    async def maybecoro_get(self, method: Callable[[int], Any], snowflake: int):
         if iscoroutinefunction(method):
             received = await method(snowflake)
         else:
