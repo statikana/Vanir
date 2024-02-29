@@ -5,7 +5,8 @@ from discord import app_commands
 
 from src.types.command import vanir_command, VanirCog, VanirView, autopopulate
 from src.types.core import VanirContext, Vanir
-from src.util import langcode_autocomplete, LANGUAGE_INDEX
+from constants import LANGUAGE_INDEX
+from util.cmd import langcode_autocomplete
 
 
 class Language(VanirCog):

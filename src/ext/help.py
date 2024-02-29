@@ -1,6 +1,7 @@
 import re
 from asyncio import iscoroutinefunction
 from typing import Callable, Any, Coroutine
+from urllib.parse import urlparse
 import texttable
 
 import discord
@@ -16,15 +17,17 @@ from src.types.command import (
 )
 from src.types.core import VanirContext, Vanir
 
-from src.util import (
-    format_dict,
+from util.fmt import (
+    fbool,
+)
+from util.cmd import (
     discover_cog,
     discover_group,
     get_display_cogs,
     get_param_annotation,
-    closest_name,
-    fbool,
 )
+from util.fmt import format_dict
+from util.parse import closest_name
 
 
 class Help(VanirCog):
@@ -150,6 +153,73 @@ class Help(VanirCog):
         await self.add_sf_data(embed, channel.id)
         return embed
 
+    async def message_info_embed(self, ctx: VanirContext, msg: discord.Message):
+        embed = ctx.embed(
+            title=f"Message in {msg.channel.name} by {ctx.author.mention}",
+            description=f"{msg.content}",
+        )
+        if msg.content:
+            mentions = {}
+
+            if msg.mentions:
+                mentions.update({"Users": " ".join(o.mention for o in msg.mentions)})
+            if msg.role_mentions:
+                mentions.update(
+                    {"Roles": " ".join(o.mention for o in msg.role_mentions)}
+                )
+            if msg.channel_mentions:
+                mentions.update(
+                    {"Channels": " ".join(o.mention for o in msg.channel_mentions)}
+                )
+
+            embed.add_field(
+                name="Mentions", value=format_dict(mentions) or "<no mentions found>"
+            )
+
+            emoji_regex = re.compile(r"<a?:[A-z0-9_]{2,32}:[0-9]{18,22}>")
+            emojis = re.findall(emoji_regex, msg.content)
+            content_info = {
+                "Length": len(msg.content),
+                "# Chars": len(re.sub(r"\s", "", msg.content)),
+                "# Words": len(msg.content.split()),
+                "# Lines": len(msg.content.splitlines()),
+            }
+
+            embed.add_field(name="Content Info", value=format_dict(content_info))
+
+        if msg.attachments:
+            urls = (a.url.lower() for a in msg.attachments)
+            file_names = []
+            for url in urls:
+                parsed = urlparse(url)
+                fname_index = parsed.path.rstrip("/").rfind("/")
+                fname = parsed.path[fname_index:]
+                file_names.append(fname)
+
+                extension = fname[fname.index(".") + 1 :]
+                if embed.image is None and extension in ("jpg", "jpeg", "png", "gif"):
+                    embed.set_image(url=url)
+
+            embed.add_field(
+                name="Attachments",
+                value=" ".join(
+                    f"[{name}]({url})" for name, url in zip(file_names, urls)
+                ),
+            )
+
+        if msg.reference is not None:
+            ref = await msg.channel.fetch_message(msg.reference.message_id)
+            if ref is not None:
+
+                if ref.content:
+                    embed.add_field(
+                        name="Replying To",
+                        value=f"{ref.author.name}:\n>>>{discord.utils.escape_markdown(ref.content[:100])}",
+                    )
+
+        data = {"Channel": f"{msg.channel.name} [ID: `{msg.channel.id}`]"}
+        return embed
+
     async def snowflake_info_embed(self, ctx: VanirContext, snowflake: int):
         embed = ctx.embed("No Object Found")
         await self.add_sf_data(embed, snowflake)
@@ -164,6 +234,7 @@ class Help(VanirCog):
             int(as_bin[17:22], 2),
         )
         data = {
+            "ID": snowflake,
             "Created At": f"<t:{time}:F> [<t:{time}:R>]",
             "Worker ID": f"`{worker}`",
             "Process ID": f"`{process}`",
@@ -223,7 +294,6 @@ class Help(VanirCog):
 
         all_permissions.sort()
         table = texttable.Texttable(max_width=0)
-        max_len_perm_name = max(len(p) for p in all_permissions)
 
         table.header(["permission", "you", "me", "everyone"])
         table.set_header_align(["r", "l", "l", "l"])
@@ -246,12 +316,6 @@ class Help(VanirCog):
             "False", f"{fbool(False)}   "
         )
         embed.description += f"**```ansi\n{drawn}```**"
-
-        # embed.add_field(
-        #     name="Calculated Permissions: You | Me",
-        #     value=format_dict(data),
-        #     inline=False
-        # )
 
     async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
         embed = ctx.embed(
