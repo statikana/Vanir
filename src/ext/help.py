@@ -34,8 +34,11 @@ from src.util.fmt import format_dict, fbool
 from src.util.parse import closest_name, find_filename, find_ext
 
 
-class Help(VanirCog):
+class Info(VanirCog):
+    emoji = "\N{White Question Mark Ornament}"
+
     @vanir_group()
+    @commands.cooldown(4, 60, commands.BucketType.user)
     async def help(self, ctx: VanirContext):
         """Stop it, get some help"""
 
@@ -47,9 +50,10 @@ class Help(VanirCog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @vanir_command(aliases=["sf"])
-    @commands.cooldown(2, 60, commands.BucketType.user)
+    @vanir_command(aliases=["sf", "id"])
+    @commands.cooldown(5, 120, commands.BucketType.user)
     async def snowflake(self, ctx: VanirContext, snowflake: str, search: bool = True):
+        """Gets information on a snowflake (ID)"""
         regex = re.compile(r"^[0-9]{15,20}$")
 
         if not regex.fullmatch(snowflake):
@@ -426,7 +430,7 @@ class Help(VanirCog):
 class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
     """Creates a select which displays all cogs in the bot"""
 
-    def __init__(self, ctx: VanirContext, instance: Help):
+    def __init__(self, ctx: VanirContext, instance: Info):
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -460,7 +464,7 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
 class CogInfoSelect(discord.ui.Select[AutoCachedView]):
     """Creates a select which displays commands in a cog"""
 
-    def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog):
+    def __init__(self, ctx: VanirContext, instance: Info, cog: commands.Cog):
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -490,4 +494,4 @@ class CogInfoSelect(discord.ui.Select[AutoCachedView]):
 
 
 async def setup(bot: Vanir):
-    await bot.add_cog(Help(bot))
+    await bot.add_cog(Info(bot))
