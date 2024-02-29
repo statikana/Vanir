@@ -3,10 +3,10 @@ from discord.ext import commands
 
 from discord import app_commands
 
-from src.types.command import vanir_command, VanirCog, VanirView, autopopulate
+from src.types.command import vanir_command, VanirCog, VanirView
 from src.types.core import VanirContext, Vanir
-from constants import LANGUAGE_INDEX
-from util.cmd import langcode_autocomplete
+from src.constants import LANGUAGE_INDEX
+from src.util.cmd import langcode_autocomplete
 
 
 class Language(VanirCog):

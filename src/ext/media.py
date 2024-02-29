@@ -4,8 +4,8 @@ from discord.ext import commands
 from src.types.command import VanirCog, vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.media import MediaConverter, MediaInterface
-from util.cmd import assure_working
-from util.cmd import send_file
+from src.util.cmd import assure_working
+from src.util.cmd import send_file
 
 
 class Media(VanirCog):

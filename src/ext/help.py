@@ -8,8 +8,14 @@ import discord
 from discord import InteractionResponse
 from discord.ext import commands
 
+from src.constants import (
+    VALID_IMAGE_FORMATS,
+    GLOBAL_CHANNEL_PERMISSIONS,
+    VOICE_CHANNEL_PERMISSIONS,
+    TEXT_CHANNEL_PERMISSIONS,
+    ALL_PERMISSIONS,
+)
 from src.types.command import (
-    cog_hidden,
     VanirCog,
     vanir_group,
     AutoCachedView,
@@ -17,17 +23,15 @@ from src.types.command import (
 )
 from src.types.core import VanirContext, Vanir
 
-from util.fmt import (
-    fbool,
-)
-from util.cmd import (
+
+from src.util.cmd import (
     discover_cog,
     discover_group,
     get_display_cogs,
     get_param_annotation,
 )
-from util.fmt import format_dict
-from util.parse import closest_name
+from src.util.fmt import format_dict, fbool
+from src.util.parse import closest_name, find_filename, find_ext
 
 
 class Help(VanirCog):
@@ -45,36 +49,54 @@ class Help(VanirCog):
 
     @vanir_command(aliases=["sf"])
     @commands.cooldown(2, 60, commands.BucketType.user)
-    async def snowflake(self, ctx: VanirContext, snowflake: str):
+    async def snowflake(self, ctx: VanirContext, snowflake: str, search: bool = True):
         regex = re.compile(r"^[0-9]{15,20}$")
+
         if not regex.fullmatch(snowflake):
             raise ValueError("Not a snowflake.")
             # check cache first
         sf = int(snowflake)
+        found: bool = False
+        if search:
 
-        cache_attributes = ("user", "channel", "guild", "role" "emoji", "sticker")
+            cache_attributes = ("user", "channel", "guild", "role", "emoji")
 
-        fetch_attributes = ("message", "user", "channel", "role")
+            fetch_attributes = ("message", "user", "channel", "role")
 
-        for cache_attr in cache_attributes:
-            if await self.scan_methods(ctx, "get", cache_attr, sf):
-                break
-        else:
-            for fetch_attr in fetch_attributes:
-                if await self.scan_methods(ctx, "fetch", fetch_attr, sf):
+            for cache_attr in cache_attributes:
+                if await self.scan_methods(ctx, "get", cache_attr, sf):
+                    found = True
                     break
-
-        embed = await self.snowflake_info_embed(ctx, sf)
+            else:
+                for fetch_attr in fetch_attributes:
+                    if await self.scan_methods(ctx, "fetch", fetch_attr, sf):
+                        found = True
+                        break
+        if not found:
+            embed = await self.snowflake_info_embed(ctx, sf)
+            await ctx.reply(embed=embed)
 
     async def scan_methods(
         self, ctx: VanirContext, method: str, attr: str, snowflake: int
     ):
-        try:
-            func = getattr(ctx.guild, f"{method}_{attr}")
-            received = await self.maybecoro_get(func, snowflake)
-        except AttributeError:
-            func = getattr(self.bot, f"{method}_{attr}")
-            received = await self.maybecoro_get(func, snowflake)
+        if attr == "message":
+            received = discord.utils.find(
+                lambda m: m.id == snowflake, ctx.bot.cached_messages
+            )
+            if received is None:
+                try:
+                    received = await ctx.channel.fetch_message(snowflake)
+                except discord.NotFound:
+                    return False
+        else:
+            sources = (self.bot, ctx.guild, ctx.channel)
+            received: Any = None
+            for source in sources:
+                try:
+                    func = getattr(source, f"{method}_{attr}")
+                    received = await self.maybecoro_get(func, snowflake)
+                except (AttributeError, discord.NotFound):
+                    continue
 
         if received is None:
             return False
@@ -93,7 +115,7 @@ class Help(VanirCog):
     async def user_info_embed(self, ctx: VanirContext, user: discord.User):
         member = ctx.guild.get_member_named(user.name)
 
-        embed = ctx.embed(title=f"{user.name}", description=f"ID: `{user.id}`")
+        embed = ctx.embed(title=f"User: {user.name}", description=f"ID: `{user.id}`")
         created_ts = int(user.created_at.timestamp())
         embed.add_field(
             name="Created At",
@@ -120,7 +142,7 @@ class Help(VanirCog):
         if member is not None:
             embed.add_field(
                 name="Roles",
-                value=f"{len(member.roles) - 1} Total\nTop: {' '.join(r.mention for r in sorted(filter(lambda r: r.name != '@everyone', member.roles), key=lambda r: r.permissions.value, reverse=True)[:3])}",
+                value=f"{(len(member.roles) - 1):,} Total\nTop: {' '.join(r.mention for r in sorted(filter(lambda r: r.name != '@everyone', member.roles), key=lambda r: r.permissions.value, reverse=True)[:3])}",
             )
         # discord.Permissions.value
         await self.add_sf_data(embed, user.id)
@@ -134,10 +156,8 @@ class Help(VanirCog):
     ):
         embed = ctx.embed(
             title=f"{str(channel.type).replace('_', ' ').title()} Channel: {channel.name}",
-            description=f"ID: `{channel.id}`",
+            description=f"ID: `{channel.id}`\nGuild: {channel.guild} [ID: `{channel.guild.id}`]",
         )
-
-        embed.add_field(name="Jump URL", value=f"[[JUMP]]({channel.jump_url})")
 
         if channel.category is not None:
             cat = channel.category
@@ -149,15 +169,29 @@ class Help(VanirCog):
             }
             embed.add_field(name="Category Data", value=format_dict(data))
 
-        await self.add_permission_data(ctx, embed, channel)
+        await self.add_permission_data_from_channel(ctx, embed, channel)
+
+        embed.add_field(name="Jump URL", value=f"[[JUMP]]({channel.jump_url})")
+
         await self.add_sf_data(embed, channel.id)
         return embed
 
     async def message_info_embed(self, ctx: VanirContext, msg: discord.Message):
         embed = ctx.embed(
-            title=f"Message in {msg.channel.name} by {ctx.author.mention}",
+            title=f"Message in `#{msg.channel.name}` by `{ctx.author.name}`",
             description=f"{msg.content}",
         )
+
+        if msg.reference is not None:
+            ref = await msg.channel.fetch_message(msg.reference.message_id)
+            if ref is not None:
+
+                if ref.content:
+                    embed.add_field(
+                        name="Replying To",
+                        value=f"***`{ref.author.name}`***:\n>>> {discord.utils.escape_markdown(ref.content[:100])}",
+                    )
+
         if msg.content:
             mentions = {}
 
@@ -169,35 +203,32 @@ class Help(VanirCog):
                 )
             if msg.channel_mentions:
                 mentions.update(
-                    {"Channels": " ".join(o.mention for o in msg.channel_mentions)}
+                    {"Channels": " ".join(o.mention for o in msg.channel_mentions)}  # type: ignore
                 )
 
-            embed.add_field(
-                name="Mentions", value=format_dict(mentions) or "<no mentions found>"
-            )
+            if mentions:
+                embed.add_field(name="Mentions", value=format_dict(mentions))
 
             emoji_regex = re.compile(r"<a?:[A-z0-9_]{2,32}:[0-9]{18,22}>")
             emojis = re.findall(emoji_regex, msg.content)
+            pat = r"\s"
             content_info = {
-                "Length": len(msg.content),
-                "# Chars": len(re.sub(r"\s", "", msg.content)),
-                "# Words": len(msg.content.split()),
-                "# Lines": len(msg.content.splitlines()),
+                "Length": f"{len(msg.content):,}",
+                "# Chars": f"{len(re.sub(pat, '', msg.content)):,}",
+                "# Words": f"{len(msg.content.split()):,}",
+                "# Lines": f"{len(msg.content.splitlines()):,}",
             }
 
             embed.add_field(name="Content Info", value=format_dict(content_info))
 
         if msg.attachments:
-            urls = (a.url.lower() for a in msg.attachments)
+            urls = [a.url.lower() for a in msg.attachments]
             file_names = []
             for url in urls:
-                parsed = urlparse(url)
-                fname_index = parsed.path.rstrip("/").rfind("/")
-                fname = parsed.path[fname_index:]
-                file_names.append(fname)
+                file_names.append(find_filename(url))
+                extension = find_ext(url)
 
-                extension = fname[fname.index(".") + 1 :]
-                if embed.image is None and extension in ("jpg", "jpeg", "png", "gif"):
+                if embed.image is None and extension in VALID_IMAGE_FORMATS:
                     embed.set_image(url=url)
 
             embed.add_field(
@@ -207,18 +238,92 @@ class Help(VanirCog):
                 ),
             )
 
-        if msg.reference is not None:
-            ref = await msg.channel.fetch_message(msg.reference.message_id)
-            if ref is not None:
-
-                if ref.content:
-                    embed.add_field(
-                        name="Replying To",
-                        value=f"{ref.author.name}:\n>>>{discord.utils.escape_markdown(ref.content[:100])}",
-                    )
-
         data = {"Channel": f"{msg.channel.name} [ID: `{msg.channel.id}`]"}
+        embed.set_footer(text=msg.author.name, icon_url=msg.author.display_avatar.url)
         return embed
+
+    async def guild_info_embed(self, ctx: VanirContext, guild: discord.Guild):
+        embed = ctx.embed(
+            title=f"Guild: {guild.name}",
+        )
+        member_data = {
+            "Members": guild.member_count or guild.approximate_member_count,
+            "Bots": len(set(filter(lambda m: m.bot, guild.members))),
+            "Max Members": f"{guild.max_members:,}",
+        }
+        embed.add_field(name="Member Info", value=format_dict(member_data))
+
+        boost_data = {
+            "Boost Count": f"{guild.premium_subscription_count:,}",
+            "Recent Boosters": " ".join(
+                b.name
+                for b in sorted(
+                    guild.premium_subscribers, key=lambda m: m.premium_since
+                )[:5]
+            ),
+            "Booster Role": (
+                guild.premium_subscriber_role.mention
+                if guild.premium_subscriber_role
+                else None
+            ),
+            "Boost Level": f"{guild.premium_tier} / 3",
+        }
+        embed.add_field(name="Boost Info", value=format_dict(boost_data))
+        await self.add_sf_data(embed, guild.id)
+        return embed
+
+    async def role_info_embed(self, ctx: VanirContext, role: discord.Role):
+        embed = ctx.embed(f"Role: {role.name}")
+
+        embed.description = await self.get_permission_table(
+            {f"'{role.name[:20]}'": role.permissions}, checked=ALL_PERMISSIONS
+        )
+
+        return embed
+
+    async def get_permission_table(
+        self, permissions: dict[str, discord.Permissions], *, checked: list[str]
+    ) -> str:
+        table = texttable.Texttable(max_width=0)
+
+        table.header(["permission"] + [n for n in permissions.keys()])
+        table.set_header_align(["r"] + (["l"] * (len(permissions))))
+        table.set_cols_align(["r"] + (["l"] * (len(permissions))))
+        table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
+
+        table.set_deco(texttable.Texttable.BORDER | texttable.Texttable.HEADER | texttable.Texttable.VLINES)
+        for name in checked:
+            table.add_row(
+                [
+                    name.replace("_", " ").title(),
+                    *(getattr(p, name) for p in permissions.values()),
+                ]
+            )
+        drawn = table.draw()
+        drawn = drawn.replace("True", f"{fbool(True)} ").replace(
+            "False", f"{fbool(False)}   "
+        )
+        return f"**```ansi\n{drawn}```**"
+
+    async def add_permission_data_from_channel(
+        self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel
+    ):
+        default = channel.permissions_for(ctx.guild.default_role)
+        you = channel.permissions_for(ctx.author)
+        me = channel.permissions_for(ctx.me)
+
+        permission_to_check = list(GLOBAL_CHANNEL_PERMISSIONS)
+        if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            permission_to_check.extend(VOICE_CHANNEL_PERMISSIONS)
+        if isinstance(channel, discord.TextChannel):
+            permission_to_check.extend(TEXT_CHANNEL_PERMISSIONS)
+
+        permission_to_check.sort()
+
+        data = await self.get_permission_table(
+            {"you": you, "me": me, "default": default}, checked=permission_to_check
+        )
+        embed.description += "\n" + data
 
     async def snowflake_info_embed(self, ctx: VanirContext, snowflake: int):
         embed = ctx.embed("No Object Found")
@@ -228,13 +333,16 @@ class Help(VanirCog):
     async def add_sf_data(self, embed: discord.Embed, snowflake: int):
         time = int(discord.utils.snowflake_time(snowflake).timestamp())
         as_bin = str(bin(snowflake))
+
+        # lazy way
         generation, process, worker = (
             int(as_bin[:12], 2),
             int(as_bin[12:17], 2),
             int(as_bin[17:22], 2),
         )
+
         data = {
-            "ID": snowflake,
+            "ID": f"`{snowflake}`",
             "Created At": f"<t:{time}:F> [<t:{time}:R>]",
             "Worker ID": f"`{worker}`",
             "Process ID": f"`{process}`",
@@ -242,80 +350,6 @@ class Help(VanirCog):
         }
 
         embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
-
-    async def add_permission_data(
-        self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel
-    ):
-        default = channel.permissions_for(ctx.guild.default_role)
-        you = channel.permissions_for(ctx.author)
-        me = channel.permissions_for(ctx.me)
-
-        all_permissions = [
-            "view_channel",
-            "manage_channels",
-            "manage_permissions",
-            "manage_webhooks",
-            "create_instant_invite",
-        ]
-        if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
-            all_permissions.extend(
-                [
-                    "connect",
-                    "speak",
-                    "use_soundboard",
-                    "use_voice_activation",
-                    "priority_speaker",
-                    "mute_members",
-                    "deafen_members",
-                    "move_members",
-                ]
-            )
-        if isinstance(channel, discord.TextChannel):
-            all_permissions.extend(
-                [
-                    "send_messages",
-                    "send_messages_in_threads",
-                    "create_public_threads",
-                    "create_private_threads",
-                    "embed_links",
-                    "attach_files",
-                    "add_reactions",
-                    "use_external_emojis",
-                    "use_external_stickers",
-                    "mention_everyone",
-                    "manage_messages",
-                    "manage_threads",
-                    "read_message_history",
-                    "send_tts_messages",
-                    "use_application_commands",
-                    "send_voice_messages",
-                ]
-            )
-
-        all_permissions.sort()
-        table = texttable.Texttable(max_width=0)
-
-        table.header(["permission", "you", "me", "everyone"])
-        table.set_header_align(["r", "l", "l", "l"])
-        table.set_cols_align(["r", "l", "l", "l"])
-        table.set_cols_dtype(["t", "b", "b", "b"])
-
-        table.set_deco(texttable.Texttable.BORDER | texttable.Texttable.HEADER)
-        for permission in all_permissions:
-            d_bool = ["No", "Yes"]
-            table.add_row(
-                [
-                    permission.replace("_", " ").title(),
-                    getattr(you, permission),
-                    getattr(me, permission),
-                    getattr(default, permission),
-                ]
-            )
-        drawn = table.draw()
-        drawn = drawn.replace("True", f"{fbool(True)} ").replace(
-            "False", f"{fbool(False)}   "
-        )
-        embed.description += f"**```ansi\n{drawn}```**"
 
     async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
         embed = ctx.embed(

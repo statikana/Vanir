@@ -1,20 +1,12 @@
-import time
-from asyncio import iscoroutinefunction
-
 import discord
-from discord import InteractionResponse, app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from src.types.command import (
     VanirCog,
     cog_hidden,
     vanir_group,
-    _inherit,
-    AutoCachedView,
-    VanirView,
 )
 from src.types.core import VanirContext
-from src.types.util import MessageState
 
 
 @cog_hidden
@@ -41,7 +33,7 @@ class Dev(VanirCog):
     async def desync(self, ctx: VanirContext):
         self.bot.recursively_remove_all_commands()
         await self.bot.tree.sync()
-        await ctx.reply(ctx.bot.commands)
+        await ctx.reply(str(ctx.bot.commands))
 
     @dev.command()
     async def echo(self, ctx: VanirContext, *, message: str):

@@ -1,14 +1,14 @@
 import inspect
 import discord
 from discord.app_commands import Choice
-from discord.ext.commands import commands
-from types.core import VanirContext
-from types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
+from discord.ext import commands
+from src.types.core import VanirContext
+from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 from wand.image import Image
 
-from constants import LANGUAGE_INDEX
-from util.fmt import fmt_size
-from util.parse import Convention, find_ext
+from src.constants import LANGUAGE_INDEX
+from src.util.fmt import fmt_size
+from src.util.parse import Convention, find_ext
 
 
 def discover_group(group: commands.Group) -> set[commands.Command]:

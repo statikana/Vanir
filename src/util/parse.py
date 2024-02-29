@@ -5,14 +5,14 @@ from urllib.parse import urlparse
 from src.constants import COLOR_INDEX
 
 
-def find_fname(url: str):
+def find_filename(url: str):
     path = urlparse(url).path.rstrip("/")
-    return path[path.rfind("/") + 1 :]
+    return path[path.rfind("/") + 1:]
 
 
 def find_ext(url: str):
-    fname = find_fname(url)
-    return fname[fname.rfind(".") + 1 :]
+    filename = find_filename(url)
+    return filename[filename.rfind(".") + 1:]
 
 
 def closest_name(start_hex: str) -> tuple[str, int]:

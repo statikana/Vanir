@@ -21,6 +21,7 @@ class Vanir(commands.Bot):
             tree_cls=VanirTree,
             intents=discord.Intents.all(),
             help_command=None,
+            max_messages=5000,
         )
         self.db_starboard = StarBoard()
         self.db_currency = Currency()

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 import math
 
-from util.parse import Convention
+from src.util.parse import Convention
 
 
 def format_dict(
@@ -12,10 +12,7 @@ def format_dict(
         miss_keys = []
     lines: list[str] = []
     for k, v in data.items():
-        if k not in miss_keys:
-            v_str = f"*{v}*"
-        else:
-            v_str = f"{v}"
+        v_str = f"{v}"
         if linesplit:
             lines.append(f"**{k}**:\n. . . {v_str}")
         else:
