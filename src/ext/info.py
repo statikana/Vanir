@@ -27,7 +27,6 @@ from src.util.command import (
     get_display_cogs,
     get_param_annotation,
     vanir_command,
-    vanir_group,
 )
 from src.util.fmt import format_dict, fbool
 from src.util.parse import closest_name, find_filename, find_ext

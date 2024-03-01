@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from constants import GITHUB_ROOT
 
-from src.types.command import VanirCog, VanirView
+from src.types.command import GitHubView, VanirCog, VanirView
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.util import timed
@@ -84,11 +84,11 @@ class Bot(VanirCog):
                 snippet += "\n... [Snippet Cut Off]"
 
             embed.description = f"```py\n{snippet}\n```"
-            view = github_view(ctx.bot, url_path)
+            view = GitHubView(ctx.bot, url_path)
 
         else:
             embed = ctx.embed(title="My Source is All on GitHub!", url=root)
-            view = github_view(ctx.bot)
+            view = GitHubView(ctx.bot)
 
         await ctx.reply(embed=embed, view=view)
 
@@ -97,29 +97,21 @@ class Bot(VanirCog):
         """Who is this guy?"""
         embed = ctx.embed(
             title="I am Vanir, an advanced multi-purpose bot.",
-            description=f"I was made by StatHusky13, and am still in development."
+            description=f"I was made by StatHusky13, and am still in development.",
         )
-        example_commands = (ctx.bot.get_command(c) for c in ("help", "translate", "starboard setup", "new"))
+        example_commands = (
+            ctx.bot.get_command(c)
+            for c in ("help", "translate", "starboard setup", "new")
+        )
         embed.add_field(
             name="Example commands",
             value="\n".join(
                 f"{ctx.prefix}{cmd.qualified_name}\n\t*{cmd.description or cmd.short_doc or 'No Description'}*"
                 for cmd in example_commands
-            )
+            ),
         )
         await ctx.send(embed=embed)
 
-
-def github_view(bot: Vanir, path: str = ""):
-    view = VanirView(bot)
-    view.add_item(
-        discord.ui.Button(
-            style=discord.ButtonStyle.url,
-            url=GITHUB_ROOT + path,
-            emoji="\N{Squid}"
-            )
-        )
-    return view
 
 async def setup(bot: Vanir):
     await bot.add_cog(Bot(bot))

@@ -66,7 +66,13 @@ class Currency(VanirCog):
         )
 
         view = GiveCoinsView(
-            ctx.bot, ctx.author, user, from_bal, to_bal, amount, db_instance=self.bot.db_currency
+            ctx.bot,
+            ctx.author,
+            user,
+            from_bal,
+            to_bal,
+            amount,
+            db_instance=self.bot.db_currency,
         )
 
         await ctx.reply(embed=embed, view=view)
@@ -101,7 +107,13 @@ class Currency(VanirCog):
         )
 
         view = GiveCoinsView(
-            ctx.bot, user, ctx.author, from_bal, to_bal, amount, db_instance=self.bot.db_currency
+            ctx.bot,
+            user,
+            ctx.author,
+            from_bal,
+            to_bal,
+            amount,
+            db_instance=self.bot.db_currency,
         )
 
         await ctx.reply(content=user.mention, embed=embed, view=view)

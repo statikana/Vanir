@@ -1,7 +1,6 @@
 import asyncio
 import io
 import logging
-import re
 from dataclasses import dataclass
 from typing import TypeVar, Generic
 

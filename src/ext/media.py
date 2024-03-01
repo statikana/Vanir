@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from src.types.command import VanirCog
 from src.types.core import VanirContext, Vanir
-from src.types.media import MediaConverter, MediaInterface
+from src.types.media import MediaConverter
 from src.util.command import assure_working, vanir_command
 from src.util.command import send_file
 

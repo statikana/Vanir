@@ -1,6 +1,6 @@
 import datetime
 import os
-from typing import AsyncGenerator, Generator, Any
+from typing import AsyncGenerator, Any
 import pkgutil
 
 import aiohttp

@@ -1,9 +1,4 @@
-import discord
-from enum import Enum
-
-from discord.ext import commands
-
-from src.types.command import VanirCog, VanirPager, AutoTablePager
+from src.types.command import VanirCog, AutoTablePager
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
 

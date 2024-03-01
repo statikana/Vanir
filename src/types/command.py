@@ -9,6 +9,7 @@ import discord
 import texttable
 from discord import Interaction
 from discord.ext import commands
+from constants import GITHUB_ROOT
 
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
@@ -80,6 +81,16 @@ class VanirView(discord.ui.View):
                 await itx.followup.send("You can't interact with this", ephemeral=True)
             return False
         return True
+
+
+class GitHubView(VanirView):
+    def __init__(self, bot: Vanir, path: str = ""):
+        super().__init__(bot=bot)
+
+        button = discord.ui.Button(
+            url=GITHUB_ROOT + path, emoji="\N{Squid}", label="View on GitHub"
+        )
+        self.add_item(button)
 
 
 class AutoCachedView(VanirView):
