@@ -1,9 +1,8 @@
 import time
-from asyncio import iscoroutinefunction
+from asyncio import iscoroutine
 from dataclasses import dataclass
 
 import discord
-from discord.app_commands import Choice
 
 
 @dataclass
@@ -21,6 +20,9 @@ class MessageState:
 
 async def timed(func, *args):
     start = time.time()
-    await func(*args)
+    result = func(*args)
+
+    if iscoroutine(result):
+        await result
 
     return time.time() - start

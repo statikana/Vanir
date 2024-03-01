@@ -1,6 +1,7 @@
 import datetime
 import os
-from typing import Generator, Any
+from typing import AsyncGenerator, Generator, Any
+import pkgutil
 
 import aiohttp
 import asyncpg
@@ -45,16 +46,18 @@ class Vanir(commands.Bot):
         self.db_starboard.start(connection)
         self.db_currency.start(connection)
 
-    async def add_cogs(self) -> Generator[commands.Cog, None, None]:
+    async def add_cogs(self) -> AsyncGenerator[commands.Cog, None, None]:
         extension_path = "./src/ext"
-        for path in os.listdir(extension_path):
+        for path in pkgutil.walk_packages(extension_path):
 
-            if path.endswith(".py"):
-                before = set(self.cogs.values())
-                await self.load_extension(f"src.ext.{path[:-3]}")
-                after = set(self.cogs.values())
-                for ext in after - before:
-                    yield ext
+            # TODO: Reimplement this set comparison jank into cog.on_load
+
+            before = set(self.cogs.values())
+            await self.load_extension(f"src.ext.{path[:-3]}")
+            after = set(self.cogs.values())
+            for ext in after - before:
+                yield ext
+
         await self.load_extension("jishaku")
 
 
