@@ -3,11 +3,13 @@ import pathlib
 
 import discord
 from discord.ext import commands
+from constants import GITHUB_ROOT
 
 from src.types.command import VanirCog, VanirView
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.util import timed
+from src.ext.info import Info
 
 
 class Bot(VanirCog):
@@ -62,9 +64,9 @@ class Bot(VanirCog):
 
             n_lines = len(lines)
 
-            full_url = f"{root}/{path[path.index('src'):]}#L{first_line_num}-L{first_line_num+n_lines}"
+            url_path = f"{path[path.index('src'):]}#L{first_line_num}-L{first_line_num+n_lines}"
 
-            embed = ctx.embed(title=f"Source: {item}", url=full_url)
+            embed = ctx.embed(title=f"Source: {item}", url=GITHUB_ROOT + url_path)
             embed.add_field(
                 name="File",
                 value=f"`{pathlib.Path(path).relative_to(pathlib.Path('.').absolute())}`",
@@ -76,29 +78,48 @@ class Bot(VanirCog):
                 inline=False,
             )
 
-            # the lines are already '\n' postfix
+            # the lines are already '\n' postfix-ed
             snippet = "".join(l for l in lines[:line_preview_limit])[:4000]
             if n_lines > line_preview_limit:
                 snippet += "\n... [Snippet Cut Off]"
 
             embed.description = f"```py\n{snippet}\n```"
-
-            view = VanirView(ctx.bot)
-            view.add_item(
-                discord.ui.Button(
-                    url=full_url, label="View on GitHub", emoji="\N{Squid}"
-                )
-            )
+            view = github_view(ctx.bot, url_path)
 
         else:
             embed = ctx.embed(title="My Source is All on GitHub!", url=root)
-            view = VanirView(ctx.bot)
-            view.add_item(
-                discord.ui.Button(url=root, label="View on GitHub", emoji="\N{Squid}")
-            )
+            view = github_view(ctx.bot)
 
         await ctx.reply(embed=embed, view=view)
 
+    @vanir_command(aliases=["bot", "vanir"])
+    async def info(self, ctx: VanirContext):
+        """Who is this guy?"""
+        embed = ctx.embed(
+            title="I am Vanir, an advanced multi-purpose bot.",
+            description=f"I was made by StatHusky13, and am still in development."
+        )
+        example_commands = (ctx.bot.get_command(c) for c in ("help", "translate", "starboard setup", "new"))
+        embed.add_field(
+            name="Example commands",
+            value="\n".join(
+                f"{ctx.prefix}{cmd.qualified_name}\n\t*{cmd.description or cmd.short_doc or 'No Description'}*"
+                for cmd in example_commands
+            )
+        )
+        await ctx.send(embed=embed)
+
+
+def github_view(bot: Vanir, path: str = ""):
+    view = VanirView(bot)
+    view.add_item(
+        discord.ui.Button(
+            style=discord.ButtonStyle.url,
+            url=GITHUB_ROOT + path,
+            emoji="\N{Squid}"
+            )
+        )
+    return view
 
 async def setup(bot: Vanir):
     await bot.add_cog(Bot(bot))

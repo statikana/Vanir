@@ -86,3 +86,5 @@ ALL_PERMISSIONS = (
     + TEXT_CHANNEL_PERMISSIONS
     + VOICE_CHANNEL_PERMISSIONS
 )
+
+GITHUB_ROOT = "https://github.com/StatHusky13/Vanir"

@@ -87,9 +87,8 @@ class VanirContext(commands.Context):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        # %B %-d, %H:%M -> September 8, 13:59 UTC
         embed.set_footer(
-            text=f"{self.author.global_name or self.author.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+            text=f"{self.author.global_name or self.author.name} @ {discord.utils.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
             icon_url=self.author.display_avatar.url,
         )
 

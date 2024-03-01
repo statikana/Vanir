@@ -18,7 +18,7 @@ class Currency(VanirCog):
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.balance, ctx.author)  # type: ignore
 
-    @coins.command(aliases=["bal"])
+    @coins.command(aliases=["bal", "check"])
     async def balance(
         self,
         ctx: VanirContext,

@@ -1,5 +1,4 @@
 import discord
-import unicodedata
 from discord.ext import commands
 
 from discord import app_commands
@@ -8,7 +7,6 @@ from src.types.command import VanirCog, VanirView
 from src.types.core import VanirContext, Vanir
 from src.constants import LANGUAGE_INDEX
 from src.util.command import langcode_autocomplete, vanir_command
-from src.util.pregex import EMOJI_REGEX
 
 
 class Language(VanirCog):
