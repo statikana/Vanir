@@ -34,6 +34,9 @@ class VanirCog(commands.Cog):
         self.hidden: bool = (
             False  # gets set to true if the class is decorated by @hidden
         )
+    
+    async def cog_load(self):
+        logging.info(f"{self.__class__.__name__} loaded")
 
 
 class VanirView(discord.ui.View):
