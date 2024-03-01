@@ -35,7 +35,7 @@ class Language(VanirCog):
             title += f" [{json['phonetic']}]"
 
         embed = ctx.embed(title, url=json["sourceUrls"][0])
-        view = VanirView()
+        view = VanirView(self.bot)
 
         for regional_phonetic in json["phonetics"]:
             if audio_file := regional_phonetic["audio"]:

@@ -66,7 +66,7 @@ class Currency(VanirCog):
         )
 
         view = GiveCoinsView(
-            ctx.author, user, from_bal, to_bal, amount, db_instance=self.bot.db_currency
+            ctx.bot, ctx.author, user, from_bal, to_bal, amount, db_instance=self.bot.db_currency
         )
 
         await ctx.reply(embed=embed, view=view)
@@ -101,7 +101,7 @@ class Currency(VanirCog):
         )
 
         view = GiveCoinsView(
-            user, ctx.author, from_bal, to_bal, amount, db_instance=self.bot.db_currency
+            ctx.bot, user, ctx.author, from_bal, to_bal, amount, db_instance=self.bot.db_currency
         )
 
         await ctx.reply(content=user.mention, embed=embed, view=view)
@@ -110,6 +110,7 @@ class Currency(VanirCog):
 class GiveCoinsView(VanirView):
     def __init__(
         self,
+        bot: Vanir,
         from_user: discord.User,
         to_user: discord.User,
         from_bal: int,
@@ -119,7 +120,7 @@ class GiveCoinsView(VanirView):
         db_instance: DBCurrency,
     ) -> None:
         super().__init__(
-            accept_itx=lambda itx: itx.user.id == from_user.id, user=from_user
+            bot=bot, accept_itx=lambda itx: itx.user.id == from_user.id, user=from_user
         )
         self.from_user = from_user
         self.to_user = to_user
