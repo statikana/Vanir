@@ -1,8 +1,13 @@
+import functools
 import inspect
+from typing import Callable, Any
+
 import discord
 from discord.app_commands import Choice
 from discord.ext import commands
-from src.types.core import VanirContext
+
+from src.types.command import VanirHybridGroup, VanirCog, autopopulate, inherit
+from src.types.core import VanirContext, Vanir
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 from wand.image import Image
 
@@ -35,7 +40,11 @@ def discover_cog(cog: commands.Cog) -> set[commands.Command]:
 
 
 def get_display_cogs(bot: commands.Bot) -> list[commands.Cog]:
-    return [c for c in bot.cogs.values() if not getattr(c, "hidden", False)]
+    return [
+        c
+        for c in bot.cogs.values()
+        if not getattr(c, "hidden", False) and c.qualified_name.lower() != "jishaku"
+    ]
 
 
 def get_param_annotation(param: inspect.Parameter) -> str:
@@ -122,3 +131,48 @@ async def assure_working(ctx: VanirContext, media: MediaInterface):
         inline=False,
     )
     return await ctx.reply(embed=embed)
+
+
+def vanir_command(
+    hidden: bool = False, aliases: list[str] = None
+) -> Callable[[Any], commands.HybridCommand]:
+    if aliases is None:
+        aliases = []
+
+    def inner(func: Any):
+        func = autopopulate(func)
+        cmd = commands.HybridCommand(func, aliases=aliases)
+        cmd.hidden = hidden
+        cmd = inherit(cmd)
+
+        return cmd
+
+    return inner
+
+
+def vanir_group(
+    hidden: bool = False, aliases: list[str] = None
+) -> Callable[[Any], VanirHybridGroup]:
+    if aliases is None:
+        aliases = []
+
+    def inner(func: Any):
+        cmd = VanirHybridGroup(func, aliases=aliases)
+        cmd.hidden = hidden
+
+        return cmd
+
+    return inner
+
+
+def cog_hidden(cls: type[VanirCog]):
+    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
+    original_init = cls.__init__
+
+    @functools.wraps(original_init)
+    def wrapper(self: VanirCog, bot: Vanir) -> None:
+        original_init(self, bot)
+        self.hidden = True
+
+    cls.__init__ = wrapper
+    return cls

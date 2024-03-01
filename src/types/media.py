@@ -11,6 +11,7 @@ from discord.ext import commands
 from wand.image import Image
 from urllib.parse import urlparse
 from src.types.core import VanirContext
+from src.util.pregex import URL_REGEX
 
 MediaSource = TypeVar("MediaSource", cv2.Mat, Image)
 
@@ -56,6 +57,7 @@ class ImageInterface(MediaInterface[Image]):
     async def create(
         cls, source: discord.Attachment, initial_info: MediaInfo
     ) -> "ImageInterface":
+        check_media_size(source)
         return cls(Image(blob=await source.read()), initial_info)
 
     @classmethod
@@ -93,6 +95,7 @@ class VideoInterface(MediaInterface[cv2.Mat]):
     async def create(
         cls, source: discord.Attachment, initial_info: MediaInfo
     ) -> "VideoInterface":
+        check_media_size(source)
         return cls(source.url, await source.read(), initial_info)
 
     @classmethod
@@ -100,7 +103,6 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         return cls(url, blob, info)
 
     async def rotate(self, degrees: int) -> bytes:
-        print(degrees)
         if degrees % 90 != 0:
             raise ValueError("Degrees must be a multiple of 90")
         n_rots = degrees // 90 % 4
@@ -130,9 +132,10 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         # https://stackoverflow.com/questions/3937387/rotating-videos-with-ffmpeg
         # TODO: Semaphore for controlling max number of processes open at any one time
         # TODO: Share processes?
-        print(self.url.geturl())
-        command = f'ffmpeg -hide_banner -loglevel error -i "{self.url.geturl()}" -pix_fmt yuv420p -f mp4 -vf "transpose=1" -f matroska pipe:1'
-        print(command)
+        command = (
+            f'ffmpeg -hide_banner -loglevel error -i "{self.url.geturl()}" {params} -f '
+            f"matroska pipe:1"
+        )
         proc = await asyncio.create_subprocess_shell(
             cmd=command,
             stdin=asyncio.subprocess.PIPE,
@@ -157,7 +160,7 @@ class MediaConverter:
     image_formats = ("jpeg", "jpg", "png", "gif")
 
     async def convert(
-        self, ctx: commands.Context, atch: discord.Attachment | None
+        self, ctx: VanirContext, atch: discord.Attachment | None
     ) -> MediaInterface:
         data = await find_content(ctx, ctx.message)
         if data is not None:
@@ -178,23 +181,32 @@ class MediaConverter:
         raise ValueError("Could not locate any image information")
 
 
+def check_media_size(obj: discord.Attachment | bytes | None) -> None:
+    if obj is not None:
+        if (isinstance(obj, discord.Attachment) and obj.size > (10**7)) or (
+            isinstance(obj, bytes) and len(obj) > (10**7)
+        ):
+            raise commands.CommandInvokeError(
+                ValueError("Attachment size cannot be more than 10 mB")
+            )
+
+
 async def find_content(
     ctx: VanirContext, msg: discord.Message
 ) -> MediaInterface | None:
     for atch in msg.attachments:
         mime = atch.content_type
         info = MediaInfo.from_atch(atch)
+
         if mime.startswith("video/"):
             return await VideoInterface.create(atch, info)
+
         elif mime.startswith("image/"):
             return await ImageInterface.create(atch, info)
         # else:
         #     raise ValueError(f"Unsupported media type: {mime}")
 
-    uri_regex = re.compile(
-        r"https?://([a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(%[0-9a-fA-F][0-9a-fA-F]))+"
-    )
-    urls = uri_regex.findall(msg.content)
+    urls = URL_REGEX.findall(msg.content)
     if urls:
         url = urls[0]  # only test the first URL
         parsed = urlparse(url)
@@ -209,6 +221,7 @@ async def find_content(
 
             response = await ctx.bot.session.get(url, allow_redirects=False)
             blob = await response.read()
+            check_media_size(blob)
             info = MediaInfo(f"image/{extension}", blob.__sizeof__())
             if extension in MediaConverter.image_formats:
                 info = MediaInfo(f"image/{extension}", blob.__sizeof__())

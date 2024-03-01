@@ -1,7 +1,6 @@
 import re
 from asyncio import iscoroutinefunction
-from typing import Callable, Any, Coroutine
-from urllib.parse import urlparse
+from typing import Callable, Any
 import texttable
 
 import discord
@@ -17,27 +16,31 @@ from src.constants import (
 )
 from src.types.command import (
     VanirCog,
-    vanir_group,
     AutoCachedView,
-    vanir_command,
 )
 from src.types.core import VanirContext, Vanir
+from src.util.pregex import EMOJI_REGEX, SNOWFLAKE_REGEX
 
-
-from src.util.cmd import (
+from src.util.command import (
     discover_cog,
     discover_group,
     get_display_cogs,
     get_param_annotation,
+    vanir_command,
+    vanir_group,
 )
 from src.util.fmt import format_dict, fbool
 from src.util.parse import closest_name, find_filename, find_ext
 
+import unicodedata
+
 
 class Info(VanirCog):
+    """What's this?"""
+
     emoji = "\N{White Question Mark Ornament}"
 
-    @vanir_group()
+    @vanir_command()
     @commands.cooldown(4, 60, commands.BucketType.user)
     async def help(self, ctx: VanirContext):
         """Stop it, get some help"""
@@ -46,20 +49,31 @@ class Info(VanirCog):
         embed = await self.get_cog_display_embed(ctx)
         sel = CogDisplaySelect(ctx, self)
 
-        view = AutoCachedView(user=ctx.author, items=[sel])
+        view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
 
         await ctx.reply(embed=embed, view=view)
 
     @vanir_command(aliases=["sf", "id"])
     @commands.cooldown(5, 120, commands.BucketType.user)
-    async def snowflake(self, ctx: VanirContext, snowflake: str, search: bool = True):
-        """Gets information on a snowflake (ID)"""
-        regex = re.compile(r"^[0-9]{15,20}$")
+    async def snowflake(
+        self,
+        ctx: VanirContext,
+        snowflake: str = commands.param(
+            description="The snowflake (ID) to get information on"
+        ),
+        search: bool = commands.param(
+            description="Whether or not to search for the object who owns this ID. If this False, there is no cooldown for this command",
+            default=True,
+        ),
+    ):
+        """Gets information on a snowflake (ID). You can access when using Developer mode in Discord"""
 
-        if not regex.fullmatch(snowflake):
+        if not SNOWFLAKE_REGEX.fullmatch(snowflake):
             raise ValueError("Not a snowflake.")
             # check cache first
+
         sf = int(snowflake)
+
         found: bool = False
         if search:
 
@@ -76,9 +90,55 @@ class Info(VanirCog):
                     if await self.scan_methods(ctx, "fetch", fetch_attr, sf):
                         found = True
                         break
+        else:
+            self.snowflake.reset_cooldown(ctx)
+
         if not found:
             embed = await self.snowflake_info_embed(ctx, sf)
             await ctx.reply(embed=embed)
+
+    @vanir_command(aliases=["ci", "char", "chars"])
+    async def charinfo(
+        self,
+        ctx: VanirContext,
+        *,
+        chars: str = commands.param(
+            description="The characters to evaluate. Gets cut off at 30"
+        ),
+    ):
+        """Get detailed information about unicode characters"""
+        custom_emojis = EMOJI_REGEX.findall(chars)
+        if custom_emojis:
+            embed = ctx.embed(
+                description="\n".join(
+                    f"Custom Emoji: `{name}` [ID: `{emoji_id}`, Animated: {'Yes' if a else 'No'}]"
+                    for a, name, emoji_id in custom_emojis
+                )
+            )
+        else:
+            codepoints: list[str] = []
+            hotlinks: list[str] = []
+
+            for c in chars[:40]:
+                full_name = unicodedata.name(c, "<NOT FOUND>")
+
+                codepoint = hex(ord(c))[2:].rjust(4, "0")
+                codepoints.append(codepoint)
+
+                info_base = f"https://unicodeplus.com/U+"
+                info_hot = f"[`{full_name}`]({info_base + codepoint})"
+
+                hotlinks.append(info_hot)
+
+            embed = ctx.embed(
+                title=chars,
+                description="\n".join(
+                    f"`\\U{codepoint}`: {info_hot}"
+                    for codepoint, info_hot in zip(codepoints, hotlinks)
+                ),
+            )
+
+        await ctx.send(embed=embed)
 
     async def scan_methods(
         self, ctx: VanirContext, method: str, attr: str, snowflake: int
@@ -213,8 +273,7 @@ class Info(VanirCog):
             if mentions:
                 embed.add_field(name="Mentions", value=format_dict(mentions))
 
-            emoji_regex = re.compile(r"<a?:[A-z0-9_]{2,32}:[0-9]{18,22}>")
-            emojis = re.findall(emoji_regex, msg.content)
+            emojis = re.findall(EMOJI_REGEX, msg.content)
             pat = r"\s"
             content_info = {
                 "Length": f"{len(msg.content):,}",
@@ -285,6 +344,19 @@ class Info(VanirCog):
 
         return embed
 
+    async def emoji_info_embed(
+        self, ctx: VanirContext, emoji: discord.Emoji | discord.PartialEmoji
+    ):
+        if isinstance(emoji, discord.PartialEmoji):
+            emoji = await ctx.guild.fetch_emoji(emoji.id)
+
+        embed = ctx.embed(title=f"Emoji: {emoji.name}")
+        embed.set_image(url=emoji.url)
+
+        embed.add_field(name="Created By", value=emoji.user)
+        embed.add_field(name="Animated?", value=emoji.animated)
+        return embed
+
     async def get_permission_table(
         self, permissions: dict[str, discord.Permissions], *, checked: list[str]
     ) -> str:
@@ -295,7 +367,11 @@ class Info(VanirCog):
         table.set_cols_align(["r"] + (["l"] * (len(permissions))))
         table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
 
-        table.set_deco(texttable.Texttable.BORDER | texttable.Texttable.HEADER | texttable.Texttable.VLINES)
+        table.set_deco(
+            texttable.Texttable.BORDER
+            | texttable.Texttable.HEADER
+            | texttable.Texttable.VLINES
+        )
         for name in checked:
             table.add_row(
                 [
@@ -363,7 +439,7 @@ class Info(VanirCog):
         cogs = get_display_cogs(self.bot)
         for c in cogs:
             embed.add_field(
-                name=c.qualified_name,
+                name=f"{getattr(c, 'emoji')} {c.qualified_name}",
                 value=f"*{c.description or 'No Description'}*",
                 inline=True,
             )
@@ -376,7 +452,7 @@ class Info(VanirCog):
         embed = VanirContext.syn_embed(
             title=f"Module Info: **{cog.qualified_name}**",
             description=f"*{cog.description or 'No Description'}*",
-            author=itx.user,
+            user=itx.user,
         )
 
         other_commands: list[commands.Command] = []
@@ -406,7 +482,7 @@ class Info(VanirCog):
         embed = VanirContext.syn_embed(
             title=f"Info: `/{command.qualified_name} {command.signature}`",
             description=f"*{command.description or command.short_doc or 'No Description'}*",
-            author=itx.user,
+            user=itx.user,
         )
 
         for name, param in command.params.items():
@@ -438,7 +514,7 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
                 label=c.qualified_name,
                 description=c.description or "No Description",
                 value=c.qualified_name,
-                emoji=getattr(c, "emoji", "\N{Black Question Mark Ornament}"),
+                emoji=getattr(c, "emoji"),
             )
             for c in get_display_cogs(self.ctx.bot)
         ]

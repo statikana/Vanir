@@ -1,12 +1,14 @@
 import discord
+import unicodedata
 from discord.ext import commands
 
 from discord import app_commands
 
-from src.types.command import vanir_command, VanirCog, VanirView
+from src.types.command import VanirCog, VanirView
 from src.types.core import VanirContext, Vanir
 from src.constants import LANGUAGE_INDEX
-from src.util.cmd import langcode_autocomplete
+from src.util.command import langcode_autocomplete, vanir_command
+from src.util.pregex import EMOJI_REGEX
 
 
 class Language(VanirCog):
@@ -14,7 +16,7 @@ class Language(VanirCog):
 
     emoji = "\N{Open Book}"
 
-    @vanir_command()
+    @vanir_command(aliases=["def", "d"])
     async def define(
         self,
         ctx: VanirContext,
@@ -77,7 +79,7 @@ class Language(VanirCog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @commands.hybrid_command()
+    @vanir_command(aliases=["t"])
     @app_commands.autocomplete(
         source_lang=langcode_autocomplete, target_lang=langcode_autocomplete
     )

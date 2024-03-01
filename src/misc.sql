@@ -1,7 +1,5 @@
--- DROP TABLE IF EXISTS starboard_data CASCADE;
--- DROP TABLE IF EXISTS starboard_posts CASCADE;
--- DROP TABLE IF EXISTS saga_data CASCADE;
-
-
--- SELECT * FROM starboard_data;
--- SELECT * FROM starboard_posts;
+DROP TABLE starboard_data CASCADE ;
+DROP TABLE starboard_posts CASCADE ;
+DROP TABLE currency_data CASCADE ;
+DROP TABLE item_info CASCADE ;
+DROP TABLE inventory_data CASCADE ;

@@ -1,17 +1,16 @@
 import enum
-import functools
 import inspect
 import logging
 import math
-from typing import TypeVar, Generic, Callable, Any, Awaitable
+from typing import TypeVar, Generic, Callable, Awaitable
 from asyncio import iscoroutinefunction
 
 import discord
+import texttable
 from discord import Interaction
-from discord._types import ClientT
 from discord.ext import commands
 
-from src.types.core import Vanir
+from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
 
 empty = inspect.Parameter.empty
@@ -27,6 +26,8 @@ class AcceptItx(enum.Enum):
 
 
 class VanirCog(commands.Cog):
+    emoji = "\N{Black Question Mark Ornament}"
+
     def __init__(self, bot: Vanir):
         self.bot = bot
         self.hidden: bool = (
@@ -37,6 +38,7 @@ class VanirCog(commands.Cog):
 class VanirView(discord.ui.View):
     def __init__(
         self,
+        bot: Vanir,
         *,
         user: discord.User | None = None,
         accept_itx: (
@@ -45,6 +47,7 @@ class VanirView(discord.ui.View):
         timeout: float = 300,
     ):
         super().__init__(timeout=timeout)
+        self.bot = bot
         self.accept_itx = accept_itx
         self.user = user
 
@@ -82,6 +85,7 @@ class VanirView(discord.ui.View):
 class AutoCachedView(VanirView):
     def __init__(
         self,
+        bot: Vanir,
         *,
         user: discord.User | None = None,
         accept_itx: (
@@ -90,7 +94,7 @@ class AutoCachedView(VanirView):
         timeout: float = 300,
         items: list[discord.ui.Item] = None,
     ):
-        super().__init__(user=user, accept_itx=accept_itx, timeout=timeout)
+        super().__init__(bot, user=user, accept_itx=accept_itx, timeout=timeout)
 
         if items is None:
             items = []
@@ -155,16 +159,26 @@ class AutoCachedView(VanirView):
         )
 
 
+class VanirModal(discord.ui.Modal):
+    def __init__(self, bot: Vanir):
+        super().__init__()
+        self.bot = bot
+
+    async def on_error(self, itx: discord.Interaction, error: Exception):
+        self.bot.dispatch("command_error", itx, error)
+
+
 class VanirPager(VanirView, Generic[VanirPagerT]):
     def __init__(
         self,
+        bot: Vanir,
         user: discord.User,
         items: list[VanirPagerT],
         items_per_page: int,
         *,
         start_page: int = 0,
     ):
-        super().__init__(user=user)
+        super().__init__(bot, user=user)
         self.items = items
         self.items_per_page = items_per_page
 
@@ -208,7 +222,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
     @discord.ui.button(label="GOTO", emoji="\N{Direct Hit}")
     async def custom(self, itx: discord.Interaction, button: discord.Button):
-        modal = CustomPageModal(itx, self)
+        modal = CustomPageModal(self.bot, itx, self)
         await itx.response.send_modal(modal)
 
     async def update(
@@ -267,9 +281,59 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
             button.disabled = True
 
 
-class CustomPageModal(discord.ui.Modal):
-    def __init__(self, itx: discord.Interaction, view: VanirPager):
-        super().__init__(title="Select Page")
+class AutoTablePager(VanirPager):
+    def __init__(
+        self,
+        bot: Vanir,
+        user: discord.User,
+        headers: list[str],
+        rows: list[VanirPagerT],
+        rows_per_page: int,
+        *,
+        dtypes: list[str],
+        data_name: str = None,
+    ):
+        super().__init__(bot, user, rows, rows_per_page)
+        self.headers = headers
+        self.rows = self.items
+        self.data_name = data_name
+        self.dtypes = dtypes
+
+    async def update_embed(self) -> discord.Embed:
+
+        table = texttable.Texttable()
+        table.header(self.headers)
+
+        table.add_rows(
+            self.rows[
+                self.page * self.items_per_page : (self.page + 1) * self.items_per_page
+            ],
+            header=False,
+        )
+        table.set_deco(
+            texttable.Texttable.HEADER
+            | texttable.Texttable.BORDER
+            | texttable.Texttable.VLINES
+        )
+
+        print(self.headers)
+
+        table.set_cols_dtype(self.dtypes)
+
+        if self.data_name is not None:
+            title = f"{self.data_name}: Page {self.page+1} / {self.n_pages}"
+        else:
+            title = f"Page {self.page+1} / {self.n_pages}"
+
+        embed = VanirContext.syn_embed(
+            title=title, description=f"```\n{table.draw()}```", user=self.user
+        )
+        return embed
+
+
+class CustomPageModal(VanirModal, title="Select Page"):
+    def __init__(self, bot: Vanir, itx: discord.Interaction, view: VanirPager):
+        super().__init__(bot)
         self.view = view
         self.page_input = discord.ui.TextInput(
             label=f"Please enter a page number between 1 and {view.n_pages}"
@@ -291,42 +355,18 @@ class CustomPageModal(discord.ui.Modal):
         await self.view.update(itx=itx, source_button=VanirPager.custom)
 
 
-def vanir_command(
-    hidden: bool = False, aliases: list[str] = None
-) -> Callable[[Any], commands.HybridCommand]:
-    if aliases is None:
-        aliases = []
-
-    def inner(func: Any):
-        func = autopopulate(func)
-        cmd = commands.HybridCommand(func, aliases=aliases)
-        cmd.hidden = hidden
-        cmd = _inherit(cmd)
-
-        return cmd
-
-    return inner
-
-
 class VanirHybridGroup(commands.HybridGroup):
-    def command(self):
+    def command(self, aliases: list[str] = None):
+        if aliases is None:
+            aliases = []
+
         def inner(func):
             func = autopopulate(func)
-            command = commands.HybridGroup.command(self)(func)
-            command = _inherit(command)
+            command = commands.HybridGroup.command(self, aliases=aliases)(func)
+            command = inherit(command)
             return command
 
         return inner
-
-
-def vanir_group(hidden: bool = False) -> Callable[[Any], VanirHybridGroup]:
-    def inner(func: Any):
-        cmd = VanirHybridGroup(func)
-        cmd.hidden = hidden
-
-        return cmd
-
-    return inner
 
 
 def autopopulate(func):
@@ -348,23 +388,12 @@ def autopopulate(func):
         func.__discord_app_commands_param_description__.update(descriptions)
     except AttributeError:
         func.__discord_app_commands_param_description__ = descriptions
+
+    logging.debug(f"Populated app_command descriptions: {descriptions}")
     return func
 
 
-def cog_hidden(cls: type[VanirCog]):
-    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
-    original_init = cls.__init__
-
-    @functools.wraps(original_init)
-    def wrapper(self: VanirCog, bot: Vanir) -> None:
-        original_init(self, bot)
-        self.hidden = True
-
-    cls.__init__ = wrapper
-    return cls
-
-
-def _inherit(cmd: commands.HybridCommand):
+def inherit(cmd: commands.HybridCommand):
     if cmd.parent is not None:
         parent: commands.HybridGroup = cmd.parent  # type: ignore
         cmd.hidden = parent.hidden

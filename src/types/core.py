@@ -68,7 +68,7 @@ class VanirContext(commands.Context):
 
     def embed(
         self,
-        title: str | None,
+        title: str | None = None,
         description: str | None = None,
         color: discord.Color = None,
         url: str | None = None,
@@ -101,14 +101,14 @@ class VanirContext(commands.Context):
         color: discord.Color = None,
         url: str | None = None,
         *,
-        author: discord.User | discord.Member,
+        user: discord.User | discord.Member,
     ) -> discord.Embed:
         if title is None and description is None:
             raise ValueError("Must provide either a title or a description")
 
         if color is None:
-            if isinstance(author, discord.Member):
-                color = author.top_role.color
+            if isinstance(user, discord.Member):
+                color = user.top_role.color
             else:
                 color = discord.Color.light_embed()
 
@@ -116,8 +116,8 @@ class VanirContext(commands.Context):
 
         # %B %-d, %H:%M -> September 8, 13:59 UTC
         embed.set_footer(
-            text=f"{author.global_name or author.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
-            icon_url=author.display_avatar.url,
+            text=f"{user.global_name or user.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+            icon_url=user.display_avatar.url,
         )
 
         if url is not None:

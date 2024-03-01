@@ -2,7 +2,8 @@ import discord
 from discord.ext import commands
 
 from src.types.core import Vanir, VanirContext
-from src.types.command import VanirCog, vanir_group, VanirView
+from src.types.command import VanirCog, VanirView
+from src.util.command import vanir_group
 from src.types.database import Currency as DBCurrency
 from src.util.fmt import format_dict
 
@@ -12,12 +13,12 @@ class Currency(VanirCog):
 
     emoji = "\N{Coin}"
 
-    @vanir_group()
+    @vanir_group(aliases=["currency", "cur"])
     async def coins(self, ctx: VanirContext):
         if ctx.invoked_subcommand is None:
             await ctx.invoke(self.balance, ctx.author)  # type: ignore
 
-    @coins.command()
+    @coins.command(aliases=["bal"])
     async def balance(
         self,
         ctx: VanirContext,
@@ -33,7 +34,7 @@ class Currency(VanirCog):
         embed = ctx.embed(title=f"{balance:,}\N{Coin}")
         await ctx.reply(embed=embed)
 
-    @coins.command()
+    @coins.command(aliases=["send"])
     async def give(
         self,
         ctx: VanirContext,
@@ -70,7 +71,7 @@ class Currency(VanirCog):
 
         await ctx.reply(embed=embed, view=view)
 
-    @coins.command()
+    @coins.command(aliases=["ask", "req"])
     async def request(
         self,
         ctx: VanirContext,
@@ -145,7 +146,7 @@ class GiveCoinsView(VanirView):
         embed = VanirContext.syn_embed(
             title=f"Transferred {self.amount:,}\N{Coin} to {self.to_user.name}",
             description=format_dict(data, linesplit=True),
-            author=itx.user,
+            user=itx.user,
         )
 
         await itx.response.edit_message(embed=embed, view=None)
@@ -157,7 +158,7 @@ class GiveCoinsView(VanirView):
         embed = VanirContext.syn_embed(
             title="Cancelled",
             description="Nothing has been transferred.",
-            author=itx.user,
+            user=itx.user,
         )
         await itx.response.edit_message(embed=embed, view=None)
 

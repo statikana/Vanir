@@ -4,7 +4,8 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Range
 
-from src.types.command import VanirCog, vanir_group
+from src.types.command import VanirCog
+from src.util.command import vanir_group
 from src.types.core import Vanir, VanirContext
 from src.types.database import StarBoard as StarBoardDB
 

@@ -19,12 +19,8 @@ class MessageState:
         return self.__str__()
 
 
-async def timeit(func, *args):
-    if iscoroutinefunction(func):
-        start = time.time()
-        await func(*args)
-    else:
-        start = time.time()
-        func(*args)
+async def timed(func, *args):
+    start = time.time()
+    await func(*args)
 
     return time.time() - start

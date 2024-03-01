@@ -1,16 +1,20 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, vanir_command
+from src.types.command import VanirCog
 from src.types.core import VanirContext, Vanir
 from src.types.media import MediaConverter, MediaInterface
-from src.util.cmd import assure_working
-from src.util.cmd import send_file
+from src.util.command import assure_working, vanir_command
+from src.util.command import send_file
 
 
 class Media(VanirCog):
+    """Manipulate images and videos"""
+
+    emoji = "\N{Frame with Picture}"
+
     @vanir_command()
-    async def rot(
+    async def rotate(
         self,
         ctx: VanirContext,
         media_atch: discord.Attachment | None = commands.param(
@@ -28,7 +32,7 @@ class Media(VanirCog):
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.rotate(degrees)
-        await send_file(ctx, self.rot, msg, media)
+        await send_file(ctx, self.rotate, msg, media)
 
 
 async def setup(bot: Vanir):

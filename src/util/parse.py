@@ -3,16 +3,17 @@ import re
 from urllib.parse import urlparse
 
 from src.constants import COLOR_INDEX
+from src.util.pregex import SLUG_REGEX
 
 
 def find_filename(url: str):
     path = urlparse(url).path.rstrip("/")
-    return path[path.rfind("/") + 1:]
+    return path[path.rfind("/") + 1 :]
 
 
 def find_ext(url: str):
     filename = find_filename(url)
-    return filename[filename.rfind(".") + 1:]
+    return filename[filename.rfind(".") + 1 :]
 
 
 def closest_name(start_hex: str) -> tuple[str, int]:
@@ -31,7 +32,7 @@ def closest_name(start_hex: str) -> tuple[str, int]:
 
 
 def ensure_slug(slug: str) -> str:
-    return re.sub(r"[^a-z0-9\-]", "", slug).lower().strip(" .-")
+    return SLUG_REGEX.sub("", slug).lower().strip(" .-")
 
 
 class Convention(Enum):
