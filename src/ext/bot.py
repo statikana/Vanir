@@ -1,15 +1,14 @@
+import asyncio.subprocess
 import inspect
 import pathlib
 
-import discord
 from discord.ext import commands
-from src.constants import GITHUB_ROOT
 
-from src.types.command import GitHubView, VanirCog, VanirView
+from src.constants import GITHUB_ROOT
+from src.types.command import GitHubView, VanirCog
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.util import timed
-from src.ext.info import Info
 
 
 class Bot(VanirCog):
@@ -99,16 +98,16 @@ class Bot(VanirCog):
             title="I am Vanir, an advanced multi-purpose bot.",
             description=f"I was made by StatHusky13, and am still in development.",
         )
-        example_commands = (
-            ctx.bot.get_command(c)
-            for c in ("help", "translate", "starboard setup", "new")
+
+        proc = await asyncio.subprocess.create_subprocess_shell(
+            cmd='git log --pretty=format:"`%h` - %an, %ar: %s" -n 5',
+            stdout=asyncio.subprocess.PIPE,
         )
+        await proc.wait()
+        out = (await proc.stdout.read()).decode("utf-8")
         embed.add_field(
-            name="Example commands",
-            value="\n".join(
-                f"{ctx.prefix}{cmd.qualified_name}\n\t*{cmd.description or cmd.short_doc or 'No Description'}*"
-                for cmd in example_commands
-            ),
+            name=f"Recent Changes",
+            value=f"{out}\n[[view full change log here]]({GITHUB_ROOT + '/commits/main'})",
         )
         await ctx.send(embed=embed)
 
