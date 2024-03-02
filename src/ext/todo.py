@@ -103,7 +103,6 @@ class Todo(VanirCog):
         if todo is None:
             await ctx.invoke(self.get, completed_only=True)  # type: ignore
             return
-        print(todo)
         changed = await self.bot.db_todo.complete_todo_by_id(ctx.author.id, int(todo))
 
         embed = ctx.embed(f"{changed['title']} Completed")

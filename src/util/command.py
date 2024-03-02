@@ -174,11 +174,9 @@ def vanir_group(
 def cog_hidden(cls: type[VanirCog]):
     """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
     original_init = cls.__init__
-    print("hidden", cls.__name__)
 
     @functools.wraps(original_init)
     def wrapper(self: VanirCog, bot: Vanir) -> None:
-        print("wrapper")
         original_init(self, bot)
         self.hidden = True
 
@@ -186,7 +184,6 @@ def cog_hidden(cls: type[VanirCog]):
             if isinstance(c := getattr(self, c), commands.Command):
                 c.hidden = True
                 c.with_app_command = False
-                print(c.qualified_name, c.hidden, c.with_app_command)
 
     cls.__init__ = wrapper
     return cls

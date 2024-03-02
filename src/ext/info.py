@@ -527,7 +527,6 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `cog info`"""
-        # print("COG DISPLAY SELECT cb")
         await self.view.collect(itx)
         selected = self.values[0]
         cog = self.ctx.bot.get_cog(selected)
