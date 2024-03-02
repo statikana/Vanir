@@ -3,7 +3,7 @@ import pathlib
 
 import discord
 from discord.ext import commands
-from constants import GITHUB_ROOT
+from src.constants import GITHUB_ROOT
 
 from src.types.command import GitHubView, VanirCog, VanirView
 from src.util.command import vanir_command
@@ -26,7 +26,7 @@ class Bot(VanirCog):
                 self.bot.session.get, "https://example.com"
             ),
             "\N{Elephant} PGSQL DB": await timed(
-                self.bot.db_currency.con.fetchval, "SELECT 0"
+                self.bot.db_currency.pool.fetchval, "SELECT 0"
             ),
         }
         embed = ctx.embed("\N{Table Tennis Paddle and Ball} Pong!")

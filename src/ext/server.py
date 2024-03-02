@@ -14,7 +14,7 @@ class Server(VanirCog):
         members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)
         headers = ["name", "joined at"]
         dtypes = ["t", "t"]
-        paginator = AutoTablePager(
+        view = AutoTablePager(
             ctx.bot,
             ctx.author,
             headers=headers,
@@ -22,9 +22,9 @@ class Server(VanirCog):
             dtypes=dtypes,
             rows_per_page=10,
         )
-        embed = await paginator.update_embed()
-        paginator.message = await ctx.reply(embed=embed, view=paginator)
-        await paginator.update()
+        embed = await view.update_embed()
+        view.message = await ctx.reply(embed=embed, view=view)
+        await view.update()
 
 
 async def setup(bot: Vanir):

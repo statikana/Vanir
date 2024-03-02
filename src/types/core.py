@@ -1,6 +1,7 @@
 import datetime
 from typing import AsyncGenerator, Any
 import pkgutil
+from src.ext import MODULE_PATHS
 
 import aiohttp
 import asyncpg
@@ -11,7 +12,7 @@ import logging
 
 from src import env
 from src.env import DEEPL_API_KEY
-from src.types.database import StarBoard, Currency
+from src.types.database import StarBoard, Currency, Todo
 
 
 class Vanir(commands.Bot):
@@ -25,6 +26,7 @@ class Vanir(commands.Bot):
         )
         self.db_starboard = StarBoard()
         self.db_currency = Currency()
+        self.db_todo = Todo()
         self.session: VanirSession = VanirSession()
 
     async def get_context(
@@ -38,16 +40,15 @@ class Vanir(commands.Bot):
 
     async def setup_hook(self) -> None:
 
-        connection = await asyncpg.connect(**env.PSQL_CONNECTION)
-        self.db_starboard.start(connection)
-        self.db_currency.start(connection)
+        pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
+        self.db_starboard.start(pool)
+        self.db_currency.start(pool)
+        self.db_todo.start(pool)
+        await self.add_cogs()
 
     async def add_cogs(self):
-        for path in pkgutil.iter_modules(__path__, f"src.ext"):
-
-            # TODO: Reimplement this set comparison jank into cog.on_load
-
-            await self.load_extension(f"src.ext.{path[:-3]}")
+        for ext in MODULE_PATHS:
+            await self.load_extension(ext)
 
         await self.load_extension("jishaku")
 

@@ -89,7 +89,7 @@ class Language(VanirCog):
         text: str = commands.param(
             description="The text to translate",
             default=None,
-            displayed_default="Reference message's text",
+            displayed_default="<reference message's text>",
         ),
         source_lang: str = commands.param(
             description="The language to translate from", default="AUTO"

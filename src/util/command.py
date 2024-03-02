@@ -6,7 +6,12 @@ import discord
 from discord.app_commands import Choice
 from discord.ext import commands
 
-from src.types.command import VanirHybridGroup, VanirCog, autopopulate, inherit
+from src.types.command import (
+    VanirHybridGroup,
+    VanirCog,
+    autopopulate_add_descriptions,
+    inherit,
+)
 from src.types.core import VanirContext, Vanir
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 from wand.image import Image
@@ -140,7 +145,7 @@ def vanir_command(
         aliases = []
 
     def inner(func: Any):
-        func = autopopulate(func)
+        func = autopopulate_add_descriptions(func)
         cmd = commands.HybridCommand(func, aliases=aliases)
         cmd.hidden = hidden
         cmd = inherit(cmd)
@@ -157,8 +162,9 @@ def vanir_group(
         aliases = []
 
     def inner(func: Any):
-        cmd = VanirHybridGroup(func, aliases=aliases)
-        cmd.hidden = hidden
+        cmd = VanirHybridGroup(
+            func, aliases=aliases, with_app_command=not hidden, hidden=hidden
+        )
 
         return cmd
 
@@ -168,11 +174,19 @@ def vanir_group(
 def cog_hidden(cls: type[VanirCog]):
     """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
     original_init = cls.__init__
+    print("hidden", cls.__name__)
 
     @functools.wraps(original_init)
     def wrapper(self: VanirCog, bot: Vanir) -> None:
+        print("wrapper")
         original_init(self, bot)
         self.hidden = True
+
+        for c in dir(self):
+            if isinstance(c := getattr(self, c), commands.Command):
+                c.hidden = True
+                c.with_app_command = False
+                print(c.qualified_name, c.hidden, c.with_app_command)
 
     cls.__init__ = wrapper
     return cls

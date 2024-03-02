@@ -461,7 +461,7 @@ class Info(VanirCog):
                 embed.add_field(
                     name=f"`{c.qualified_name}` Commands",
                     value="\n".join(
-                        f"`/{sub.qualified_name}`" for sub in discover_group(c)
+                        f"`\\{sub.qualified_name}`" for sub in discover_group(c)
                     ),
                 )
             else:
@@ -470,7 +470,7 @@ class Info(VanirCog):
         if other_commands:
             embed.add_field(
                 name=f"{len(other_commands)} Miscellaneous Command{'s' if len(other_commands) > 1 else ''}",
-                value="\n".join(f"`/{o.qualified_name}`" for o in other_commands),
+                value="\n".join(f"`\\{o.qualified_name}`" for o in other_commands),
             )
 
         return embed
@@ -478,9 +478,15 @@ class Info(VanirCog):
     async def get_command_info_embed(
         self, itx: discord.Interaction, command: commands.Command
     ) -> discord.Embed:
+        alias_generator = (
+            f"`\\{command.full_parent_name}{' ' if command.parent else ''}{c}`"
+            for c in command.aliases
+        )
         embed = VanirContext.syn_embed(
-            title=f"Info: `/{command.qualified_name} {command.signature}`",
-            description=f"*{command.description or command.short_doc or 'No Description'}*",
+            title=f"Info: `\\{command.qualified_name} {command.signature}`",
+            description=f"Aliases: "
+            f"{' '.join(alias_generator) or '<no aliases>'}\n"
+            f"*{command.description or command.short_doc or 'No Description'}*",
             user=itx.user,
         )
 

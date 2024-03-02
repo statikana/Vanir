@@ -14,31 +14,37 @@ class Dev(VanirCog):
         super().__init__(bot)
         self.bot = bot
 
-    @vanir_group()
+    @commands.group()
     @commands.is_owner()
     async def dev(self, ctx):
         pass
 
     @dev.command()
+    @commands.is_owner()
     async def sync(self, ctx: VanirContext, *, guild_id: str | None = None):
         if guild_id:
-            await self.bot.tree.sync(guild=discord.Object(id=int(guild_id)))
+            cmds = await self.bot.tree.sync(guild=discord.Object(id=int(guild_id)))
         else:
-            await self.bot.tree.sync()
+            cmds = await self.bot.tree.sync()
 
-        await ctx.reply(embed=ctx.embed("Synced"))
+        await ctx.reply(
+            embed=ctx.embed("Synced", description=",".join(c.name for c in cmds))
+        )
 
     @dev.command()
+    @commands.is_owner()
     async def desync(self, ctx: VanirContext):
         self.bot.recursively_remove_all_commands()
         await self.bot.tree.sync()
         await ctx.reply(str(ctx.bot.commands))
 
     @dev.command()
+    @commands.is_owner()
     async def echo(self, ctx: VanirContext, *, message: str):
         await ctx.reply(message)
 
     @dev.command()
+    @commands.is_owner()
     async def setbal(self, ctx: VanirContext, user: discord.User, amount: int):
         await self.bot.db_currency.set_balance(user.id, amount)
         await ctx.reply(f"{user.id} -> {amount}")

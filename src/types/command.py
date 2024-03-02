@@ -9,10 +9,15 @@ import discord
 import texttable
 from discord import Interaction
 from discord.ext import commands
-from constants import GITHUB_ROOT
+from discord.ext.commands import Context
+from discord.ext.commands._types import BotT
+from discord.ext.commands.converter import T_co
+
+from src.constants import GITHUB_ROOT
 
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
+from src.util.fmt import fbool
 
 empty = inspect.Parameter.empty
 
@@ -34,7 +39,7 @@ class VanirCog(commands.Cog):
         self.hidden: bool = (
             False  # gets set to true if the class is decorated by @hidden
         )
-    
+
     async def cog_load(self):
         logging.info(f"{self.__class__.__name__} loaded")
 
@@ -300,22 +305,24 @@ class AutoTablePager(VanirPager):
         self,
         bot: Vanir,
         user: discord.User,
+        *,
         headers: list[str],
         rows: list[VanirPagerT],
         rows_per_page: int,
-        *,
-        dtypes: list[str],
+        dtypes: list[str] = None,
         data_name: str = None,
+        include_hline: bool = False,
     ):
         super().__init__(bot, user, rows, rows_per_page)
         self.headers = headers
         self.rows = self.items
         self.data_name = data_name
         self.dtypes = dtypes
+        self.include_hline = include_hline
 
     async def update_embed(self) -> discord.Embed:
 
-        table = texttable.Texttable()
+        table = texttable.Texttable(61)
         table.header(self.headers)
 
         table.add_rows(
@@ -324,23 +331,30 @@ class AutoTablePager(VanirPager):
             ],
             header=False,
         )
-        table.set_deco(
+        deco = (
             texttable.Texttable.HEADER
             | texttable.Texttable.BORDER
             | texttable.Texttable.VLINES
         )
+        if self.include_hline:
+            deco |= texttable.Texttable.HLINES
 
-        print(self.headers)
+        table.set_deco(deco)
 
-        table.set_cols_dtype(self.dtypes)
+        if self.dtypes:
+            table.set_cols_dtype(self.dtypes)
 
         if self.data_name is not None:
             title = f"{self.data_name}: Page {self.page+1} / {self.n_pages}"
         else:
             title = f"Page {self.page+1} / {self.n_pages}"
+        text = table.draw()
+        text = text.replace("True", fbool(True) + " ").replace(
+            "False", fbool(False) + "   "
+        )
 
         embed = VanirContext.syn_embed(
-            title=title, description=f"```\n{table.draw()}```", user=self.user
+            title=title, description=f"```ansi\n{text}```", user=self.user
         )
         return embed
 
@@ -369,13 +383,28 @@ class CustomPageModal(VanirModal, title="Select Page"):
         await self.view.update(itx=itx, source_button=VanirPager.custom)
 
 
+class TaskIDConverter(commands.Converter[int]):
+    async def convert(self, ctx: VanirContext, argument: str) -> int:
+        if argument.isdigit():
+            todo = await ctx.bot.db_todo.get_todo_by_id(ctx.author.id, int(argument))
+            if todo is not None:
+                return int(argument)
+
+        task_id = await ctx.bot.db_todo.get_task_id_by_name(ctx.author.id, argument)
+        if task_id is None:
+            raise commands.CommandInvokeError(
+                ValueError("Could not find task with name or ID " + argument)
+            )
+        return task_id
+
+
 class VanirHybridGroup(commands.HybridGroup):
     def command(self, aliases: list[str] = None):
         if aliases is None:
             aliases = []
 
         def inner(func):
-            func = autopopulate(func)
+            func = autopopulate_add_descriptions(func)
             command = commands.HybridGroup.command(self, aliases=aliases)(func)
             command = inherit(command)
             return command
@@ -383,7 +412,7 @@ class VanirHybridGroup(commands.HybridGroup):
         return inner
 
 
-def autopopulate(func):
+def autopopulate_add_descriptions(func):
     params = inspect.signature(func).parameters.copy()
     try:
         del params["self"]
