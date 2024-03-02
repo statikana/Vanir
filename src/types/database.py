@@ -149,8 +149,10 @@ class Currency(DBBase):
 
 class Todo(DBBase):
     async def create_todo(self, user_id: int, title: str):
-        await self.pool.execute(
-            "INSERT INTO todo_data(user_id, title) " "VALUES ($1, $2)", user_id, title
+        return await self.pool.fetchrow(
+            "INSERT INTO todo_data(user_id, title) VALUES ($1, $2) RETURNING *",
+            user_id,
+            title,
         )
 
     async def get_all_todo(self, user_id: int, include_completed: bool):

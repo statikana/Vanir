@@ -1,6 +1,8 @@
 from datetime import datetime
 
+import asyncpg
 import discord
+import fuzzywuzzy.fuzz
 from discord.ext import commands
 
 from src.types.command import AutoTablePager, TaskIDConverter, VanirCog
@@ -30,8 +32,11 @@ class Todo(VanirCog):
         task: str = commands.param(description="The task to complete."),
     ):
         """Creates a new task. You can also use `\\todo <task>` as shorthand."""
-        await self.bot.db_todo.create_todo(ctx.author.id, task)
-        embed = ctx.embed(title=f"\N{White Heavy Check Mark} TODO: {task}")
+        todo = await self.bot.db_todo.create_todo(ctx.author.id, task)
+        embed = ctx.embed(
+            title=f"\N{White Heavy Check Mark} TODO: " f"{todo['title']}",
+            description=f"ID: `{todo['todo_id']}`",
+        )
         await ctx.reply(embed=embed, ephemeral=True)
 
     @todo.command(aliases=["all"])
@@ -46,7 +51,7 @@ class Todo(VanirCog):
         ),
     ):
         """Gets your current tasks. You can specify `include_completed` and `completed_only` to narrow."""
-        results: list[dict[str, str | int]] = await self.bot.db_todo.get_all_todo(
+        results: list[asyncpg.Record] = await self.bot.db_todo.get_all_todo(
             ctx.author.id, include_completed
         )
         if not results:
@@ -64,28 +69,7 @@ class Todo(VanirCog):
             await ctx.reply(embed=embed, ephemeral=True)
             return
 
-        results_rows = [
-            [
-                r["title"],
-                r["timestamp_created"].strftime("%Y/%m/%d"),
-                r["completed"],
-                r["todo_id"],
-            ]
-            for r in results
-        ]
-
-        results_rows.sort(key=lambda c: c[1])  # sort by date added
-
-        view = AutoTablePager(
-            self.bot,
-            ctx.author,
-            headers=["task", "created", "completed?", "id"],
-            rows=results_rows,
-            rows_per_page=3,
-            include_hline=True,
-        )
-        embed = await view.update_embed()
-        view.message = await ctx.reply(embed=embed, view=view, ephemeral=True)
+        await self.show_todos(ctx, results)
 
     @todo.command(aliases=["finish", "done", "completed"])
     async def complete(
@@ -130,6 +114,52 @@ class Todo(VanirCog):
         removed = await self.bot.db_todo.clear(ctx.author.id)
         embed = ctx.embed(f"Removed {len(removed)} task{'s' if removed else ''}")
         await ctx.reply(embed=embed, ephemeral=True)
+
+    @todo.command()
+    async def search(self, ctx: VanirContext, query: str):
+        todos = await self.bot.db_todo.get_all_todo(
+            ctx.author.id, include_completed=True
+        )
+        threshold = 20
+
+        pairs: list[tuple[asyncpg.Record, int]] = [
+            (t, fuzzywuzzy.fuzz.ratio(query, t["title"])) for t in todos
+        ]
+        pairs.sort(key=lambda t: t[1], reverse=True)
+
+        trimmed = [t[0] for t in filter(lambda t: t[1] >= threshold, pairs)]
+        await self.show_todos(ctx, trimmed, autosort=False)
+
+    async def show_todos(
+        self, ctx: VanirContext, todos: list[asyncpg.Record], *, autosort: bool = True
+    ):
+
+        results_rows = [
+            [
+                t["title"],
+                t["timestamp_created"].strftime("%Y/%m/%d"),
+                t["completed"],
+                t["todo_id"],
+            ]
+            for t in todos
+        ]
+        if autosort:
+            results_rows.sort(
+                key=lambda c: (c[2], c[1])
+            )  # sort by completed?, date added
+
+        view = AutoTablePager(
+            self.bot,
+            ctx.author,
+            headers=["task", "created", "completed?", "id"],
+            rows=results_rows,
+            rows_per_page=6,
+            include_hline=True,
+        )
+
+        embed = await view.update_embed()
+        view.message = await ctx.reply(embed=embed, view=view, ephemeral=True)
+        await view.update()
 
 
 async def setup(bot: Vanir):
