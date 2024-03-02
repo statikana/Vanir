@@ -10,6 +10,7 @@ from src.types.command import GitHubView, VanirCog
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
 from src.types.util import timed
+from src.util.fmt import natural_join
 
 
 class Bot(VanirCog):
@@ -95,9 +96,33 @@ class Bot(VanirCog):
     @vanir_command(aliases=["bot", "vanir"])
     async def info(self, ctx: VanirContext):
         """Who is this guy?"""
+        if ctx.bot.application.team:
+            dev = natural_join(m.name for m in ctx.bot.application.team.members)
+        else:
+            dev = ctx.bot.application.owner.name
         embed = ctx.embed(
             title="I am Vanir, an advanced multi-purpose bot.",
-            description=f"I was made by StatHusky13, and am still in development.",
+            description=f"I was made by {dev}, and am still in development. My prefixes "
+            f"are "
+            f"{natural_join(self.bot.command_prefix(self.bot, ctx.message)[1:])}",
+        )
+        n_user_commands = len(
+            list(
+                v
+                for v in self.bot.walk_commands()
+                if isinstance(v, commands.HybridCommand) and not v.hidden
+            )
+        )
+        n_user_cogs = len(
+            list(
+                c
+                for c in self.bot.cogs.values()
+                if not getattr(c, "hidden", False) and c.qualified_name != "Jishaku"
+            )
+        )
+        embed.add_field(
+            name="Commands",
+            value=f"I have `{n_user_commands}` commands and `{n_user_cogs}` modules.",
         )
 
         proc = await asyncio.subprocess.create_subprocess_shell(
@@ -112,8 +137,10 @@ class Bot(VanirCog):
         embed.add_field(
             name=f"Recent Changes",
             value=f"{out}\n[[view full change log here]]({GITHUB_ROOT + '/commits'})",
+            inline=False,
         )
-        await ctx.send(embed=embed)
+        view = GitHubView(self.bot)
+        await ctx.send(embed=embed, view=view)
 
 
 async def setup(bot: Vanir):

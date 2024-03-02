@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Generator
 import math
 
 from src.util.parse import Convention
@@ -80,3 +80,18 @@ def fbool(b: bool):
         text = ctext("No", text_col=31)  # Red for False
     text += "\u001b[0m"
     return text
+
+
+def natural_join(l: list[str] | Generator[str, Any, Any]) -> str:
+    if isinstance(l, Generator):
+        l = list(l)
+    n = len(l)
+    match n:
+        case 0:
+            return ""
+        case 1:
+            return l[0]
+        case 2:
+            return f"{l[0]} and {l[1]}"
+        case other:
+            return f"{', '.join(l[:-1])}, and {l[-1]}"
