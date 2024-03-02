@@ -2,6 +2,7 @@ import asyncio.subprocess
 import inspect
 import pathlib
 
+import discord.utils
 from discord.ext import commands
 
 from src.constants import GITHUB_ROOT
@@ -100,14 +101,17 @@ class Bot(VanirCog):
         )
 
         proc = await asyncio.subprocess.create_subprocess_shell(
+            # short hash - author name, relative time: commit message
             cmd='git log --pretty=format:"`%h` - %an, %ar: %s" -n 5',
             stdout=asyncio.subprocess.PIPE,
         )
         await proc.wait()
-        out = (await proc.stdout.read()).decode("utf-8")
+
+        out = discord.utils.escape_markdown((await proc.stdout.read()).decode("utf-8"))
+
         embed.add_field(
             name=f"Recent Changes",
-            value=f"{out}\n[[view full change log here]]({GITHUB_ROOT + '/commits/main'})",
+            value=f"{out}\n[[view full change log here]]({GITHUB_ROOT + '/commits'})",
         )
         await ctx.send(embed=embed)
 
