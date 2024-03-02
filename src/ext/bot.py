@@ -102,8 +102,7 @@ class Bot(VanirCog):
             dev = ctx.bot.application.owner.name
         embed = ctx.embed(
             title="I am Vanir, an advanced multi-purpose bot.",
-            description=f"I was made by {dev}, and am still in development. My prefixes "
-            f"are "
+            description=f"I was made by {dev}, and am still in development. My prefixes are "
             f"{natural_join(self.bot.command_prefix(self.bot, ctx.message)[1:])}",
         )
         n_user_commands = len(
