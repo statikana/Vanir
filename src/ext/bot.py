@@ -102,12 +102,12 @@ class Bot(VanirCog):
 
         proc = await asyncio.subprocess.create_subprocess_shell(
             # short hash - author name, relative time: commit message
-            cmd='git log --pretty=format:"`%h` - %an, %ar: %s" -n 5',
+            cmd='git log --pretty=format:"`%h` [%ar] %an: %s" -n 5 --graph',
             stdout=asyncio.subprocess.PIPE,
         )
         await proc.wait()
 
-        out = discord.utils.escape_markdown((await proc.stdout.read()).decode("utf-8"))
+        out = (await proc.stdout.read()).decode("utf-8")
 
         embed.add_field(
             name=f"Recent Changes",
