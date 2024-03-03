@@ -1,4 +1,7 @@
+import asyncio
 import enum
+import io
+import re
 import inspect
 import logging
 import math
@@ -9,9 +12,7 @@ import discord
 import texttable
 from discord import Interaction
 from discord.ext import commands
-from discord.ext.commands import Context
-from discord.ext.commands._types import BotT
-from discord.ext.commands.converter import T_co
+from PIL import Image, ImageFont, ImageDraw
 
 from src.constants import GITHUB_ROOT
 
@@ -245,7 +246,10 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         await itx.response.send_modal(modal)
 
     async def update(
-        self, itx: discord.Interaction = None, source_button: discord.ui.Button = None
+        self,
+        itx: discord.Interaction = None,
+        source_button: discord.ui.Button = None,
+        update_content: bool = True,
     ):
         """Called after every button press - enables and disables the appropriate buttons, and changes colors.
         Also fetches te new embed and edits the message and view to the new content."""
@@ -270,22 +274,32 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                     else:
                         if i.emoji.name != "\N{Cross Mark}":
                             i.style = discord.ButtonStyle.grey
-
-        if self.message is not None:
-            embed = await self.update_embed()
-            if itx is not None:
-                try:
-                    await itx.response.edit_message(embed=embed, view=self)
-                except discord.InteractionResponded:
-                    await itx.edit_original_response(embed=embed, view=self)
+        if update_content:
+            if self.message is not None:
+                embed = await self.update_embed()
+                if isinstance(embed, tuple):
+                    embed, file = embed
+                else:
+                    embed, file = embed, None
+                if itx is not None:
+                    try:
+                        await itx.response.edit_message(
+                            embed=embed, view=self, attachments=[file] if file else None
+                        )
+                    except discord.InteractionResponded:
+                        await itx.edit_original_response(
+                            embed=embed, view=self, attachments=[file] if file else None
+                        )
+                else:
+                    await self.message.edit(
+                        embed=embed, view=self, attachments=[file] if file else None
+                    )
             else:
-                await self.message.edit(embed=embed, view=self)
-        else:
-            logging.warning(
-                f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
-            )
+                logging.warning(
+                    f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
+                )
 
-    async def update_embed(self) -> discord.Embed:
+    async def update_embed(self) -> discord.Embed | tuple[discord.Embed, discord.File]:
         """To be implemented by children classes"""
         raise NotImplemented
 
@@ -306,6 +320,7 @@ class AutoTablePager(VanirPager):
         bot: Vanir,
         user: discord.User,
         *,
+        as_image: bool = True,
         headers: list[str],
         rows: list[VanirPagerT],
         rows_per_page: int,
@@ -314,13 +329,14 @@ class AutoTablePager(VanirPager):
         include_hline: bool = False,
     ):
         super().__init__(bot, user, rows, rows_per_page)
+        self.as_image = as_image
         self.headers = headers
         self.rows = self.items
         self.data_name = data_name
         self.dtypes = dtypes
         self.include_hline = include_hline
 
-    async def update_embed(self) -> discord.Embed:
+    async def update_embed(self):
 
         table = texttable.Texttable(61)
         table.header(self.headers)
@@ -349,14 +365,64 @@ class AutoTablePager(VanirPager):
         else:
             title = f"Page {self.page+1} / {self.n_pages}"
         text = table.draw()
-        text = text.replace("True", fbool(True) + " ").replace(
-            "False", fbool(False) + "   "
-        )
 
-        embed = VanirContext.syn_embed(
-            title=title, description=f"```ansi\n{text}```", user=self.user
-        )
-        return embed
+        if self.as_image:
+            thread = await asyncio.to_thread(self.draw_image, text)
+            return thread
+        else:
+            text = text.replace("True", fbool(True) + " ").replace(
+                False, fbool(False) + "   "
+            )
+            embed = VanirContext.syn_embed(description=text, user=self.user)
+
+    def draw_image(self, text: str) -> tuple[discord.Embed, discord.File]:
+        font_size = 50
+        width = len(text[: text.index("\n")]) * font_size
+        height = (text.strip("\n").count("\n") + 1) * font_size
+
+        image = Image.new("RGBA", (width, height), (0, 0, 0))
+
+        font = ImageFont.truetype("assets/Monospace.ttf", size=font_size)
+        draw = ImageDraw.Draw(image)
+
+        false = [m.start() for m in re.finditer(r"False", text)]
+        true = [m.start() for m in re.finditer(r"True", text)]
+
+        # changes = set(true)
+
+        pos = [0, 0]
+
+        for i, char in enumerate(text):
+            if char == "\n":
+                pos = [0, pos[1] + font_size]
+                continue
+
+            color = (255, 255, 255)
+
+            for s in true:
+                if 0 <= i - s <= 3:
+                    color = (0, 255, 0)
+                    set_f = True
+
+            for s in false:
+                if 0 <= i - s <= 4:
+                    color = (255, 0, 0)
+                    set_f = True
+
+            draw.text(
+                (pos[0], pos[1]), char, font=font, stroke_fill=color, stroke_width=1
+            )
+
+            pos[0] += font_size
+
+        buffer = io.BytesIO()
+        image.save(buffer, "png")
+        buffer.seek(0)
+        file = discord.File(buffer, filename="table.png")
+
+        embed = VanirContext.syn_embed("something", user=self.user)
+        embed.set_image(url="attachment://table.png")
+        return embed, file
 
 
 class CustomPageModal(VanirModal, title="Select Page"):

@@ -68,9 +68,6 @@ class VanirContext(commands.Context):
         color: discord.Color = None,
         url: str | None = None,
     ) -> discord.Embed:
-        if title is None and description is None:
-            raise ValueError("Must provide either a title or a description")
-
         if color is None:
             if isinstance(self.author, discord.Member):
                 color = self.author.top_role.color
@@ -90,16 +87,13 @@ class VanirContext(commands.Context):
 
     @staticmethod
     def syn_embed(
-        title: str | None,
+        title: str | None = None,
         description: str | None = None,
         color: discord.Color = None,
         url: str | None = None,
         *,
         user: discord.User | discord.Member,
     ) -> discord.Embed:
-        if title is None and description is None:
-            raise ValueError("Must provide either a title or a description")
-
         if color is None:
             if isinstance(user, discord.Member):
                 color = user.top_role.color

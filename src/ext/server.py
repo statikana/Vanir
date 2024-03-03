@@ -18,6 +18,7 @@ class Server(VanirCog):
         members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)
         headers = ["name", "joined at"]
         dtypes = ["t", "t"]
+
         view = AutoTablePager(
             ctx.bot,
             ctx.author,
@@ -26,9 +27,10 @@ class Server(VanirCog):
             dtypes=dtypes,
             rows_per_page=10,
         )
-        embed = await view.update_embed()
-        view.message = await ctx.reply(embed=embed, view=view)
-        await view.update()
+
+        embed, file = await view.update_embed()
+        await view.update(update_content=False)
+        view.message = await ctx.reply(embed=embed, view=view, files=[file])
 
     @vanir_command(aliases=["clean"])
     @commands.has_permissions(manage_messages=True)

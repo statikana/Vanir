@@ -2,12 +2,12 @@ from datetime import datetime
 
 import asyncpg
 import discord
-import fuzzywuzzy.fuzz
 from discord.ext import commands
 
 from src.types.command import AutoTablePager, TaskIDConverter, VanirCog
 from src.types.core import Vanir, VanirContext
 from src.util.command import vanir_group
+from src.util.parse import fuzzsort
 
 
 class Todo(VanirCog):
@@ -120,18 +120,16 @@ class Todo(VanirCog):
         todos = await self.bot.db_todo.get_all_todo(
             ctx.author.id, include_completed=True
         )
-        threshold = 20
-
-        pairs: list[tuple[asyncpg.Record, int]] = [
-            (t, fuzzywuzzy.fuzz.ratio(query, t["title"])) for t in todos
-        ]
-        pairs.sort(key=lambda t: t[1], reverse=True)
-
-        trimmed = [t[0] for t in filter(lambda t: t[1] >= threshold, pairs)]
+        trimmed = fuzzsort(query, todos, key=lambda t: t["title"], threshold=30)
         await self.show_todos(ctx, trimmed, autosort=False)
 
     async def show_todos(
-        self, ctx: VanirContext, todos: list[asyncpg.Record], *, autosort: bool = True
+        self,
+        ctx: VanirContext,
+        todos: list[asyncpg.Record],
+        *,
+        autosort: bool = True,
+        as_image: bool = True,
     ):
 
         results_rows = [
@@ -151,15 +149,19 @@ class Todo(VanirCog):
         view = AutoTablePager(
             self.bot,
             ctx.author,
-            headers=["task", "created", "completed?", "id"],
+            headers=["task", "created", "done?", "id"],
             rows=results_rows,
-            rows_per_page=6,
+            rows_per_page=10,
             include_hline=True,
         )
-
-        embed = await view.update_embed()
-        view.message = await ctx.reply(embed=embed, view=view, ephemeral=True)
-        await view.update()
+        if as_image:
+            embed, file = await view.update_embed()
+            await view.update(update_content=False)
+            view.message = await ctx.reply(embed=embed, view=view, files=[file])
+        else:
+            embed = await view.update_embed()
+            await view.update(update_content=False)
+            view.message = await ctx.reply(embed=embed, view=view)  # type: ignore
 
 
 async def setup(bot: Vanir):

@@ -1,9 +1,15 @@
+import typing
 from enum import Enum
 import re
 from urllib.parse import urlparse
 
+from fuzzywuzzy import fuzz
+
 from src.constants import COLOR_INDEX
 from src.util.pregex import SLUG_REGEX
+
+
+FuzzyT = typing.TypeVar("FuzzyT")
 
 
 def find_filename(url: str):
@@ -16,7 +22,7 @@ def find_ext(url: str):
     return filename[filename.rfind(".") + 1 :]
 
 
-def closest_name(start_hex: str) -> tuple[str, int]:
+def closest_color_name(start_hex: str) -> tuple[str, int]:
     start = int(start_hex, 16)
     best: tuple[str, int] | None = None
     for col, (check_hex, _) in COLOR_INDEX.items():
@@ -33,6 +39,28 @@ def closest_name(start_hex: str) -> tuple[str, int]:
 
 def ensure_slug(slug: str) -> str:
     return SLUG_REGEX.sub("", slug).lower().strip(" .-")
+
+
+def fuzzsort(
+    source: str,
+    values: list[FuzzyT],
+    /,
+    *,
+    key: typing.Callable[[FuzzyT], str] = lambda f: str(f),
+    output: typing.Callable[[FuzzyT], typing.Any] = lambda v: v,
+    threshold: int = 0,
+) -> list[FuzzyT]:
+    pairs: list[tuple[FuzzyT, int]] = [
+        (s, fuzz.partial_token_set_ratio(source, key(s))) for s in values
+    ]
+
+    std = sorted(pairs, key=lambda t: t[1], reverse=True)
+
+    flt = filter(lambda t: t[1] >= threshold, std)
+
+    out = list(output(v[0]) for v in flt)
+
+    return out
 
 
 class Convention(Enum):

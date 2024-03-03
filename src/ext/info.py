@@ -29,7 +29,7 @@ from src.util.command import (
     vanir_command,
 )
 from src.util.fmt import format_dict, fbool
-from src.util.parse import closest_name, find_filename, find_ext
+from src.util.parse import closest_color_name, find_filename, find_ext
 
 import unicodedata
 
@@ -198,7 +198,7 @@ class Info(VanirCog):
         }
 
         if member is not None:
-            data.update({"Color": closest_name(str(member.color)[1:])[0].title()})
+            data.update({"Color": closest_color_name(str(member.color)[1:])[0].title()})
 
         embed.add_field(name="Misc. Data", value=format_dict(data), inline=False)
 
