@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import asyncpg
 import discord
 from discord.ext import commands
@@ -16,9 +14,7 @@ class Todo(VanirCog):
     emoji = "\N{Spiral Note Pad}"
 
     @vanir_group()
-    async def todo(
-        self, ctx: VanirContext, *, task: str = None, description: str = None
-    ):
+    async def todo(self, ctx: VanirContext, *, task: str = None):
         if task is None:
             await ctx.invoke(self.get, True, False)  # type: ignore
         else:

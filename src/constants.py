@@ -1,5 +1,3 @@
-from assets.color_db import COLORS as COLOR_INDEX
-
 LANGUAGE_INDEX = {
     "AR": "Arabic",
     "BG": "Bulgarian",
