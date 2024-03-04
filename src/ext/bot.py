@@ -138,7 +138,7 @@ class Bot(VanirCog):
         out = (await proc.stdout.read()).decode("utf-8")
 
         embed.add_field(
-            name=f"Recent Changes",
+            name="Recent Changes",
             value=f"```ansi\n{out}\n```[[view full change log here]]({GITHUB_ROOT + '/commits'})",
             inline=False,
         )

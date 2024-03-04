@@ -20,8 +20,6 @@ from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
 from src.util.fmt import fbool
 
-empty = inspect.Parameter.empty
-
 VanirPagerT = TypeVar("VanirPagerT")
 CommandT = TypeVar("CommandT", bound=commands.Command)
 
@@ -45,6 +43,7 @@ class VanirCog(commands.Cog):
         logging.info(f"{self.__class__.__name__} loaded")
 
 
+# noinspection PyUnresolvedReferences
 class VanirView(discord.ui.View):
     def __init__(
         self,
@@ -68,7 +67,8 @@ class VanirView(discord.ui.View):
                     return True
                 if self.user is None:
                     raise ValueError(
-                        "If view does not accept every interaction and uses AcceptItx, .user must be set."
+                        "If view does not accept every interaction "
+                        "and uses AcceptItx, .user must be set."
                     )
                 if self.accept_itx == AcceptItx.AUTHOR_ONLY:
                     return itx.user.id == self.user.id
@@ -154,7 +154,8 @@ class AutoCachedView(VanirView):
         for c in state.items:
             self.add_item(c)
 
-        # because the buttons are all the same object, by changing the object in memory here, it changes EVERYWHERE
+        # because the buttons are all the same object, by changing
+        # the object in memory here, it changes EVERYWHERE
 
         await self.check_buttons()
 
@@ -172,7 +173,8 @@ class AutoCachedView(VanirView):
         await self.check_buttons()
 
     async def check_buttons(self):
-        # at the back of the cache or there is no cache (it is redundant to check for cache count here but meh)
+        # at the back of the cache or there is no cache
+        # (it is redundant to check for cache count here but meh)
         self.previous_state.disabled = self.state_index == 0 or len(self.states) == 0
         self.next_state.disabled = (
             self.state_index is None or self.state_index == len(self.states) - 1
@@ -251,8 +253,9 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         source_button: discord.ui.Button = None,
         update_content: bool = True,
     ):
-        """Called after every button press - enables and disables the appropriate buttons, and changes colors.
-        Also fetches te new embed and edits the message and view to the new content."""
+        """Called after every button press - enables and disables the
+        appropriate buttons, and changes colors. Also fetches the
+        new embed and edits the message and view to the new content."""
         if self.finish.disabled:
             await itx.response.edit_message(view=self)
             return
@@ -296,7 +299,8 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                     )
             else:
                 logging.warning(
-                    f"Pager has no message attached (VanirPagerT: {VanirPagerT}), cannot update message"
+                    f"Pager has no message attached "
+                    f"(VanirPagerT: {VanirPagerT}), cannot update message"
                 )
 
     async def update_embed(self) -> discord.Embed | tuple[discord.Embed, discord.File]:
@@ -439,9 +443,9 @@ class CustomPageModal(VanirModal, title="Select Page"):
         value = self.page_input.value
         try:
             value = int(value)
-        except TypeError:
-            raise ValueError("Please enter a number")
-        if not (1 <= value <= self.view.n_pages):
+        except TypeError as exc:
+            raise ValueError("Please enter a number") from exc
+        if not 1 <= value <= self.view.n_pages:
             raise ValueError(
                 f"Please enter a page number between 1 and {self.view.n_pages}"
             )
