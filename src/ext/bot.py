@@ -5,7 +5,7 @@ import pathlib
 import discord.utils
 from discord.ext import commands
 
-from src.constants import GITHUB_ROOT
+from src.constants import ANSI, GITHUB_ROOT
 from src.types.command import GitHubView, VanirCog
 from src.util.command import vanir_command
 from src.types.core import VanirContext, Vanir
@@ -125,8 +125,12 @@ class Bot(VanirCog):
         )
 
         proc = await asyncio.subprocess.create_subprocess_shell(
-            # short hash - author name, relative time: commit message
-            cmd='git log --pretty=format:"`%h` [%ar] %an: %s" -n 5 --graph',
+            # fmt: off
+            # [hash] [relative time] author:  commit message
+            cmd=f"git log -n 5 --pretty=format:\""
+                f"{ANSI['white']}[{ANSI['cyan']}%h{ANSI['white']} ̶  {ANSI['red']}%ar{ANSI['white']}] %an:%n"
+                f"{ANSI['grey']}➥%s\"",
+            # fmt: on
             stdout=asyncio.subprocess.PIPE,
         )
         await proc.wait()
@@ -135,7 +139,7 @@ class Bot(VanirCog):
 
         embed.add_field(
             name=f"Recent Changes",
-            value=f"{out}\n[[view full change log here]]({GITHUB_ROOT + '/commits'})",
+            value=f"```ansi\n{out}\n```[[view full change log here]]({GITHUB_ROOT + '/commits'})",
             inline=False,
         )
         view = GitHubView(self.bot)

@@ -88,3 +88,17 @@ ALL_PERMISSIONS = (
 )
 
 GITHUB_ROOT = "https://github.com/StatHusky13/Vanir"
+
+ANSI_CODES = {
+    0: "",  # we'll pretend this isn't dumb
+    30: "grey",
+    31: "red",
+    32: "green",
+    33: "yellow",
+    34: "blue",
+    35: "pink",
+    36: "cyan",
+    37: "white",
+}
+
+ANSI = {name: f"\N{ESCAPE}[0;{code}m" for code, name in ANSI_CODES.items()}

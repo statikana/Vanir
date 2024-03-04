@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Generator
 import math
 
+from src.constants import ANSI
 from src.util.parse import Convention
 
 
@@ -64,20 +65,21 @@ def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY):
     return f"{nb_fmt} {ext}"
 
 
-def ctext(text: str, fmt: int = 0, text_col: int = 30, bg_col: int = None):
-    start = f"\u001b[{fmt}"
-    if text_col:
-        start += f";{text_col}"
-    if bg_col:
-        start += f";{bg_col}"
-    return f"{start}m{text}"
+def ctext(text: str, color: str):
+    return f"{ANSI[color]}{text}{ANSI['reset']}"
+    # start = f"\u001b[{fmt}"
+    # if text_col:
+    #     start += f";{text_col}"
+    # if bg_col:
+    #     start += f";{bg_col}"
+    # return f"{start}m{text}"
 
 
 def fbool(b: bool):
     if b:
-        text = ctext("Yes", text_col=32)  # green for True
+        text = ctext("Yes", color="green")  # green for True
     else:
-        text = ctext("No", text_col=31)  # Red for False
+        text = ctext("No", color="red")  # Red for False
     text += "\u001b[0m"
     return text
 
