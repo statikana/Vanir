@@ -27,7 +27,7 @@ class Language(VanirCog):
 
         if response.status != 200:
             embed = ctx.embed(
-                f"Could not find a definition for {term}", color=discord.Color.red
+                f"Could not find a definition for {term}", color=discord.Color.red()
             )
             return await ctx.reply(embed=embed)
 
