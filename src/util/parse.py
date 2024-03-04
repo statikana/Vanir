@@ -41,7 +41,7 @@ def ensure_slug(slug: str) -> str:
     return SLUG_REGEX.sub("", slug).lower().strip(" .-")
 
 
-def fuzzsort(
+def fuzzysearch(
     source: str,
     values: list[FuzzyT],
     /,

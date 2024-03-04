@@ -24,7 +24,12 @@ class Language(VanirCog):
         """Defines a word"""
         url = "https://api.dictionaryapi.dev/api/v2/entries/en/"
         response = await self.bot.session.get(url + term)
-        response.raise_for_status()
+
+        if response.status != 200:
+            embed = ctx.embed(
+                f"Could not find a definition for {term}", color=discord.Color.red
+            )
+            return await ctx.reply(embed=embed)
 
         json = (await response.json())[0]
         title = f"{term}"

@@ -67,12 +67,6 @@ def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY):
 
 def ctext(text: str, color: str):
     return f"{ANSI[color]}{text}{ANSI['reset']}"
-    # start = f"\u001b[{fmt}"
-    # if text_col:
-    #     start += f";{text_col}"
-    # if bg_col:
-    #     start += f";{bg_col}"
-    # return f"{start}m{text}"
 
 
 def fbool(b: bool):
@@ -80,7 +74,6 @@ def fbool(b: bool):
         text = ctext("Yes", color="green")  # green for True
     else:
         text = ctext("No", color="red")  # Red for False
-    text += "\u001b[0m"
     return text
 
 

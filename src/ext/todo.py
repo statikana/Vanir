@@ -7,7 +7,7 @@ from discord.ext import commands
 from src.types.command import AutoTablePager, TaskIDConverter, VanirCog
 from src.types.core import Vanir, VanirContext
 from src.util.command import vanir_group
-from src.util.parse import fuzzsort
+from src.util.parse import fuzzysearch
 
 
 class Todo(VanirCog):
@@ -120,7 +120,7 @@ class Todo(VanirCog):
         todos = await self.bot.db_todo.get_all_todo(
             ctx.author.id, include_completed=True
         )
-        trimmed = fuzzsort(query, todos, key=lambda t: t["title"], threshold=30)
+        trimmed = fuzzysearch(query, todos, key=lambda t: t["title"], threshold=30)
         await self.show_todos(ctx, trimmed, autosort=False)
 
     async def show_todos(
