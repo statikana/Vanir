@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 import enum
 import io
 import re
@@ -469,6 +470,18 @@ class TaskIDConverter(commands.Converter[int]):
                 ValueError("Could not find task with name or ID " + argument)
             )
         return task_id
+
+
+@dataclass
+class ModalField:
+    label: str
+    style: discord.TextStyle = discord.TextStyle.short
+    default: str | None = None
+    placeholder: str | None = None
+    value: str | None = None
+    required: bool = True
+
+    embed_attr: str
 
 
 class VanirHybridGroup(commands.HybridGroup):

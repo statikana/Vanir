@@ -4,7 +4,8 @@ import discord
 from discord import Interaction
 from discord._types import ClientT
 from discord.ext import commands
-from src.types.command import VanirCog, VanirModal, VanirView
+from traitlets import Callable
+from src.types.command import ModalField, VanirCog, VanirModal, VanirView
 from src.constants import ANSI, ANSI_CODES, ANSI_EMOJIS
 
 from src.types.core import Vanir, VanirContext
@@ -175,7 +176,15 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.success,
     )
     async def add_field(self, itx: discord.Interaction, button: discord.Button):
-        await itx.response.send_modal(EmbedAddFieldModal(self.embed))
+        await self.send_modal(
+            itx,
+            "add_field",
+            "Add Field",
+            fields=[
+                ModalField("Field Name")
+            ]
+            
+        )
 
     @discord.ui.button(
         label="Remove Field", emoji="\N{Cross Mark}", style=discord.ButtonStyle.danger
@@ -190,7 +199,14 @@ class EmbedView(VanirView):
         row=1,
     )
     async def set_color(self, itx: discord.Interaction, button: discord.Button):
-        await itx.response.send_modal(EmbedSetColorModal(self.embed))
+        await self.send_modal(
+            itx,
+            "color"
+            "Set Embed Color",
+            fields=[
+                ModalField("Enter Color as Hex")
+            ]
+        )
 
     @discord.ui.button(
         label="Set URL",
@@ -199,9 +215,56 @@ class EmbedView(VanirView):
         row=1,
     )
     async def set_url(self, itx: discord.Interaction, button: discord.Button):
-        await itx.response.send_modal(EmbedSetURLModal(self.embed))
+        await self.send_modal(
+            itx,
+            "url"
+            "Set URL",
+            fields=[
+                ModalField("Enter Embed URL", style=discord.TextStyle.long)
+            ]
+        )
+        discord.Embed.url
 
-    @discord.ui
+    @discord.ui.button(
+        label="Set Footer",
+        emoji="\N{Small Blue Diamond}",
+        style=discord.ButtonStyle.blurple
+    )
+    async def set_footer(self, itx: discord.Interaction, button: discord.Button):
+        values = await self.send_modal(
+            funcname=self.embed.set_footer,
+            title="Set Footer",
+            fields=[ModalField("Enter Footer Text")]
+        )
+    
+    async def send_modal(
+        self,
+        itx: discord.Interaction,
+        title: str,
+        fields: list[ModalField]
+    ):
+        modal = discord.ui.Modal(
+            title=title,
+            timeout=None
+        )
+        for field in fields:
+            item = discord.ui.TextInput(
+                style=field.style,
+                label=field.label,
+                default=field.default,
+                placeholder=field.placeholder,
+                required=field.required
+            )
+            modal.add_item(item)
+        
+        await itx.response.send_modal(modal)
+        if await modal.wait():
+            return
+        
+        children: list[discord.TextInput] = modal.children
+        values = (c.value for c in children)
+
+        return values
 
 
 class BasicInput(discord.ui.Modal):
