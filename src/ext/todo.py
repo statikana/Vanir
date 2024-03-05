@@ -125,7 +125,7 @@ class Todo(VanirCog):
         todos: list[asyncpg.Record],
         *,
         autosort: bool = True,
-        as_image: bool = True,
+        as_image: bool = False,
     ):
 
         results_rows = [
@@ -147,17 +147,14 @@ class Todo(VanirCog):
             ctx.author,
             headers=["task", "created", "done?", "id"],
             rows=results_rows,
+            as_image=as_image,
             rows_per_page=10,
             include_hline=True,
         )
-        if as_image:
-            embed, file = await view.update_embed()
-            await view.update(update_content=False)
-            view.message = await ctx.reply(embed=embed, view=view, files=[file])
-        else:
-            embed = await view.update_embed()
-            await view.update(update_content=False)
-            view.message = await ctx.reply(embed=embed, view=view)  # type: ignore
+
+        embed, file = await view.update_embed()
+        await view.update(update_content=False)
+        view.message = await ctx.reply(embed=embed, view=view, file=file)
 
 
 async def setup(bot: Vanir):

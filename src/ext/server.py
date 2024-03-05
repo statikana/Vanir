@@ -26,11 +26,12 @@ class Server(VanirCog):
             rows=[[m.name, m.joined_at.strftime("%Y/%m/%d %H:%M:%S")] for m in members],
             dtypes=dtypes,
             rows_per_page=10,
+            as_image=False,
         )
 
-        embed, file = await view.update_embed()
+        embed, _ = await view.update_embed()
         await view.update(update_content=False)
-        view.message = await ctx.reply(embed=embed, view=view, files=[file])
+        view.message = await ctx.reply(embed=embed, view=view)
 
     @vanir_command(aliases=["clean"])
     @commands.has_permissions(manage_messages=True)

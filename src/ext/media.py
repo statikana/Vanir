@@ -32,7 +32,7 @@ class Media(VanirCog):
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.rotate(degrees)
-        await send_file(ctx, self.rotate, msg, media)
+        await send_file(self.rotate, msg, media)
 
 
 async def setup(bot: Vanir):

@@ -90,7 +90,7 @@ ALL_PERMISSIONS = (
 GITHUB_ROOT = "https://github.com/StatHusky13/Vanir"
 
 ANSI_CODES = {
-    0: "",  # we'll pretend this isn't dumb
+    0: "reset",  # we'll pretend this isn't dumb
     30: "grey",
     31: "red",
     32: "green",
@@ -110,5 +110,5 @@ ANSI_EMOJIS = {
     "blue": "\U0001F499",
     "pink": "\U0001FA77",
     "cyan": "\U0001FA75",
-    "white": "\U0001F90D"
+    "white": "\U0001F90D",
 }

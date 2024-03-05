@@ -375,9 +375,12 @@ class AutoTablePager(VanirPager):
             return thread
         else:
             text = text.replace("True", fbool(True) + " ").replace(
-                False, fbool(False) + "   "
+                "False", fbool(False) + "   "
             )
-            embed = VanirContext.syn_embed(description=text, user=self.user)
+            embed = VanirContext.syn_embed(
+                description=f"```ansi\n{text}\n```", user=self.user
+            )
+            return embed, None
 
     def draw_image(self, text: str) -> tuple[discord.Embed, discord.File]:
         font_size = 50

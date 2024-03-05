@@ -1,6 +1,7 @@
 import functools
 import inspect
 from typing import Callable, Any
+from wand.image import Image
 
 import discord
 from discord.app_commands import Choice
@@ -14,11 +15,9 @@ from src.types.command import (
 )
 from src.types.core import VanirContext, Vanir
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
-from wand.image import Image
 
-from src.constants import LANGUAGE_INDEX
-from src.util.fmt import fmt_size
-from src.util.parse import Convention, find_ext
+from src import constants
+from src.util import fmt
 
 
 def discover_group(group: commands.Group) -> set[commands.Command]:
@@ -70,17 +69,16 @@ def get_param_annotation(param: inspect.Parameter) -> str:
 
         if range_min is None:
             return f"{rtype_name} <= {range_max}"
-        elif range_max is None:
+        if range_max is None:
             return f"{rtype_name} >= {range_min}"
-        else:
-            return f"{range_min} <= {rtype_name} <= {range_max}"
+        return f"{range_min} <= {rtype_name} <= {range_max}"
     return str(ptype)
 
 
-async def langcode_autocomplete(itx: discord.Interaction, current: str):
-    options = [Choice(name=f"{v} [{k}]", value=k) for k, v in LANGUAGE_INDEX.items()][
-        :25
-    ]
+async def langcode_autocomplete(_itx: discord.Interaction, current: str):
+    options = [
+        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_INDEX.items()
+    ][:25]
     options = sorted(
         filter(lambda c: current.lower() in c.name.lower(), options),
         key=lambda c: c.name,
@@ -93,13 +91,12 @@ async def get_media_info(media: MediaInterface):
     if isinstance(media, ImageInterface):
         img = Image(blob=blob)
         return MediaInfo(f"image/{img.format}", img.length_of_bytes)
-    elif isinstance(media, VideoInterface):
-        ext = find_ext(media.url)
+    if isinstance(media, VideoInterface):
+        ext = fmt.find_ext(media.url)
         return MediaInfo(f"image/{ext}", len(blob))
 
 
 async def send_file(
-    ctx: VanirContext,
     source_cmd: commands.HybridCommand,
     msg: discord.Message,
     media: MediaInterface,
@@ -114,7 +111,8 @@ async def send_file(
     )
     embed.add_field(
         name="File Size [Output]",
-        value=f"`{fmt_size(new_info.size, Convention.BINARY)}` **|** `{fmt_size(new_info.size, Convention.DECIMAL)}`",
+        value=f"`{fmt.fmt_size(new_info.size, fmt.Convention.BINARY)}` **|** "
+        f"`{fmt.fmt_size(new_info.size, fmt.Convention.DECIMAL)}`",
         inline=False,
     )
 
@@ -132,7 +130,8 @@ async def assure_working(ctx: VanirContext, media: MediaInterface):
     )
     embed.add_field(
         name="File Size [Input]",
-        value=f"`{fmt_size(media.initial_info.size, Convention.BINARY)}` **|** `{fmt_size(media.initial_info.size, Convention.DECIMAL)}`",
+        value=f"`{fmt.fmt_size(media.initial_info.size, fmt.Convention.BINARY)}` **|** "
+        f"`{fmt.fmt_size(media.initial_info.size, fmt.Convention.DECIMAL)}`",
         inline=False,
     )
     return await ctx.reply(embed=embed)

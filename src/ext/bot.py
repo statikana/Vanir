@@ -1,8 +1,8 @@
-import asyncio.subprocess
+import asyncio
+from asyncio import subprocess
 import inspect
 import pathlib
 
-import discord.utils
 from discord.ext import commands
 
 from src.constants import ANSI, GITHUB_ROOT
@@ -75,7 +75,8 @@ class Bot(VanirCog):
             )
             embed.add_field(
                 name="Lines",
-                value=f"`{str(first_line_num).rjust(4, '0')}` to `{str(first_line_num + n_lines).rjust(4, '0')}` [`{n_lines}` lines]",
+                value=f"`{str(first_line_num).rjust(4, '0')}` to "
+                f"`{str(first_line_num + n_lines).rjust(4, '0')}` [`{n_lines}` lines]",
                 inline=False,
             )
 
@@ -124,11 +125,12 @@ class Bot(VanirCog):
             value=f"I have `{n_user_commands}` commands and `{n_user_cogs}` modules.",
         )
 
-        proc = await asyncio.subprocess.create_subprocess_shell(
+        proc = await subprocess.create_subprocess_shell(
             # fmt: off
             # [hash] [relative time] author:  commit message
             cmd=f"git log -n 5 --pretty=format:\""
-                f"{ANSI['white']}[{ANSI['cyan']}%h{ANSI['white']} ̶  {ANSI['red']}%ar{ANSI['white']}] %an:%n"
+                f"{ANSI['white']}[{ANSI['cyan']}%h{ANSI['white']} - "
+                f"{ANSI['red']}%ar{ANSI['white']}] %an:%n"
                 f"{ANSI['grey']}➥%s\"",
             # fmt: on
             stdout=asyncio.subprocess.PIPE,
