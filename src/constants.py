@@ -87,7 +87,7 @@ ALL_PERMISSIONS = (
     + VOICE_CHANNEL_PERMISSIONS
 )
 
-GITHUB_ROOT = "https://github.com/StatHusky13/Vanir"
+GITHUB_ROOT = "https://github.com/statikana/Vanir"
 
 ANSI_CODES = {
     0: "reset",  # we'll pretend this isn't dumb

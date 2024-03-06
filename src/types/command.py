@@ -98,7 +98,7 @@ class GitHubView(VanirView):
         super().__init__(bot=bot)
 
         button = discord.ui.Button(
-            url=GITHUB_ROOT + path, emoji="\N{Squid}", label="View on GitHub"
+            url=f"{GITHUB_ROOT}/blob/main/{path}", emoji="\N{Squid}", label="View on GitHub"
         )
         self.add_item(button)
 
@@ -418,7 +418,7 @@ class AutoTablePager(VanirPager):
                     set_f = True
 
             draw.text(
-                (pos[0], pos[1]), char, font=font, stroke_fill=color, stroke_width=1
+                (pos[0], pos[1]), char, font=font, stroke_fill=color, stroke_width=1, spacing=4
             )
 
             pos[0] += font_size

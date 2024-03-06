@@ -65,7 +65,7 @@ class Todo(VanirCog):
             await ctx.reply(embed=embed, ephemeral=True)
             return
 
-        await self.show_todos(ctx, results)
+        await self.show_todos(ctx, results, as_image=False)
 
     @todo.command(aliases=["finish", "done", "completed"])
     async def complete(
