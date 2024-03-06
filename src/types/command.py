@@ -481,8 +481,6 @@ class ModalField:
     value: str | None = None
     required: bool = True
 
-    embed_attr: str
-
 
 class VanirHybridGroup(commands.HybridGroup):
     def command(self, aliases: list[str] = None):

@@ -1,5 +1,6 @@
 .idea
 env.py
+test.py
 .gitattributes
 __pycache__
 qodana.yaml
