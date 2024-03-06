@@ -2,6 +2,8 @@ import asyncio
 from asyncio import subprocess
 import inspect
 import pathlib
+import time
+import discord
 
 from discord.ext import commands
 
@@ -146,6 +148,21 @@ class Bot(VanirCog):
         )
         view = GitHubView(self.bot)
         await ctx.send(embed=embed, view=view)
+
+    @vanir_command(aliases=["up", "ut"])
+    async def uptime(self, ctx: VanirContext):
+        """Check how long I've been running"""
+        uptime = int(
+            time.time()
+            - (discord.utils.utcnow() - self.bot.launch_time).total_seconds()
+        )
+        rem, tot = (f"<t:{uptime}:{s}>" for s in ("R", "F"))
+        embed = ctx.embed()
+        embed.add_field(
+            name="Recent Launch",
+            value=f"{rem} [at {tot} `UTC`]",
+        )
+        await ctx.reply(embed=embed)
 
 
 async def setup(bot: Vanir):

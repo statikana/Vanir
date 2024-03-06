@@ -316,19 +316,18 @@ class EmbedView(VanirView):
         )
         self.embed.url = values[0]
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
-    
+
     @discord.ui.button(
         label="Send",
         emoji="\N{Envelope with Downwards Arrow Above}",
         style=discord.ButtonStyle.success,
-        row=2
+        row=2,
     )
     async def send(self, itx: discord.Interaction, button: discord.Button):
         if itx.message is not None:  # not ephemeral
             await itx.message.delete()
         await itx.response.defer()
         await itx.channel.send(embed=self.embed, view=None)
-
 
     async def _generate_modal(
         self, itx: discord.Interaction, title: str, fields: list[ModalField]

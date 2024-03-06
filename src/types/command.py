@@ -98,7 +98,9 @@ class GitHubView(VanirView):
         super().__init__(bot=bot)
 
         button = discord.ui.Button(
-            url=f"{GITHUB_ROOT}/blob/main/{path}", emoji="\N{Squid}", label="View on GitHub"
+            url=f"{GITHUB_ROOT}/blob/main/{path}",
+            emoji="\N{Squid}",
+            label="View on GitHub",
         )
         self.add_item(button)
 
@@ -288,15 +290,15 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                 if itx is not None:
                     try:
                         await itx.response.edit_message(
-                            embed=embed, view=self, attachments=[file] if file else None
+                            embed=embed, view=self, attachments=[file] if file else []
                         )
                     except discord.InteractionResponded:
                         await itx.edit_original_response(
-                            embed=embed, view=self, attachments=[file] if file else None
+                            embed=embed, view=self, attachments=[file] if file else []
                         )
                 else:
                     await self.message.edit(
-                        embed=embed, view=self, attachments=[file] if file else None
+                        embed=embed, view=self, attachments=[file] if file else []
                     )
             else:
                 logging.warning(
@@ -418,7 +420,12 @@ class AutoTablePager(VanirPager):
                     set_f = True
 
             draw.text(
-                (pos[0], pos[1]), char, font=font, stroke_fill=color, stroke_width=1, spacing=4
+                (pos[0], pos[1]),
+                char,
+                font=font,
+                stroke_fill=color,
+                stroke_width=1,
+                spacing=4,
             )
 
             pos[0] += font_size

@@ -29,6 +29,8 @@ class Vanir(commands.Bot):
         self.db_todo = Todo()
         self.session: VanirSession = VanirSession()
 
+        self.launch_time = discord.utils.utcnow()
+
     async def get_context(
         self,
         origin: discord.Message | discord.Interaction,
