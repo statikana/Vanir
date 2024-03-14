@@ -83,7 +83,7 @@ class Bot(VanirCog):
             )
 
             # the lines are already '\n' postfix-ed
-            snippet = "".join(l for l in lines[:line_preview_limit])[:4000]
+            snippet = "".join(line for line in lines[:line_preview_limit])[:4000]
             if n_lines > line_preview_limit:
                 snippet += "\n... [Snippet Cut Off]"
 

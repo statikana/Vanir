@@ -22,8 +22,6 @@ class Errors(VanirCog):
             embed = VanirContext.syn_embed(title=title, color=color, user=source.author)
             await source.reply(embed=embed)
         else:
-            user = source.user
-
             embed = VanirContext.syn_embed(title=title, color=color, user=source.user)
             await source.response.send_message(embed=embed, ephemeral=True)
 

@@ -1,6 +1,4 @@
-import discord
 from discord.ext import commands
-from discord.ext.commands import Range
 
 from src.types.command import VanirCog, AutoTablePager
 from src.util.command import vanir_command

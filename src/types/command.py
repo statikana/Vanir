@@ -19,7 +19,7 @@ from src.constants import GITHUB_ROOT
 
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
-from src.util.fmt import fbool
+from src.util.fmt import fmt_bool
 
 VanirPagerT = TypeVar("VanirPagerT")
 CommandT = TypeVar("CommandT", bound=commands.Command)
@@ -207,7 +207,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         self.items = items
         self.items_per_page = items_per_page
 
-        self.page = start_page
+        self.cur_page = start_page
         if items_per_page <= 0:
             raise ValueError("items_per_page must be greater than 0")
         if len(items) <= 0:
@@ -218,12 +218,12 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
     @discord.ui.button(emoji="\N{Black Left-Pointing Double Triangle}", disabled=True)
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.page = 0
+        self.cur_page = 0
         await self.update(itx, button)
 
     @discord.ui.button(emoji="\N{Leftwards Black Arrow}", disabled=True)
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.page -= 1
+        self.cur_page -= 1
         await self.update(itx, button)
 
     @discord.ui.button(emoji="\N{Cross Mark}", style=discord.ButtonStyle.danger)
@@ -237,12 +237,12 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
     @discord.ui.button(emoji="\N{Black Rightwards Arrow}", disabled=True)
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.page += 1
+        self.cur_page += 1
         await self.update(itx, button)
 
     @discord.ui.button(emoji="\N{Black Right-Pointing Double Triangle}", disabled=True)
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.page = self.n_pages - 1
+        self.cur_page = self.n_pages - 1
         await self.update(itx, button)
 
     @discord.ui.button(label="GOTO", emoji="\N{Direct Hit}")
@@ -262,12 +262,12 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         if self.finish.disabled:
             await itx.response.edit_message(view=self)
             return
-        if self.page == 0:
+        if self.cur_page == 0:
             VanirPager.disable(self.first, self.back)
         else:
             VanirPager.enable(self.first, self.back)
 
-        if self.page == self.n_pages - 1:
+        if self.cur_page == self.n_pages - 1:
             VanirPager.disable(self.next, self.last)
         else:
             VanirPager.enable(self.next, self.last)
@@ -308,7 +308,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
     async def update_embed(self) -> discord.Embed | tuple[discord.Embed, discord.File]:
         """To be implemented by children classes"""
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def enable(*buttons: discord.ui.Button):
@@ -350,7 +350,9 @@ class AutoTablePager(VanirPager):
 
         table.add_rows(
             self.rows[
-                self.page * self.items_per_page : (self.page + 1) * self.items_per_page
+                self.cur_page
+                * self.items_per_page : (self.cur_page + 1)
+                * self.items_per_page
             ],
             header=False,
         )
@@ -368,24 +370,29 @@ class AutoTablePager(VanirPager):
             table.set_cols_dtype(self.dtypes)
 
         if self.data_name is not None:
-            title = f"{self.data_name}: Page {self.page+1} / {self.n_pages}"
+            title = f"{self.data_name}: Page {self.cur_page+1} / {self.n_pages}"
         else:
-            title = f"Page {self.page+1} / {self.n_pages}"
+            title = f"Page {self.cur_page+1} / {self.n_pages}"
         text = table.draw()
 
         if self.as_image:
-            thread = await asyncio.to_thread(self.draw_image, text)
-            return thread
+            embed, file_ = await asyncio.to_thread(self.draw_image, text, title)
         else:
-            text = text.replace("True", fbool(True) + " ").replace(
-                "False", fbool(False) + "   "
+            text = text.replace("True", fmt_bool(True) + " ").replace(
+                "False", fmt_bool(False) + "   "
             )
-            embed = VanirContext.syn_embed(
-                description=f"```ansi\n{text}\n```", user=self.user
+            embed, file_ = (
+                VanirContext.syn_embed(
+                    title=title, description=f"```ansi\n{text}\n```", user=self.user
+                ),
+                None,
             )
-            return embed, None
 
-    def draw_image(self, text: str) -> tuple[discord.Embed, discord.File]:
+        return embed, file_
+
+    def draw_image(
+        self, text: str, embed_title: str
+    ) -> tuple[discord.Embed, discord.File]:
         font_size = 50
         width = len(text[: text.index("\n")]) * font_size
         height = (text.strip("\n").count("\n") + 1) * font_size
@@ -412,12 +419,10 @@ class AutoTablePager(VanirPager):
             for s in true:
                 if 0 <= i - s <= 3:
                     color = (0, 255, 0)
-                    set_f = True
 
             for s in false:
                 if 0 <= i - s <= 4:
                     color = (255, 0, 0)
-                    set_f = True
 
             draw.text(
                 (pos[0], pos[1]),
@@ -460,7 +465,7 @@ class CustomPageModal(VanirModal, title="Select Page"):
             raise ValueError(
                 f"Please enter a page number between 1 and {self.view.n_pages}"
             )
-        self.view.page = value - 1
+        self.view.cur_page = value - 1
         await self.view.update(itx=itx, source_button=VanirPager.custom)
 
 

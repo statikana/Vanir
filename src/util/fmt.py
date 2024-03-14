@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import Any, Generator
+from typing import Any, Generator, Iterable
 import math
 
 from src.constants import ANSI
@@ -69,7 +68,7 @@ def ctext(text: str, color: str):
     return f"{ANSI[color]}{text}{ANSI['reset']}"
 
 
-def fbool(b: bool):
+def fmt_bool(b: bool):
     if b:
         text = ctext("Yes", color="green")  # green for True
     else:
@@ -77,16 +76,16 @@ def fbool(b: bool):
     return text
 
 
-def natural_join(l: list[str] | Generator[str, Any, Any]) -> str:
-    if isinstance(l, Generator):
-        l = list(l)
-    n = len(l)
+def natural_join(it: Iterable[str]) -> str:
+    if isinstance(it, Generator):
+        it = list(it)
+    n = len(it)
     match n:
         case 0:
             return ""
         case 1:
-            return l[0]
+            return it[0]
         case 2:
-            return f"{l[0]} and {l[1]}"
-        case other:
-            return f"{', '.join(l[:-1])}, and {l[-1]}"
+            return f"{it[0]} and {it[1]}"
+        case _:
+            return f"{', '.join(it[:-1])}, and {it[-1]}"

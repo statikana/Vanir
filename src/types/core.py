@@ -1,6 +1,5 @@
 import datetime
-from typing import AsyncGenerator, Any
-import pkgutil
+from typing import Any
 from src.ext import MODULE_PATHS
 
 import aiohttp
@@ -8,7 +7,6 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-import logging
 
 from src import env
 from src.env import DEEPL_API_KEY

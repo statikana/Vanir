@@ -1,6 +1,5 @@
 import typing
 from enum import Enum
-import re
 from urllib.parse import urlparse
 
 from fuzzywuzzy import fuzz

@@ -45,7 +45,7 @@ class Currency(VanirCog):
     ):
         """Give some coins to another user"""
         if amount < 0:
-            raise ValueError(f"Amount cannot be negative")
+            raise ValueError("Amount cannot be negative")
         from_bal = await self.bot.db_currency.balance(ctx.author.id)
         if from_bal < amount:
             raise ValueError(
@@ -55,7 +55,7 @@ class Currency(VanirCog):
         to_bal = await self.bot.db_currency.balance(user.id)
 
         data = {
-            f"Amount": f"`{amount}`\N{Coin}",
+            "Amount": f"`{amount}`\N{Coin}",
             f"{ctx.author.name} [ID {ctx.author.id}]": f"{from_bal:,}\N{Coin} -> {from_bal-amount:,}\N{Coin}",  # from
             f"{user.name} [ID {user.id}]": f"{to_bal:,}\N{Coin} -> {to_bal + amount:,}\N{Coin}",  # to
         }
@@ -96,7 +96,7 @@ class Currency(VanirCog):
         to_bal = await self.bot.db_currency.balance(ctx.author.id)
 
         data = {
-            f"Amount": f"`{amount}`\N{Coin}",
+            "Amount": f"`{amount}`\N{Coin}",
             f"{user.name} [ID {user.id}]": f"{from_bal:,} -> {from_bal-amount:,}\N{Coin}",  # from
             f"{ctx.author.name} [ID {ctx.author.id}]": f"{to_bal:,} -> {to_bal + amount:,}\N{Coin}",  # to
         }
@@ -152,7 +152,7 @@ class GiveCoinsView(VanirView):
         )
 
         data = {
-            f"Amount": f"`{self.amount}`\N{Coin}",
+            "Amount": f"`{self.amount}`\N{Coin}",
             f"{self.from_user.name} [ID {self.from_user.id}]": f"{self.from_bal:,}\N{Coin} -> {new_from:,}\N{Coin}",
             f"{self.to_user.name} [ID {self.to_user.id}": f"{self.to_bal:,}\N{Coin} -> {new_to:,}\N{Coin}",
         }

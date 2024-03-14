@@ -28,7 +28,7 @@ from src.util.command import (
     get_param_annotation,
     vanir_command,
 )
-from src.util.fmt import format_dict, fbool
+from src.util.fmt import format_dict, fmt_bool
 from src.util.parse import closest_color_name, find_filename, find_ext
 
 import unicodedata
@@ -124,7 +124,7 @@ class Info(VanirCog):
                 codepoint = hex(ord(c))[2:].rjust(4, "0")
                 codepoints.append(codepoint)
 
-                info_base = f"https://unicodeplus.com/U+"
+                info_base = "https://unicodeplus.com/U+"
                 info_hot = f"[`{full_name}`]({info_base + codepoint})"
 
                 hotlinks.append(info_hot)
@@ -187,7 +187,7 @@ class Info(VanirCog):
         )
         embed.add_field(
             name=f"Mutual Guilds [`{len(user.mutual_guilds)}`]",
-            value=f"\n".join(
+            value="\n".join(
                 f"- {guild.name} [ID: `{guild.id}`]" for guild in user.mutual_guilds[:7]
             ),
             inline=False,
@@ -272,7 +272,6 @@ class Info(VanirCog):
             if mentions:
                 embed.add_field(name="Mentions", value=format_dict(mentions))
 
-            emojis = re.findall(EMOJI_REGEX, msg.content)
             pat = r"\s"
             content_info = {
                 "Length": f"{len(msg.content):,}",
@@ -300,7 +299,6 @@ class Info(VanirCog):
                 ),
             )
 
-        data = {"Channel": f"{msg.channel.name} [ID: `{msg.channel.id}`]"}
         embed.set_footer(text=msg.author.name, icon_url=msg.author.display_avatar.url)
         return embed
 
@@ -379,8 +377,8 @@ class Info(VanirCog):
                 ]
             )
         drawn = table.draw()
-        drawn = drawn.replace("True", f"{fbool(True)} ").replace(
-            "False", f"{fbool(False)}   "
+        drawn = drawn.replace("True", f"{fmt_bool(True)} ").replace(
+            "False", f"{fmt_bool(False)}   "
         )
         return f"**```ansi\n{drawn}```**"
 

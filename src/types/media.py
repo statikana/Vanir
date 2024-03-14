@@ -122,7 +122,7 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         return self.blob
 
     async def to_file(self) -> discord.File:
-        return discord.File(io.BytesIO(self.blob), filename=f"media.webm")
+        return discord.File(io.BytesIO(self.blob), filename="media.webm")
 
     async def read(self) -> bytes:
         return self.blob
