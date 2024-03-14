@@ -557,18 +557,14 @@ class CogInfoSelect(discord.ui.Select[AutoCachedView]):
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `command info`"""
-        await self.view.collect(itx)
-        selected = self.values[0]
-        command = self.ctx.bot.get_command(selected)
+        # we do not collect here because the response is ephemeral
+        # so no "progress is lost"
+
+        command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.get_command_info_embed(itx, command)
-        sel = await self.instance.get_command_info_select(self.ctx, command)
 
-        self.view.remove_item(self)
-        self.view.add_item(sel)
-
-        await InteractionResponse(itx).defer()
-        await itx.message.edit(embed=embed, view=self.view)
+        await itx.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: Vanir):

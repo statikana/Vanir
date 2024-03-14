@@ -105,8 +105,13 @@ class Bot(VanirCog):
             dev = ctx.bot.application.owner.name
         embed = ctx.embed(
             title="I am Vanir, an advanced multi-purpose bot.",
-            description=f"I was made by {dev}, and am still in development. My prefixes are "
+            description=f"I was made by {dev}, and am still in development.",
+        )
+        embed.add_field(
+            name="Prefixes",
+            value="My prefixes are "
             f"{natural_join(self.bot.command_prefix(self.bot, ctx.message)[1:])}",
+            inline=False,
         )
         n_user_commands = len(
             list(
@@ -125,14 +130,16 @@ class Bot(VanirCog):
         embed.add_field(
             name="Commands",
             value=f"I have `{n_user_commands}` commands and `{n_user_cogs}` modules.",
+            inline=False,
         )
 
         proc = await subprocess.create_subprocess_shell(
             # fmt: off
-            # [hash] [relative time] author:  commit message
+            # author [hash - relative time]
+            # commit message
             cmd=f"git log -n 5 --pretty=format:\""
-                f"{ANSI['white']}[{ANSI['cyan']}%h{ANSI['white']} - "
-                f"{ANSI['red']}%ar{ANSI['white']}] %an:%n"
+                f"{ANSI['white']}%an [{ANSI['cyan']}%h{ANSI['white']} - "
+                f"{ANSI['red']}%ar{ANSI['white']}]%n"
                 f"{ANSI['grey']}➥%s\"",
             # fmt: on
             stdout=asyncio.subprocess.PIPE,
