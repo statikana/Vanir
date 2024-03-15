@@ -140,9 +140,8 @@ class Language(VanirCog):
 
         response = await self.bot.session.deepl("/translate", json=json)
         response.raise_for_status()
-        json = await response.json()
 
-        tsl = json["translations"][0]
+        tsl = (await response.json())["translations"][0]
 
         source = LANGUAGE_INDEX[tsl["detected_source_language"]]
         target = LANGUAGE_INDEX[target_lang]

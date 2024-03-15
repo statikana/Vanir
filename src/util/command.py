@@ -1,7 +1,6 @@
 import functools
 import inspect
 from typing import Callable, Any
-from wand.image import Image
 
 import discord
 from discord.ext import commands
@@ -16,6 +15,11 @@ from src.types.core import VanirContext, Vanir
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 
 from src.util import fmt
+
+import config
+if config.use_system_assets:
+    from wand.image import Image
+
 
 
 def discover_group(group: commands.Group) -> set[commands.Command]:

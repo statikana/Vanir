@@ -5,7 +5,6 @@ from types.core import VanirContext
 from types.command import VanirCog
 from util.command import vanir_command
 
-from types.interface import langcode_autocomplete
 from constants import LANGUAGE_INDEX, LANGUAGE_LOOKUP
 
 
@@ -27,37 +26,42 @@ class Link(VanirCog):
             description="The language to translate to", default="EN",
         ),
     ):
-        if isinstance(source_lang, commands.Parameter):
-            source_lang = source_lang.default
-        if isinstance(target_lang, commands.Parameter):
-            target_lang = target_lang.default
+        """
+        Live translates messages from one chanel and """
+        if isinstance(from_lang, commands.Parameter):
+            from_lang = from_lang.default
+        if isinstance(to_lang, commands.Parameter):
+            to_lang = to_lang.default
 
-        if from_lang.title() in LANGUAGE_LOOKUP:
-            from_lang = LANGUAGE_LOOKUP[from_lang.title()]
+        if from_lang != "AUTO":
+            from_lang = LANGUAGE_LOOKUP.get(from_lang.title(), from_lang.upper())
+            from_lang_code = LANGUAGE_INDEX.get(from_lang)
         
-        if from_lang.upper() not in LANGUAGE_INDEX:
-            raise ValueError(f"Invalid language code: {from_lang}")
+        if from_lang is None:  # here, it *should* be "AUTO" or a valid lang code
+            raise ValueError("Invalid from_lang")
+                
+        to_lang = LANGUAGE_LOOKUP.get(to_lang.title(), to_lang.upper())
+        to_lang_code = LANGUAGE_INDEX.get(to_lang)
+        if to_lang_code is None:
+            raise ValueError("Invalid to_lang")
 
-        if to_lang.title() in LANGUAGE_LOOKUP:
-            to_lang = LANGUAGE_LOOKUP[from_lang.title()]
-        
-        if to_lang.upper() not in LANGUAGE_INDEX:
-            raise ValueError(f"Invalid language code: {to_lang}")
-        
-        if from_channel.id == to_channel.id:
-            raise ValueError("The channels must be different")
-        
-        if from_lang == to_lang:
-            raise ValueError("The languages must be different")
-
-        # good to add
         tlink = await self.bot.db_link.create(
             guild_id=ctx.guild.id,
             from_channel_id=from_channel.id,
             to_channel_id=to_channel.id,
-            from_lang=from_lang,
-            to_lang=to_lang,
+            from_lang_code=from_lang_code,
+            to_lang_code=to_lang_code,
         )
         self.bot.cache.tlinks.append(tlink)
 
+        embed = ctx.embed(
+            title="Translation Link Added"
+        )
+
+        embed.add_field(
+            name=f"From {from_channel.mention} to {to_channel.mention}",
+            value=f"From {from_lang} to {to_lang}",
+        )
+
+        await ctx.reply(embed=embed)
         

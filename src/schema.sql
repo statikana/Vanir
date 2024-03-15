@@ -35,7 +35,7 @@ CREATE TABLE tlinks (
     guild_id BIGINT NOT NULL,
     from_channel_id BIGINT NOT NULL,
     to_channel_id BIGINT NOT NULL,
-    from_lang_code VARCHAR(2) NOT NULL,
+    from_lang_code VARCHAR(2),
     to_lang_code VARCHAR(2) NOT NULL,
     PRIMARY KEY (from_channel_id, to_channel_id)
 )

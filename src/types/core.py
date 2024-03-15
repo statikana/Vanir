@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from src.ext import MODULE_PATHS
 
@@ -6,7 +7,7 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-
+import config
 from src import env
 from src.env import DEEPL_API_KEY
 from src.types.database import StarBoard, Currency, Todo, TLink, TLINK
@@ -21,13 +22,14 @@ class Vanir(commands.Bot):
             help_command=None,
             max_messages=5000,
         )
+        self.connect_db_on_init: bool = config.use_system_assets
         self.db_starboard = StarBoard()
         self.db_currency = Currency()
         self.db_todo = Todo()
         self.db_link = TLink()
         self.session: VanirSession = VanirSession()
 
-        self.cache: BotCache = BotCache()
+        self.cache: BotCache = BotCache(self)
 
         self.launch_time = discord.utils.utcnow()
 
@@ -41,12 +43,15 @@ class Vanir(commands.Bot):
         return await super().get_context(origin, cls=VanirContext)
 
     async def setup_hook(self) -> None:
-
-        pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
-        self.db_starboard.start(pool)
-        self.db_currency.start(pool)
-        self.db_todo.start(pool)
-        self.db_link.start(pool)
+        if self.connect_db_on_init:
+            logging.info("Instantiating database pool and wrappers")
+            pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
+            self.db_starboard.start(pool)
+            self.db_currency.start(pool)
+            self.db_todo.start(pool)
+            self.db_link.start(pool)
+        else:
+            logging.warning("Not connecting to database")
 
         await self.cache.init()
         await self.add_cogs()
@@ -148,7 +153,8 @@ class VanirSession(aiohttp.ClientSession):
 class BotCache:
     def __init__(self, bot: Vanir):
         self.bot = bot
-        self.tlinks: list[TLink] = []
+        self.tlinks: list[TLINK] = []
     
     async def init(self):
-        self.tlinks = await self.bot.db_link.get_all_links()
+        if self.bot.connect_db_on_init:
+            self.tlinks = await self.bot.db_link.get_all_links()
