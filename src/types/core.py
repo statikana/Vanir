@@ -1,4 +1,3 @@
-import datetime
 from typing import Any
 from src.ext import MODULE_PATHS
 
@@ -76,8 +75,8 @@ class VanirContext(commands.Context):
 
         embed = discord.Embed(title=title, description=description, color=color)
 
-        embed.set_footer(
-            text=f"{self.author.global_name or self.author.name} @ {discord.utils.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+        embed.set_author(
+            name=f"{self.author.global_name or self.author.name}",
             icon_url=self.author.display_avatar.url,
         )
 
@@ -103,8 +102,8 @@ class VanirContext(commands.Context):
         embed = discord.Embed(title=title, description=description, color=color)
 
         # %B %-d, %H:%M -> September 8, 13:59 UTC
-        embed.set_footer(
-            text=f"{user.global_name or user.name} @ {datetime.datetime.utcnow().strftime('%H:%M, %d %b, %Y')} UTC",
+        embed.set_author(
+            name=f"{user.global_name or user.name}",
             icon_url=user.display_avatar.url,
         )
 

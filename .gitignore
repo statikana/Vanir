@@ -1,6 +1,14 @@
 .idea
+.vscode
+.ruff_cache
+.github
+.gitattributes
+
+__pycache__
+
+CACHEDIR.TAG
+Scripts/
+Lib/
+
 env.py
 test.py
-.gitattributes
-__pycache__
-qodana.yaml

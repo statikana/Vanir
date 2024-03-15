@@ -29,4 +29,11 @@ CREATE TABLE todo_data (
     timestamp_created TIMESTAMP NOT NULL DEFAULT current_timestamp,
     todo_id SERIAL,
     PRIMARY KEY (user_id, title)
+);
+
+CREATE TABLE live_translation_links (
+    guild_id BIGINT NOT NULL,
+    from_channel_id BIGINT NOT NULL,
+    to_channel_id BIGINT NOT NULL,
+    PRIMARY KEY (from_channel_id, to_channel_id)
 )

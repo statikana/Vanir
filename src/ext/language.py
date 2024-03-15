@@ -161,6 +161,19 @@ class Language(VanirCog):
         embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
         await ctx.reply(embed=embed)
 
+    @vanir_command()
+    async def live_translate(
+        self,
+        ctx: VanirContext,
+        from_channel: discord.TextChannel = commands.param(
+            description="The channel to translate from"
+        ),
+        to_channel: discord.TextChannel = commands.param(
+            description="The channel to translate to",
+        ),
+    ):
+        pass
+
 
 async def setup(bot: Vanir):
     await bot.add_cog(Language(bot))
