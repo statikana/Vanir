@@ -30,6 +30,11 @@ LANGUAGE_INDEX = {
     "UK": "Ukrainian",
     "ZH": "Chinese",
 }
+
+LANGUAGE_LOOKUP = {
+    v: k for k, v in LANGUAGE_INDEX.items()
+}
+
 VALID_VIDEO_FORMATS = ("webm", "mp4")
 
 VALID_IMAGE_FORMATS = ("jpg", "jpeg", "png")

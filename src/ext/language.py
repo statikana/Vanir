@@ -138,15 +138,6 @@ class Language(VanirCog):
         if source_lang != "AUTO":
             json["source_lang"] = source_lang
 
-        if source_lang not in LANGUAGE_INDEX and source_lang != "AUTO":
-            raise ValueError(
-                f"{source_lang} is not a valid language code. Please utilize the autocomplete"
-            )
-        if target_lang not in LANGUAGE_INDEX:
-            raise ValueError(
-                f"{target_lang} is not a valid language code. Please utilize the autocomplete"
-            )
-
         response = await self.bot.session.deepl("/translate", json=json)
         response.raise_for_status()
         json = await response.json()
@@ -161,18 +152,6 @@ class Language(VanirCog):
         embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
         await ctx.reply(embed=embed)
 
-    @vanir_command()
-    async def live_translate(
-        self,
-        ctx: VanirContext,
-        from_channel: discord.TextChannel = commands.param(
-            description="The channel to translate from"
-        ),
-        to_channel: discord.TextChannel = commands.param(
-            description="The channel to translate to",
-        ),
-    ):
-        pass
 
 
 async def setup(bot: Vanir):

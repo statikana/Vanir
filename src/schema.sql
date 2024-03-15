@@ -31,9 +31,11 @@ CREATE TABLE todo_data (
     PRIMARY KEY (user_id, title)
 );
 
-CREATE TABLE live_translation_links (
+CREATE TABLE tlinks (
     guild_id BIGINT NOT NULL,
     from_channel_id BIGINT NOT NULL,
     to_channel_id BIGINT NOT NULL,
+    from_lang_code VARCHAR(2) NOT NULL,
+    to_lang_code VARCHAR(2) NOT NULL,
     PRIMARY KEY (from_channel_id, to_channel_id)
 )

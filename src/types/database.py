@@ -1,3 +1,4 @@
+from typing import TypedDict
 import asyncpg
 
 
@@ -9,24 +10,46 @@ class DBBase:
 
         self.pool = pool
 
+TASK = TypedDict(
+    "Task",
+    {
+        "todo_id": int,
+        "user_id": int,
+        "title": str,
+        "completed": bool,
+        "timestamp_created": str,
+    },
+)
+
+
+TLINK = TypedDict(
+    "Link",
+    {
+        "guild_id": int,
+        "from_channel_id": int,
+        "to_channel_id": int,
+        "from_lang_code": str,
+        "to_lang_code": str,
+    },
+)
+
+
+
 
 class StarBoard(DBBase):
 
-    async def get_starboard_channel(self, guild_id: int):
+    async def get_posting_channel(self, guild_id: int) -> int:
         return await self.pool.fetchval(
             "SELECT channel_id FROM starboard_data WHERE guild_id = $1", guild_id
         )
 
-    async def set_starboard_channel(
-        self, guild_id: int, channel_id: int, threshold: int
-    ):
+    async def update_posting_channel(
+        self, guild_id: int, channel_id: int
+    ) -> None:
         await self.pool.execute(
-            "INSERT INTO starboard_data(guild_id, channel_id, threshold) "
-            "VALUES ($1, $2, $3) "
-            "ON CONFLICT (guild_id) DO UPDATE SET channel_id=$2, threshold=$3",
+            "UPDATE starboard_data SET channel_id=$2 WHERE guild_id = $1",
             guild_id,
             channel_id,
-            threshold,
         )
 
     async def add_star(self, guild_id: int, original_id: int, user_id: int) -> int:
@@ -53,50 +76,40 @@ class StarBoard(DBBase):
             user_id,
         )
 
-    async def get_starboard_post_id(self, original_id: int) -> int | None:
+    async def get_post_id(self, original_id: int) -> int | None:
         return await self.pool.fetchval(
             "SELECT starboard_post_id FROM starboard_posts WHERE original_id = $1",
             original_id,
         )
 
-    async def set_starboard_post_id(
-        self,
-        starboard_post_id: int,
-        guild_id: int,
-        original_id: int,
-        user_id: int,
-        n_stars: int,
+    async def update_post_id(
+        self, original_id: int, starboard_post_id: int
     ) -> None:
         await self.pool.execute(
-            "INSERT INTO starboard_posts(starboard_post_id, guild_id, original_id, user_id, n_stars) "
-            "VALUES ($1, $2, $3, $4, $5) "
-            "ON CONFLICT (original_id) DO UPDATE SET starboard_post_id = $1, n_stars = $5",
-            starboard_post_id,
-            guild_id,
+            "UPDATE starboard_posts SET starboard_post_id = $2 WHERE original_id = $1",
             original_id,
-            user_id,
-            n_stars,
+            starboard_post_id,
         )
 
-    async def remove_starboard_post(self, starboard_post_id: int):
+    async def remove_post(self, starboard_post_id: int) -> None:
         await self.pool.execute(
             "DELETE FROM starboard_posts WHERE starboard_post_id = $1",
             starboard_post_id,
         )
 
-    async def get_threshold(self, guild_id: int) -> int | None:
+    async def get_star_threshold(self, guild_id: int) -> int | None:
         return await self.pool.fetchval(
             "SELECT threshold FROM starboard_data WHERE guild_id = $1", guild_id
         )
 
-    async def set_threshold(self, guild_id: int, threshold: int):
+    async def set_star_threshold(self, guild_id: int, threshold: int) -> None:
         return await self.pool.execute(
             "UPDATE starboard_data SET threshold = $2 WHERE guild_id = $1",
             guild_id,
             threshold,
         )
 
-    async def remove_data(self, guild_id: int) -> None:
+    async def wipe_data(self, guild_id: int) -> None:
         await self.pool.execute(
             "DELETE FROM starboard_data WHERE guild_id = $1", guild_id
         )
@@ -148,21 +161,21 @@ class Currency(DBBase):
 
 
 class Todo(DBBase):
-    async def create_todo(self, user_id: int, title: str):
+    async def create_todo(self, user_id: int, title: str) -> TASK:
         return await self.pool.fetchrow(
             "INSERT INTO todo_data(user_id, title) VALUES ($1, $2) RETURNING *",
             user_id,
             title,
         )
 
-    async def get_todos_by_user(self, user_id: int, include_completed: bool):
+    async def get_by_user(self, user_id: int, include_completed: bool) -> list[TASK]:
         return await self.pool.fetch(
             "SELECT * FROM todo_data WHERE user_id = $1 AND completed = True OR $2",
             user_id,
             include_completed,
         )
 
-    async def complete_todo_by_id(self, user_id: int, todo_id: int):
+    async def complete_by_id(self, user_id: int, todo_id: int) -> TASK | None:
         try:
             todo_id = int(todo_id)
         except TypeError:
@@ -176,7 +189,7 @@ class Todo(DBBase):
             todo_id,
         )
 
-    async def complete_todo_by_name(self, user_id: int, todo_title: str):
+    async def complete_by_name(self, user_id: int, todo_title: str) -> TASK | None:
         return await self.pool.fetchrow(
             "UPDATE todo_data "
             "SET completed = True "
@@ -186,21 +199,21 @@ class Todo(DBBase):
             todo_title,
         )
 
-    async def get_todo_by_id(self, user_id: int, todo_id: int):
+    async def get_by_id(self, user_id: int, todo_id: int) -> TASK | None:
         return await self.pool.fetchrow(
             "SELECT * FROM todo_data WHERE user_id = $1 AND todo_id = $2",
             user_id,
             todo_id,
         )
 
-    async def get_task_id_by_name(self, user_id: int, title: str):
+    async def get_by_name(self, user_id: int, title: str) -> TASK | None:
         return await self.pool.fetchval(
-            "SELECT todo_id FROM todo_data WHERE user_id = $1 AND title = $2",
+            "SELECT * FROM todo_data WHERE user_id = $1 AND title = $2",
             user_id,
             title,
         )
 
-    async def remove_todo(self, user_id: int, todo_id: int):
+    async def remove(self, user_id: int, todo_id: int) -> TASK | None:
         return await self.pool.fetchrow(
             "DELETE FROM todo_data "
             "WHERE user_id = $1 AND todo_id = $2 "
@@ -209,36 +222,38 @@ class Todo(DBBase):
             todo_id,
         )
 
-    async def clear(self, user_id: int):
+    async def clear(self, user_id: int) -> list[TASK] | None:
         return await self.pool.fetch(
             "DELETE FROM todo_data WHERE user_id = $1 RETURNING *", user_id
         )
 
 
-class LiveTranslationLinks(DBBase):
-    async def create_link(
-        self, guild_id: int, from_channel_id: int, to_channel_id: int
-    ):
-        return await self.pool.fetch(
-            "INSERT INTO live_translation_links(guild_id, from_channel_id, to_channel_id) "
-            "VALUES ($1, $2, $3) "
+class TLink(DBBase):
+    async def create(
+        self, guild_id: int, from_channel_id: int, to_channel_id: int, from_lang_code: str, to_lang_code: str
+    ) -> TLINK:
+        return await self.pool.fetchrow(
+            "INSERT INTO tlinks(guild_id, from_channel_id, to_channel_id, from_lang_code, to_lang_code) "
+            "VALUES ($1, $2, $3, $4, $5) "
             "RETURNING *",
             guild_id,
             from_channel_id,
             to_channel_id,
+            from_lang_code,
+            to_lang_code,
         )
 
-    async def get_guild_links(self, guild_id: int):
+    async def get_guild_links(self, guild_id: int) -> list[TLINK]:
         return await self.pool.fetch(
-            "SELECT * FROM live_translation_links WHERE guild_id = $1",
+            "SELECT * FROM tlinks WHERE guild_id = $1",
             guild_id,
         )
 
-    async def remove_link(
+    async def remove(
         self, guild_id: int, from_channel_id: int, to_channel_id: int
-    ):
-        return await self.pool.fetch(
-            "DELETE FROM live_translation_links "
+    ) -> TLINK | None:
+        return await self.pool.fetchrow(
+            "DELETE FROM tlinks "
             "WHERE guild_id = $1 AND from_channel_id = $2 AND to_channel_id = $3 "
             "RETURNING *",
             guild_id,
@@ -246,15 +261,18 @@ class LiveTranslationLinks(DBBase):
             to_channel_id,
         )
 
-    async def get_channel_links(self, channel_id: int):
+    async def get_channel_links(self, channel_id: int) -> list[TLINK]:
         return await self.pool.fetch(
-            "SELECT * FROM live_translation_links "
+            "SELECT * FROM tlinks "
             "WHERE from_channel_id = $1 OR to_channel_id = $1",
             channel_id,
         )
+    
+    async def get_all_links(self) -> list[TLINK]:
+        return await self.pool.fetch("SELECT * FROM tlinks")
 
-    async def clear(self, guild_id: int):
+    async def clear(self, guild_id: int) -> list[TLINK]:
         return await self.pool.fetch(
-            "DELETE FROM live_translation_links WHERE guild_id = $1 RETURNING *",
+            "DELETE FROM tlinks WHERE guild_id = $1 RETURNING *",
             guild_id,
         )

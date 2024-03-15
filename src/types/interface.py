@@ -1,5 +1,9 @@
 import re
+import discord
+from discord.app_commands import Choice
 from discord.ext import commands
+
+from src import constants
 
 
 class SearchMessages(commands.Converter[str]):
@@ -51,3 +55,14 @@ class SearchMessages(commands.Converter[str]):
                     return found[: self.n_to_find]
 
         return found[: self.n_to_find]
+
+
+async def langcode_autocomplete(_itx: discord.Interaction, current: str):
+    options = [
+        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_INDEX.items()
+    ][:25]
+    options = sorted(
+        filter(lambda c: current.lower() in c.name.lower(), options),
+        key=lambda c: c.name,
+    )
+    return options

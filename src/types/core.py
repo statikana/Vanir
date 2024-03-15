@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from src import env
 from src.env import DEEPL_API_KEY
-from src.types.database import StarBoard, Currency, Todo
+from src.types.database import StarBoard, Currency, Todo, TLink, TLINK
 
 
 class Vanir(commands.Bot):
@@ -24,7 +24,10 @@ class Vanir(commands.Bot):
         self.db_starboard = StarBoard()
         self.db_currency = Currency()
         self.db_todo = Todo()
+        self.db_link = TLink()
         self.session: VanirSession = VanirSession()
+
+        self.cache: BotCache = BotCache()
 
         self.launch_time = discord.utils.utcnow()
 
@@ -43,6 +46,9 @@ class Vanir(commands.Bot):
         self.db_starboard.start(pool)
         self.db_currency.start(pool)
         self.db_todo.start(pool)
+        self.db_link.start(pool)
+
+        await self.cache.init()
         await self.add_cogs()
 
     async def add_cogs(self):
@@ -137,3 +143,12 @@ class VanirSession(aiohttp.ClientSession):
         )
 
         return await self.post(url + path, headers=headers, json=json)
+
+
+class BotCache:
+    def __init__(self, bot: Vanir):
+        self.bot = bot
+        self.tlinks: list[TLink] = []
+    
+    async def init(self):
+        self.tlinks = await self.bot.db_link.get_all_links()

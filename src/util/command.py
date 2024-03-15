@@ -4,7 +4,6 @@ from typing import Callable, Any
 from wand.image import Image
 
 import discord
-from discord.app_commands import Choice
 from discord.ext import commands
 
 from src.types.command import (
@@ -16,7 +15,6 @@ from src.types.command import (
 from src.types.core import VanirContext, Vanir
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 
-from src import constants
 from src.util import fmt
 
 
@@ -73,17 +71,6 @@ def get_param_annotation(param: inspect.Parameter) -> str:
             return f"{rtype_name} >= {range_min}"
         return f"{range_min} <= {rtype_name} <= {range_max}"
     return str(ptype)
-
-
-async def langcode_autocomplete(_itx: discord.Interaction, current: str):
-    options = [
-        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_INDEX.items()
-    ][:25]
-    options = sorted(
-        filter(lambda c: current.lower() in c.name.lower(), options),
-        key=lambda c: c.name,
-    )
-    return options
 
 
 async def get_media_info(media: MediaInterface):
