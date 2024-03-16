@@ -1,1 +1,1 @@
-use_system_assets: bool = False
+use_system_assets: bool = True

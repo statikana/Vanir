@@ -13,7 +13,7 @@ class Errors(VanirCog):
         self, source: VanirContext | discord.Interaction, error: commands.CommandError
     ):
         if isinstance(error, commands.CommandNotFound):
-            return
+            return await self.on_command_not_found(source, error)
 
         title = f"Error - `{type(error).__name__}`: {error}"
         color = discord.Color.red()

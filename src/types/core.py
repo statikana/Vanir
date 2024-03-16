@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 from typing import Any
 from src.ext import MODULE_PATHS
@@ -45,11 +46,11 @@ class Vanir(commands.Bot):
     async def setup_hook(self) -> None:
         if self.connect_db_on_init:
             logging.info("Instantiating database pool and wrappers")
-            pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
-            self.db_starboard.start(pool)
-            self.db_currency.start(pool)
-            self.db_todo.start(pool)
-            self.db_link.start(pool)
+            self.pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
+            self.db_starboard.start(self.pool)
+            self.db_currency.start(self.pool)
+            self.db_todo.start(self.pool)
+            self.db_link.start(self.pool)
         else:
             logging.warning("Not connecting to database")
 
@@ -154,7 +155,17 @@ class BotCache:
     def __init__(self, bot: Vanir):
         self.bot = bot
         self.tlinks: list[TLINK] = []
-    
+
+        # channel id: (source_msg_id, translated_msg_id)
+        self.tlink_translated_messages: dict[int, list[TranslatedMessage]] = {}
+
     async def init(self):
         if self.bot.connect_db_on_init:
             self.tlinks = await self.bot.db_link.get_all_links()
+
+
+@dataclass
+class TranslatedMessage:
+    source_message_id: int
+    translated_message_id: int
+    source_author_id: int

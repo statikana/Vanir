@@ -17,9 +17,9 @@ from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInte
 from src.util import fmt
 
 import config
+
 if config.use_system_assets:
     from wand.image import Image
-
 
 
 def discover_group(group: commands.Group) -> set[commands.Command]:
@@ -177,3 +177,9 @@ def cog_hidden(cls: type[VanirCog]):
 
     cls.__init__ = wrapper
     return cls
+
+
+def safe_default(arg: Any | commands.Parameter) -> Any:
+    if isinstance(arg, commands.Parameter):
+        return arg.default
+    return arg

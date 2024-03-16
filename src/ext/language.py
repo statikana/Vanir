@@ -5,8 +5,9 @@ from discord import app_commands
 
 from src.types.command import VanirCog, VanirView
 from src.types.core import VanirContext, Vanir
-from src.constants import LANGUAGE_INDEX
-from src.util.command import langcode_autocomplete, vanir_command
+from src.constants import LANGUAGE_NAMES
+from src.util.command import vanir_command
+from src.types.interface import langcode_autocomplete
 
 
 class Language(VanirCog):
@@ -143,14 +144,13 @@ class Language(VanirCog):
 
         tsl = (await response.json())["translations"][0]
 
-        source = LANGUAGE_INDEX[tsl["detected_source_language"]]
-        target = LANGUAGE_INDEX[target_lang]
+        source = LANGUAGE_NAMES[tsl["detected_source_language"]]
+        target = LANGUAGE_NAMES[target_lang]
 
         embed = ctx.embed(title=f"{source} -> {target}")
         embed.add_field(name=f"{source} - Original", value=text, inline=False)
         embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
         await ctx.reply(embed=embed)
-
 
 
 async def setup(bot: Vanir):

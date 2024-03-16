@@ -504,13 +504,15 @@ class ModalField:
 
 
 class VanirHybridGroup(commands.HybridGroup):
-    def command(self, aliases: list[str] = None):
+    def command(self, *, name: str = None, aliases: list[str] = None):
         if aliases is None:
             aliases = []
 
         def inner(func):
             func = autopopulate_add_descriptions(func)
-            command = commands.HybridGroup.command(self, aliases=aliases)(func)
+            command = commands.HybridGroup.command(self, name=name, aliases=aliases)(
+                func
+            )
             command = inherit(command)
             return command
 

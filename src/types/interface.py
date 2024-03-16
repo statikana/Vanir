@@ -13,7 +13,7 @@ class SearchMessages(commands.Converter[str]):
         regex: re.Pattern,
         n_lim: int = -1,
         use_reference: bool = True,
-        history_lim: int = 10
+        history_lim: int = 10,
     ):
         """
         A converter that searches for a regex pattern in messages.
@@ -59,7 +59,7 @@ class SearchMessages(commands.Converter[str]):
 
 async def langcode_autocomplete(_itx: discord.Interaction, current: str):
     options = [
-        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_INDEX.items()
+        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_NAMES.items()
     ][:25]
     options = sorted(
         filter(lambda c: current.lower() in c.name.lower(), options),

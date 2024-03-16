@@ -1,4 +1,4 @@
-LANGUAGE_INDEX = {
+LANGUAGE_NAMES = {
     "AR": "Arabic",
     "BG": "Bulgarian",
     "CS": "Czech",
@@ -31,9 +31,7 @@ LANGUAGE_INDEX = {
     "ZH": "Chinese",
 }
 
-LANGUAGE_LOOKUP = {
-    v: k for k, v in LANGUAGE_INDEX.items()
-}
+LANGUAGE_CODES = {v: k for k, v in LANGUAGE_NAMES.items()}
 
 VALID_VIDEO_FORMATS = ("webm", "mp4")
 

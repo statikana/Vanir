@@ -1,12 +1,12 @@
 import logging
 import discord
 from discord.ext import commands
-from types.database import StarBoard as StarBoardDB
+from src.types.database import StarBoard as StarBoardDB
 
-from types.core import VanirContext
-from types.command import VanirCog
-from util.command import cog_hidden
-from constants import LANGUAGE_INDEX
+from src.types.core import TranslatedMessage, VanirContext
+from src.types.command import VanirCog
+from src.util.command import cog_hidden
+from src.constants import LANGUAGE_NAMES
 
 
 @cog_hidden
@@ -21,30 +21,54 @@ class Events(VanirCog):
 
             from_lang_code = tlink["from_lang_code"]
             to_lang_code = tlink["to_lang_code"]
-            
+
             json = {
                 "text": [message.content[:150]],
                 "target_lang": to_lang_code,
             }
 
-            if from_lang_code != "AUTO":
+            if from_lang_code != "__":
                 json["source_lang"] = from_lang_code
-            
+
             response = await self.bot.session.deepl("/translate", json=json)
             response.raise_for_status()
             tsl = (await response.json())["translations"][0]
 
             # "detected_source_language" will be what it detected, or what was given, if AUTO
-            source = LANGUAGE_INDEX[tsl["detected_source_language"]]
-            target = LANGUAGE_INDEX[to_lang_code]
+            source = LANGUAGE_NAMES[tsl["detected_source_language"]]
+            target = LANGUAGE_NAMES[to_lang_code.upper()]
+
+            if message.channel in self.bot.cache.tlink_translated_messages:
+                previous_response_meta = discord.utils.get(
+                    self.bot.cache.tlink_translated_messages[message.channel],
+                    source_author_id=message.author.id,
+                )
+                if previous_response_meta is not None:
+                    previous_response = await to_channel.fetch_message(
+                        previous_response_meta.translated_message_id
+                    )
+                    previous_embed = previous_response.embeds[0]
+                    previous_embed.description += f"\n{tsl['text']}"
+                    previous_embed.set_footer(text=f"{source} -> {target}")
+                    await previous_response.edit(embed=previous_embed)
+                    return
 
             embed = VanirContext.syn_embed(
-                description=f"{tsl['text']}",
+                description=f"### [{message.channel.mention}]\n{tsl['text']}",
                 user=message.author,
             )
-            embed.set_footer(f"{source} -> {target}")
-            await to_channel.send(embed=embed)
-            
+            embed.set_footer(text=f"{source} -> {target}")
+            response = await to_channel.send(embed=embed)
+
+            tmes = TranslatedMessage(
+                source_message_id=message.id,
+                translated_message_id=response.id,
+                source_author_id=message.author.id,
+            )
+            if message.channel in self.bot.cache.tlink_translated_messages:
+                self.bot.cache.tlink_translated_messages[message.channel].append(tmes)
+            else:
+                self.bot.cache.tlink_translated_messages[message.channel] = [tmes]
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -183,3 +207,7 @@ class Events(VanirCog):
 
         else:
             await existing_post.edit(content=f":star: {n_stars}")
+
+
+async def setup(bot):
+    await bot.add_cog(Events(bot))

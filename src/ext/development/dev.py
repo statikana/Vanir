@@ -54,6 +54,14 @@ class Dev(VanirCog):
         await self.bot.db_currency.set_balance(user.id, amount)
         await ctx.reply(f"{user.id} -> {amount}")
 
+    @dev.command()
+    @commands.is_owner()
+    async def sql(self, ctx: VanirContext, *, query: str):
+        """Run a SQL query"""
+        async with self.bot.pool.acquire() as conn:
+            result = await conn.fetch(query)
+            await ctx.reply(str(result))
+
 
 async def setup(bot):
     await bot.add_cog(Dev(bot))

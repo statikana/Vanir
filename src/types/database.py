@@ -10,6 +10,7 @@ class DBBase:
 
         self.pool = pool
 
+
 TASK = TypedDict(
     "Task",
     {
@@ -34,8 +35,6 @@ TLINK = TypedDict(
 )
 
 
-
-
 class StarBoard(DBBase):
 
     async def get_posting_channel(self, guild_id: int) -> int:
@@ -43,9 +42,7 @@ class StarBoard(DBBase):
             "SELECT channel_id FROM starboard_data WHERE guild_id = $1", guild_id
         )
 
-    async def update_posting_channel(
-        self, guild_id: int, channel_id: int
-    ) -> None:
+    async def update_posting_channel(self, guild_id: int, channel_id: int) -> None:
         await self.pool.execute(
             "UPDATE starboard_data SET channel_id=$2 WHERE guild_id = $1",
             guild_id,
@@ -82,9 +79,7 @@ class StarBoard(DBBase):
             original_id,
         )
 
-    async def update_post_id(
-        self, original_id: int, starboard_post_id: int
-    ) -> None:
+    async def update_post_id(self, original_id: int, starboard_post_id: int) -> None:
         await self.pool.execute(
             "UPDATE starboard_posts SET starboard_post_id = $2 WHERE original_id = $1",
             original_id,
@@ -230,7 +225,12 @@ class Todo(DBBase):
 
 class TLink(DBBase):
     async def create(
-        self, guild_id: int, from_channel_id: int, to_channel_id: int, from_lang_code: str, to_lang_code: str
+        self,
+        guild_id: int,
+        from_channel_id: int,
+        to_channel_id: int,
+        from_lang_code: str,
+        to_lang_code: str,
     ) -> TLINK:
         return await self.pool.fetchrow(
             "INSERT INTO tlinks(guild_id, from_channel_id, to_channel_id, from_lang_code, to_lang_code) "
@@ -263,11 +263,10 @@ class TLink(DBBase):
 
     async def get_channel_links(self, channel_id: int) -> list[TLINK]:
         return await self.pool.fetch(
-            "SELECT * FROM tlinks "
-            "WHERE from_channel_id = $1 OR to_channel_id = $1",
+            "SELECT * FROM tlinks " "WHERE from_channel_id = $1 OR to_channel_id = $1",
             channel_id,
         )
-    
+
     async def get_all_links(self) -> list[TLINK]:
         return await self.pool.fetch("SELECT * FROM tlinks")
 
