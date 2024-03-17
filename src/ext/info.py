@@ -40,7 +40,7 @@ class Info(VanirCog):
             default=True,
         ),
     ):
-        """Gets information on a snowflake (ID). You can access when using Developer mode in Discord"""
+        """Gets information on a snowflake (ID). You can access these when using Developer mode in Discord"""
 
         if not SNOWFLAKE_REGEX.fullmatch(snowflake):
             raise ValueError("Not a snowflake.")
@@ -328,7 +328,11 @@ class Info(VanirCog):
             ),
         )
         if role.display_icon:
-            embed.set_thumbnail(url=role.display_icon.url)
+            if isinstance(role.display_icon, discord.Asset):
+                url = role.display_icon.url
+            else:
+                url = role.display_icon
+            embed.set_thumbnail(url=url)
 
         return embed
 

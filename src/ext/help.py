@@ -18,6 +18,7 @@ from src.util.command import (
     get_param_annotation,
 )
 from src.util.fmt import fmt_dict
+from src.util.parse import fuzzysearch
 
 
 @cog_hidden
@@ -59,12 +60,46 @@ class Help(VanirCog):
             await ctx.reply(embed=embed, ephemeral=True)
             return
 
-        embed = await self.cog_display_embed(ctx.author)
+        embed = await self.main_page_embed(ctx.author)
         sel = CogDisplaySelect(ctx, self)
 
         view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
 
         await ctx.reply(embed=embed, view=view)
+
+    async def main_page_embed(self, user: discord.User) -> discord.Embed:
+        description = (
+            "Vanir is a multi-purpose bot with a variety of features. It is also still in development, so "
+            "expect some bugs!"
+        )
+
+        getting_help = (
+            "If you need help with a specific command, you can use the `\\help <command name>` "
+            "command to get more information on what it does and how to use it. "
+            "You can also use the drop-down menu below to select a module to get more information on."
+        )
+        contacting = (
+            "If you encounter any bugs or issues, please use `\\bug` to report it to the developers (me!). "
+            "If you have any suggestions or feedback, you can use `\\suggest` to send it to me as well. "
+            "If you just want to talk, you can also send an email to me at `contact@statikana.dev`."
+        )
+
+        embed = VanirContext.syn_embed(
+            title="Vanir Help Menu",
+            description=description,
+            user=user,
+        )
+        embed.add_field(
+            name="\N{WHITE QUESTION MARK ORNAMENT} Getting Help",
+            value=getting_help,
+            inline=False,
+        )
+        embed.add_field(
+            name="\N{ENVELOPE WITH DOWNWARDS ARROW ABOVE} Contacting the Developers",
+            value=contacting,
+            inline=False,
+        )
+        return embed
 
     async def cog_display_embed(self, user: discord.User) -> discord.Embed:
         embed = VanirContext.syn_embed(
@@ -86,7 +121,7 @@ class Help(VanirCog):
         self, cog: commands.Cog, user: discord.User
     ) -> discord.Embed:
         embed = VanirContext.syn_embed(
-            title=f"Module Info: **{cog.qualified_name}**",
+            title=f":information_source: **{cog.qualified_name}**",
             description=f"*{cog.description or 'No Description'}*",
             user=user,
         )
@@ -119,32 +154,13 @@ class Help(VanirCog):
         self, group: VanirHybridGroup, user: discord.User
     ) -> discord.Embed:
         embed = VanirContext.syn_embed(
-            title=f"Group Info: **{group.qualified_name}**",
-            description=f"*{group.description or 'No Description'}*",
+            title=f":information_source: **{group.qualified_name}**",
+            description=f"*{group.short_doc}*",
             user=user,
         )
 
-        other_commands: list[commands.Command] = []
-
-        for c in group.commands:
-            if isinstance(c, commands.Group):
-                embed.add_field(
-                    name=f"`{c.qualified_name}` Commands",
-                    value="\n".join(
-                        f"`\\{sub.qualified_name}`\n➥*{sub.short_doc}*"
-                        for sub in discover_group(c)
-                    ),
-                )
-            else:
-                other_commands.append(c)
-
-        if other_commands:
-            embed.add_field(
-                name=f"{len(other_commands)} Miscellaneous Command{'s' if len(other_commands) > 1 else ''}",
-                value="\n".join(
-                    f"`\\{o.qualified_name}`\n➥*{o.short_doc}*" for o in other_commands
-                ),
-            )
+        for c in discover_group(group):
+            embed.description += f"\n`\\{c.qualified_name}`\n➥*{c.short_doc}*"
 
         return embed
 
@@ -161,7 +177,7 @@ class Help(VanirCog):
             alias_string = ""
 
         embed = VanirContext.syn_embed(
-            title=f"Info: `\\{command.qualified_name} {command.signature}`",
+            title=f":information_source: `\\{command.qualified_name} {command.signature}`",
             description=f"{alias_string}\n*{command.description or command.short_doc or 'No Description'}*",
             user=user,
         )
@@ -180,14 +196,26 @@ class Help(VanirCog):
 
     @help.autocomplete("thing")
     async def _thing_autocomplete(self, ctx: VanirContext, thing: str):
-        all_values = []
-        all_values.extend(cog.qualified_name for cog in get_display_cogs(self.bot))
-        all_values.append(
-            cmd.qualified_name for cmd in self.bot.walk_commands if not cmd.hidden
+        all_values: list[tuple[str, str]] = []
+        all_values.extend(
+            ("Module", cog.qualified_name) for cog in get_display_cogs(self.bot)
         )
-        print(all_values)
+        for cmd in self.bot.walk_commands():
+            if not cmd.hidden and not cmd.qualified_name.startswith("jishaku"):
+                all_values.append(
+                    (
+                        "Command" if not isinstance(cmd, commands.Group) else "Group",
+                        cmd.qualified_name,
+                    )
+                )
+
+        all_values = fuzzysearch(thing.lower(), all_values, key=lambda t: t[1].lower())[
+            :25
+        ]
+
         return [
-            discord.app_commands.Choice(name=ident, value=ident) for ident in all_values
+            discord.app_commands.Choice(name=f"[{typ}] {ident}", value=ident)
+            for typ, ident in all_values
         ]
 
 
@@ -206,19 +234,57 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
             )
             for c in get_display_cogs(self.ctx.bot)
         ]
+        options = [
+            discord.SelectOption(
+                label="Main Page",
+                description="Go back to the main page",
+                value="return-to-main",
+                emoji="\N{HOUSE BUILDING}",
+                default=True,
+            )
+        ] + options
         super().__init__(options=options, placeholder="Select a Module", row=0)
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `cog info`"""
         await self.view.collect(itx)
         selected = self.values[0]
+        if selected == "return-to-main":
+            for opt in self.options:
+                opt.default = opt.value == selected
+
+            command_select = discord.utils.find(
+                lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
+                self.view.children,
+            )
+            if command_select is not None:
+                self.view.remove_item(command_select)
+
+            embed = await self.instance.main_page_embed(itx.user)
+            await itx.response.edit_message(embed=embed, view=self.view)
+            return
+
         cog = self.ctx.bot.get_cog(selected)
 
-        embed = await self.instance.cog_details_embed(cog, itx.user)
-        sel = CogDetailSelect(self.ctx, self.instance, cog)
+        this: discord.ui.Select = discord.utils.find(
+            lambda x: isinstance(x, discord.ui.Select) and x.row == 0,
+            self.view.children,
+        )
 
-        self.view.remove_item(self)
-        self.view.add_item(sel)
+        for opt in this.options:
+            opt.default = opt.value == selected
+
+        embed = await self.instance.cog_details_embed(cog, itx.user)
+
+        command_select = discord.utils.find(
+            lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
+            self.view.children,
+        )
+        if command_select is not None:
+            self.view.remove_item(command_select)
+        sel = CogDetailSelect(self.ctx, self.instance, cog)
+        sel.row = 1
+        self.view.auto_add_item(sel)
 
         await itx.response.edit_message(embed=embed, view=self.view)
 
@@ -243,12 +309,18 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
         """Goes to `command info`"""
         # we do not collect here because the response is ephemeral
         # so no "progress is lost"
-
+        await self.view.collect(itx)
         command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.command_details_embed(command, itx.user)
+        this = discord.utils.find(
+            lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
+            self.view.children,
+        )
+        for opt in this.options:
+            opt.default = opt.value == self.values[0]
 
-        await itx.response.send_message(embed=embed, ephemeral=True)
+        await itx.response.edit_message(embed=embed)
 
 
 class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
@@ -269,14 +341,19 @@ class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `command info`"""
-        # we do not collect here because the response is ephemeral
-        # so no "progress is lost"
+        await self.view.collect(itx)
 
         command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.command_details_embed(command, itx.user)
+        this = discord.utils.find(
+            lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
+            self.view.children,
+        )
+        for opt in this.options:
+            opt.default = opt.value == self.values[0]
 
-        await itx.response.send_message(embed=embed, ephemeral=True)
+        await itx.response.edit_message(embed=embed)
 
 
 async def setup(bot: Vanir) -> None:

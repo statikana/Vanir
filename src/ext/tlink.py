@@ -1,3 +1,5 @@
+import inspect
+
 import discord
 from discord.ext import commands
 
@@ -38,6 +40,11 @@ class TLink(VanirCog):
         """
         from_channel = safe_default(from_channel)
         if from_channel is not None:
+            if to_channel is None:
+                ctx.command = self.create
+                raise commands.MissingRequiredArgument(
+                    commands.Parameter("to_channel", inspect.Parameter.POSITIONAL_ONLY)
+                )
             await ctx.invoke(
                 self.create,
                 from_channel=from_channel,
@@ -188,6 +195,7 @@ class TLink(VanirCog):
 
     @tlink.command(name="list", aliases=["ls", "all"])
     async def list_(self, ctx: VanirContext):
+        """Lists all translation links on the server."""
         links = await self.bot.db_link.get_guild_links(ctx.guild.id)
         if not links:
             embed = ctx.embed(

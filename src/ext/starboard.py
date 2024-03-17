@@ -11,9 +11,6 @@ class StarBoard(VanirCog):
 
     emoji = "\N{WHITE MEDIUM STAR}"
 
-    def __init__(self, bot: Vanir):
-        super().__init__(bot)
-
     @vanir_group(aliases=["sb"])
     async def starboard(
         self,
@@ -27,6 +24,7 @@ class StarBoard(VanirCog):
             default=1,
         ),
     ):
+        """Automate a StarBoard channel, featuring popular posts in any channel"""
         if channel is not None:
             await ctx.invoke(self.setup, channel=channel, threshold=threshold)
         else:

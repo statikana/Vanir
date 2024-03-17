@@ -170,7 +170,7 @@ class Currency(DBBase):
 
 
 class Todo(DBBase):
-    async def create_todo(self, user_id: int, title: str) -> TASK:
+    async def create(self, user_id: int, title: str) -> TASK:
         return await self.pool.fetchrow(
             "INSERT INTO todo_data(user_id, title) VALUES ($1, $2) RETURNING *",
             user_id,

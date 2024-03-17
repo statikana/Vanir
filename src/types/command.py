@@ -179,6 +179,16 @@ class AutoCachedView(VanirView):
             self.state_index is None or self.state_index == len(self.states) - 1
         )
 
+    def auto_add_item(self, item: discord.ui.Item):
+        back, fwd = self.previous_state, self.next_state
+        self.remove_item(back)
+        self.remove_item(fwd)
+        back.row += 1
+        fwd.row += 1
+        super().add_item(item)
+        super().add_item(back)
+        super().add_item(fwd)
+
 
 class VanirModal(discord.ui.Modal):
     def __init__(self, bot: Vanir):

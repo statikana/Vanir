@@ -27,7 +27,7 @@ class Todo(VanirCog):
         task: str = commands.param(description="The task to complete."),
     ):
         """Creates a new task. You can also use `\\todo <task>` as shorthand."""
-        todo = await self.bot.db_todo.create_todo(ctx.author.id, task)
+        todo = await self.bot.db_todo.create(ctx.author.id, task)
         embed = ctx.embed(
             title=f"\N{WHITE HEAVY CHECK MARK} TODO: " f"{todo['title']}",
             description=f"ID: `{todo['todo_id']}`",
@@ -46,7 +46,7 @@ class Todo(VanirCog):
         ),
     ):
         """Gets your current tasks. You can specify `include_completed` and `completed_only` to narrow."""
-        results: list[asyncpg.Record] = await self.bot.db_todo.get_all_todo(
+        results: list[asyncpg.Record] = await self.bot.db_todo.get_by_user(
             ctx.author.id, include_completed
         )
         if not results:
@@ -82,7 +82,7 @@ class Todo(VanirCog):
         if todo is None:
             await ctx.invoke(self.get, completed_only=True)  # type: ignore
             return
-        changed = await self.bot.db_todo.complete_todo_by_id(ctx.author.id, int(todo))
+        changed = await self.bot.db_todo.complete_by_id(ctx.author.id, int(todo))
 
         embed = ctx.embed(f"{changed['title']} Completed")
         await ctx.reply(embed=embed, ephemeral=True)
@@ -98,7 +98,7 @@ class Todo(VanirCog):
         ),
     ):
         """Completely removes a task from your list. You may want `\\todo done` instead."""
-        removed = await self.bot.db_todo.remove_todo(ctx.author.id, int(todo))
+        removed = await self.bot.db_todo.remove(ctx.author.id, int(todo))
 
         embed = ctx.embed(f"{removed['title']} removed")
         await ctx.reply(embed=embed, ephemeral=True)
@@ -112,7 +112,7 @@ class Todo(VanirCog):
 
     @todo.command()
     async def search(self, ctx: VanirContext, query: str):
-        todos = await self.bot.db_todo.get_all_todo(
+        todos = await self.bot.db_todo.get_by_user(
             ctx.author.id, include_completed=True
         )
         trimmed = fuzzysearch(query, todos, key=lambda t: t["title"], threshold=30)
