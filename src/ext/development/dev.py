@@ -4,8 +4,8 @@ from discord.ext import commands
 from src.types.command import (
     VanirCog,
 )
-from src.util.command import cog_hidden
 from src.types.core import VanirContext
+from src.util.command import cog_hidden
 
 
 @cog_hidden

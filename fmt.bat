@@ -1,2 +1,2 @@
-python -m ruff check --fix .
-python -m black .
+python -m ruff check --fix --select I .
+python -m ruff format .

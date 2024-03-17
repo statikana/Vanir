@@ -1,11 +1,11 @@
-from typing import Any, Generator, Iterable
 import math
+from typing import Any, Generator, Iterable
 
 from src.constants import ANSI
 from src.util.parse import Convention
 
 
-def format_dict(
+def fmt_dict(
     data: dict[Any, Any], miss_keys: list[Any] = None, linesplit: bool = False
 ) -> str:
     if miss_keys is None:

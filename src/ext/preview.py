@@ -1,12 +1,12 @@
 import io
+
 import discord
 from discord import Interaction
 from discord.ext import commands
-from src.types.command import ModalField, VanirCog, VanirModal, VanirView
-from src.constants import ANSI, ANSI_EMOJIS
 
+from src.constants import ANSI, ANSI_EMOJIS
+from src.types.command import ModalField, VanirCog, VanirModal, VanirView, vanir_command
 from src.types.core import Vanir, VanirContext
-from src.util.command import vanir_command
 
 
 class Preview(VanirCog):
@@ -20,7 +20,7 @@ class Preview(VanirCog):
         default = start_text or "<press [Add] to get started>\n<or select a color>"
         embed = ctx.embed(description=f"```ansi\n{default}\n```")
         embed.add_field(
-            name="\N{Warning Sign} Discord does not support ANSI on mobile.", value=""
+            name="\N{WARNING SIGN} Discord does not support ANSI on mobile.", value=""
         )
         view = ANSIView(ctx, embed, start_text)
         await ctx.reply(embed=embed, view=view)
@@ -44,7 +44,7 @@ class ANSIView(VanirView):
         self.add_item(
             discord.ui.Button(
                 label="How?",
-                emoji="\N{White Question Mark Ornament}",
+                emoji="\N{WHITE QUESTION MARK ORNAMENT}",
                 row=1,
                 url="https://gist.github.com/kkrypt0nn/a02506f3712ff2d1c8ca7c9e0aed7c06",
             )
@@ -61,7 +61,7 @@ class ANSIView(VanirView):
 
     @discord.ui.button(
         label="Add",
-        emoji="\N{Heavy Plus Sign}",
+        emoji="\N{HEAVY PLUS SIGN}",
         style=discord.ButtonStyle.success,
         row=1,
     )
@@ -76,7 +76,7 @@ class ANSIView(VanirView):
         await itx.message.edit(embed=self.make_embed(), view=self)
 
     @discord.ui.button(
-        label="Edit", emoji="\N{Pencil}", style=discord.ButtonStyle.blurple, row=1
+        label="Edit", emoji="\N{PENCIL}", style=discord.ButtonStyle.blurple, row=1
     )
     async def edit_text(self, itx: discord.Interaction, button: discord.Button):
         modal = EditTextModal(self.ctx.bot, self.internal_text)
@@ -89,7 +89,7 @@ class ANSIView(VanirView):
         await itx.message.edit(embed=self.make_embed(), view=self)
 
     @discord.ui.button(
-        label="Raw", emoji="\N{Electric Plug}", style=discord.ButtonStyle.gray, row=1
+        label="Raw", emoji="\N{ELECTRIC PLUG}", style=discord.ButtonStyle.gray, row=1
     )
     async def get_raw(self, itx: discord.Interaction, button: discord.Button):
         file = discord.File(io.BytesIO(self.internal_text.encode()))
@@ -154,7 +154,7 @@ class EmbedView(VanirView):
         self.embed = embed
 
     @discord.ui.button(
-        label="Title", emoji="\N{Name Badge}", style=discord.ButtonStyle.blurple, row=0
+        label="Title", emoji="\N{NAME BADGE}", style=discord.ButtonStyle.blurple, row=0
     )
     async def set_title(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
@@ -167,7 +167,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Description",
-        emoji="\N{Speech Balloon}",
+        emoji="\N{SPEECH BALLOON}",
         style=discord.ButtonStyle.blurple,
         row=0,
     )
@@ -182,7 +182,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Add Field",
-        emoji="\N{Heavy Plus Sign}",
+        emoji="\N{HEAVY PLUS SIGN}",
         style=discord.ButtonStyle.success,
         row=0,
     )
@@ -205,7 +205,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Remove Field",
-        emoji="\N{Cross Mark}",
+        emoji="\N{CROSS MARK}",
         style=discord.ButtonStyle.danger,
         row=0,
     )
@@ -225,7 +225,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Color",
-        emoji="\N{Artist Palette}",
+        emoji="\N{ARTIST PALETTE}",
         style=discord.ButtonStyle.blurple,
         row=1,
     )
@@ -240,7 +240,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Thumbnail",
-        emoji="\N{Camera}",
+        emoji="\N{CAMERA}",
         style=discord.ButtonStyle.blurple,
         row=1,
     )
@@ -253,7 +253,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Image",
-        emoji="\N{Frame with Picture}",
+        emoji="\N{FRAME WITH PICTURE}",
         style=discord.ButtonStyle.blurple,
         row=1,
     )
@@ -266,7 +266,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Footer",
-        emoji="\N{Small Blue Diamond}",
+        emoji="\N{SMALL BLUE DIAMOND}",
         style=discord.ButtonStyle.blurple,
         row=2,
     )
@@ -284,7 +284,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Author",
-        emoji="\N{Writing Hand}",
+        emoji="\N{WRITING HAND}",
         style=discord.ButtonStyle.blurple,
         row=2,
     )
@@ -303,7 +303,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="URL",
-        emoji="\N{Globe with Meridians}",
+        emoji="\N{GLOBE WITH MERIDIANS}",
         style=discord.ButtonStyle.grey,
         row=2,
     )
@@ -318,7 +318,7 @@ class EmbedView(VanirView):
 
     @discord.ui.button(
         label="Send",
-        emoji="\N{Envelope with Downwards Arrow Above}",
+        emoji="\N{ENVELOPE WITH DOWNWARDS ARROW ABOVE}",
         style=discord.ButtonStyle.success,
         row=2,
     )

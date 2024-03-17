@@ -2,15 +2,16 @@ import asyncio
 import io
 import logging
 from dataclasses import dataclass
-from typing import TypeVar, Generic
+from typing import Generic, TypeVar
+from urllib.parse import urlparse
 
 import cv2
 import discord
 from discord.ext import commands
 from wand.image import Image
-from urllib.parse import urlparse
+
 from src.types.core import VanirContext
-from src.util.pregex import URL_REGEX
+from src.util.regex import URL_REGEX
 
 MediaSource = TypeVar("MediaSource", cv2.Mat, Image)
 
@@ -46,7 +47,6 @@ class MediaInterface(Generic[MediaSource]):
 
 
 class ImageInterface(MediaInterface[Image]):
-
     def __init__(self, image: Image, initial_info: MediaInfo):
         self.image = image
         self.initial_info = initial_info
@@ -83,7 +83,6 @@ class ImageInterface(MediaInterface[Image]):
 
 
 class VideoInterface(MediaInterface[cv2.Mat]):
-
     def __init__(self, url: str, blob: bytes, initial_info: MediaInfo):
         self.url = urlparse(url)
         self.blob = blob

@@ -2,16 +2,15 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from src.types.command import AutoTablePager, TaskIDConverter, VanirCog
+from src.types.command import AutoTablePager, TaskIDConverter, VanirCog, vanir_group
 from src.types.core import Vanir, VanirContext
-from src.util.command import vanir_group
 from src.util.parse import fuzzysearch
 
 
 class Todo(VanirCog):
     """Keep track of what you need to get done"""
 
-    emoji = "\N{Spiral Note Pad}"
+    emoji = "\N{SPIRAL NOTE PAD}"
 
     @vanir_group()
     async def todo(self, ctx: VanirContext, *, task: str = None):
@@ -30,7 +29,7 @@ class Todo(VanirCog):
         """Creates a new task. You can also use `\\todo <task>` as shorthand."""
         todo = await self.bot.db_todo.create_todo(ctx.author.id, task)
         embed = ctx.embed(
-            title=f"\N{White Heavy Check Mark} TODO: " f"{todo['title']}",
+            title=f"\N{WHITE HEAVY CHECK MARK} TODO: " f"{todo['title']}",
             description=f"ID: `{todo['todo_id']}`",
         )
         await ctx.reply(embed=embed, ephemeral=True)
@@ -127,7 +126,6 @@ class Todo(VanirCog):
         autosort: bool = True,
         as_image: bool = False,
     ):
-
         results_rows = [
             [
                 t["title"],

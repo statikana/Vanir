@@ -1,22 +1,21 @@
 import asyncio
-from dataclasses import dataclass
 import enum
-import io
-import re
 import inspect
+import io
 import logging
 import math
-from typing import TypeVar, Generic, Callable, Awaitable
+import re
 from asyncio import iscoroutinefunction
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 import discord
 import texttable
 from discord import Interaction
 from discord.ext import commands
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from src.constants import GITHUB_ROOT
-
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
 from src.util.fmt import fmt_bool
@@ -32,7 +31,7 @@ class AcceptItx(enum.Enum):
 
 
 class VanirCog(commands.Cog):
-    emoji = "\N{Black Question Mark Ornament}"
+    emoji = "\N{BLACK QUESTION MARK ORNAMENT}"
 
     def __init__(self, bot: Vanir):
         self.bot = bot
@@ -44,7 +43,6 @@ class VanirCog(commands.Cog):
         logging.info(f"{self.__class__.__name__} loaded")
 
 
-# noinspection PyUnresolvedReferences
 class VanirView(discord.ui.View):
     def __init__(
         self,
@@ -99,7 +97,7 @@ class GitHubView(VanirView):
 
         button = discord.ui.Button(
             url=f"{GITHUB_ROOT}/blob/main/{path}",
-            emoji="\N{Squid}",
+            emoji="\N{SQUID}",
             label="View on GitHub",
         )
         self.add_item(button)
@@ -131,9 +129,8 @@ class AutoCachedView(VanirView):
         self.previous_state.disabled = True
         self.next_state.disabled = True
 
-    @discord.ui.button(emoji="\N{Black Left-Pointing Triangle}", row=1)
+    @discord.ui.button(emoji="\N{BLACK LEFT-POINTING TRIANGLE}", row=1)
     async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
-
         if self.state_index is None:
             await self.collect(itx)
             self.state_index = len(self.states) - 2  # jump back behind the new cached
@@ -141,9 +138,8 @@ class AutoCachedView(VanirView):
             self.state_index -= 1
         await self.update_to_state(itx)
 
-    @discord.ui.button(emoji="\N{Black Right-Pointing Triangle}", row=1)
+    @discord.ui.button(emoji="\N{BLACK RIGHT-POINTING TRIANGLE}", row=1)
     async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
-
         self.state_index += 1
         await self.update_to_state(itx)
 
@@ -216,18 +212,18 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
         self.message: discord.Message | None = None
 
-    @discord.ui.button(emoji="\N{Black Left-Pointing Double Triangle}", disabled=True)
+    @discord.ui.button(emoji="\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}", disabled=True)
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = 0
         await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{Leftwards Black Arrow}", disabled=True)
+    @discord.ui.button(emoji="\N{LEFTWARDS BLACK ARROW}", disabled=True)
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page -= 1
         await self.update(itx, button)
 
     @discord.ui.button(
-        emoji="\N{Heavy Multiplication X}",
+        emoji="\N{HEAVY MULTIPLICATION X}",
         style=discord.ButtonStyle.danger,
         custom_id="constant-style:finish",
     )
@@ -239,19 +235,19 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         await self.update(itx, button)
         self.stop()
 
-    @discord.ui.button(emoji="\N{Black Rightwards Arrow}", disabled=True)
+    @discord.ui.button(emoji="\N{BLACK RIGHTWARDS ARROW}", disabled=True)
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page += 1
         await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{Black Right-Pointing Double Triangle}", disabled=True)
+    @discord.ui.button(emoji="\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}", disabled=True)
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = self.n_pages - 1
         await self.update(itx, button)
 
     @discord.ui.button(
         label="GO TO",
-        emoji="\N{Direct Hit}",
+        emoji="\N{DIRECT HIT}",
         custom_id="constant-style:custom",
         style=discord.ButtonStyle.blurple,
     )
@@ -357,14 +353,12 @@ class AutoTablePager(VanirPager):
         self.include_hline = include_hline
 
     async def update_embed(self):
-
         table = texttable.Texttable(61)
         table.header(self.headers)
 
         table.add_rows(
             self.rows[
-                self.cur_page
-                * self.items_per_page : (self.cur_page + 1)
+                self.cur_page * self.items_per_page : (self.cur_page + 1)
                 * self.items_per_page
             ],
             header=False,
@@ -503,13 +497,17 @@ class ModalField:
     required: bool = True
 
 
+class VanirHybridCommand(commands.Command):
+    pass
+
+
 class VanirHybridGroup(commands.HybridGroup):
     def command(self, *, name: str = None, aliases: list[str] = None):
         if aliases is None:
             aliases = []
 
         def inner(func):
-            func = autopopulate_add_descriptions(func)
+            func = autopopulate_descriptions(func)
             command = commands.HybridGroup.command(self, name=name, aliases=aliases)(
                 func
             )
@@ -519,7 +517,7 @@ class VanirHybridGroup(commands.HybridGroup):
         return inner
 
 
-def autopopulate_add_descriptions(func):
+def autopopulate_descriptions(func):
     params = inspect.signature(func).parameters.copy()
     try:
         del params["self"]
@@ -551,3 +549,45 @@ def inherit(cmd: commands.HybridCommand):
         cmd.checks = parent.checks
 
     return cmd
+
+
+def vanir_command(
+    hidden: bool = False, aliases: list[str] = None
+) -> Callable[[Any], commands.HybridCommand]:
+    if aliases is None:
+        aliases = []
+
+    def inner(func: Any):
+        func = autopopulate_descriptions(func)
+        cmd = commands.HybridCommand(func, aliases=aliases)
+        cmd.hidden = hidden
+        cmd = inherit(cmd)
+
+        return cmd
+
+    return inner
+
+
+def vanir_group(
+    hidden: bool = False,
+    aliases: list[str] = None,
+    invoke_without_subcommand: bool = True,
+) -> Callable[[Any], VanirHybridGroup]:
+    if aliases is None:
+        aliases = []
+
+    def inner(func: Any):
+        cmd = VanirHybridGroup(
+            func,
+            aliases=aliases,
+            with_app_command=not hidden,
+            hidden=hidden,
+            invoke_without_subcommand=invoke_without_subcommand,
+        )
+
+        return cmd
+
+    return inner
+
+
+BotObjectT = TypeVar("BotObjectT", VanirHybridCommand, VanirHybridGroup, VanirCog)

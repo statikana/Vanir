@@ -1,12 +1,13 @@
 import re
+
 import discord
-from discord.app_commands import Choice
 from discord.ext import commands
 
-from src import constants
+from src.types.command import BotObjectT
+from src.types.core import VanirContext
 
 
-class SearchMessages(commands.Converter[str]):
+class MessageSearchConverter(commands.Converter[str]):
     def __init__(
         self,
         *,
@@ -30,7 +31,6 @@ class SearchMessages(commands.Converter[str]):
         self.history_lim = history_lim
 
     async def convert(self, ctx: commands.Context, argument: str) -> list[str]:
-
         found = []
         results = self.regex.findall(argument)
         found.extend(results)
@@ -57,12 +57,14 @@ class SearchMessages(commands.Converter[str]):
         return found[: self.n_to_find]
 
 
-async def langcode_autocomplete(_itx: discord.Interaction, current: str):
-    options = [
-        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_NAMES.items()
-    ][:25]
-    options = sorted(
-        filter(lambda c: current.lower() in c.name.lower(), options),
-        key=lambda c: c.name,
-    )
-    return options
+class BotObjectConverter(commands.Converter[BotObjectT]):
+    async def convert(self, ctx: VanirContext, argument: str) -> BotObjectT:
+        cmd = ctx.bot.get_command(argument.lower())
+        if cmd is not None:
+            return cmd
+        cog = discord.utils.find(
+            lambda c: c.qualified_name.casefold() == argument.casefold(),
+            ctx.bot.cogs.values(),
+        )
+        if cog is not None:
+            return cog

@@ -1,15 +1,14 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, AutoTablePager
-from src.util.command import vanir_command
-from src.types.core import VanirContext, Vanir
+from src.types.command import AutoTablePager, VanirCog, vanir_command
+from src.types.core import Vanir, VanirContext
 
 
 class Server(VanirCog):
     """Information about this server"""
 
-    emoji = "\N{Hut}"
+    emoji = "\N{HUT}"
 
     @vanir_command()
     async def new(self, ctx: VanirContext):

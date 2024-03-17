@@ -1,7 +1,6 @@
 import logging
 import os
 
-
 MODULE_PATHS = [
     os.path.join(dirpath, f).replace(os.sep, ".").strip(".")[:-3]
     for (dirpath, _, filenames) in os.walk(

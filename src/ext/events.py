@@ -1,12 +1,13 @@
 import logging
+
 import discord
 from discord.ext import commands
-from src.types.database import StarBoard as StarBoardDB
 
-from src.types.core import TranslatedMessage, VanirContext
-from src.types.command import VanirCog
-from src.util.command import cog_hidden
 from src.constants import LANGUAGE_NAMES
+from src.types.command import VanirCog
+from src.types.core import TranslatedMessage, VanirContext
+from src.types.database import StarBoard as StarBoardDB
+from src.util.command import cog_hidden
 
 
 @cog_hidden
@@ -73,28 +74,31 @@ class Events(VanirCog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         starboard: StarBoardDB = self.bot.db_starboard
-        if payload.emoji.name != "\N{White Medium Star}":
+        if payload.emoji.name != "\N{WHITE MEDIUM STAR}":
             return
 
-        starboard_channel_id = await starboard.get_starboard_channel(payload.guild_id)
-        if payload.channel_id == starboard_channel_id:
+        config = await starboard.get_config(payload.guild_id)
+
+        if config is None:
             return
 
-        if starboard_channel_id is None:
+        channel_id = config["channel_id"]
+        threshold = config["threshold"]
+
+        if payload.channel_id == channel_id:
             return
 
         guild = self.bot.get_guild(payload.guild_id)
+        if guild is None:
+            await starboard.remove_config(payload.guild_id)
 
-        starboard_channel: discord.TextChannel = guild.get_channel(starboard_channel_id)
+        starboard_channel: discord.TextChannel = guild.get_channel(channel_id)
+        if starboard_channel is None:
+            await starboard.remove_config(payload.guild_id)
+            return
 
         n_stars: int = await starboard.add_star(
             payload.guild_id, payload.message_id, payload.user_id
-        )
-
-        # find if there is already an existing starboard post for the message
-
-        existing_post_id: int = await starboard.get_starboard_post_id(
-            payload.message_id
         )
 
         # starred message channel
@@ -102,8 +106,11 @@ class Events(VanirCog):
         if original_channel is None:
             return
 
+        # find if there is already an existing starboard post for the message
+        data = await starboard.get_post_data(payload.message_id)
+        existing_post_id = data["starboard_post_id"]
+
         if existing_post_id is None:
-            threshold = await starboard.get_threshold(payload.guild_id)
             if n_stars >= threshold:
                 # get channel to send post to, from cache
 
@@ -120,7 +127,7 @@ class Events(VanirCog):
                 except discord.NotFound:
                     raise RuntimeError("Could not find content of reacted message")
                 real_stars = discord.utils.find(
-                    lambda r: r.emoji == "\N{White Medium Star}", message.reactions
+                    lambda r: r.emoji == "\N{WHITE MEDIUM STAR}", message.reactions
                 )
                 if real_stars is None:
                     return  # what?
@@ -153,10 +160,10 @@ class Events(VanirCog):
                 content = f":star: {n_stars}"
 
                 message = await starboard_channel.send(content=content, embed=embed)
-                await starboard.set_starboard_post_id(
+                await starboard.set_starboard_post(
+                    payload.message_id,
                     message.id,
                     payload.guild_id,
-                    payload.message_id,
                     payload.user_id,
                     n_stars,
                 )
@@ -175,33 +182,38 @@ class Events(VanirCog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         starboard: StarBoardDB = self.bot.db_starboard
-        if payload.emoji.name is None or payload.emoji.name != "\N{White Medium Star}":
+        if payload.emoji.name is None or payload.emoji.name != "\N{WHITE MEDIUM STAR}":
             return
 
-        starboard_channel_id = await starboard.get_starboard_channel(payload.guild_id)
+        config = await starboard.get_config(payload.guild_id)
+        if config is None:
+            return
+
+        starboard_channel_id = config["channel_id"]
+        threshold = config["threshold"]
+
         if payload.channel_id == starboard_channel_id:
             return
 
         n_stars = await starboard.remove_star(
             payload.guild_id, payload.message_id, payload.user_id
         )
-        threshold = await starboard.get_threshold(payload.guild_id)
 
-        existing_post_id = await starboard.get_starboard_post_id(payload.message_id)
-        if existing_post_id is None:
+        data = await starboard.get_post_data(payload.message_id)
+        if data is None:
             return
 
+        existing_post_id = data["starboard_post_id"]
+        posting_channel = self.bot.get_channel(starboard_channel_id)
+
         try:
-            existing_post = await self.bot.get_channel(
-                starboard_channel_id
-            ).fetch_message(existing_post_id)
+            existing_post = await posting_channel.fetch_message(existing_post_id)
         except discord.NotFound:
             # starboard post deleted
             await starboard.remove_starboard_post(existing_post_id)
             return
 
         if n_stars < threshold:
-
             await existing_post.delete()
             await starboard.remove_starboard_post(existing_post_id)
 

@@ -1,22 +1,19 @@
 import functools
 import inspect
-from typing import Callable, Any
+from typing import Any
 
 import discord
+from discord.app_commands import Choice
 from discord.ext import commands
 
-from src.types.command import (
-    VanirHybridGroup,
-    VanirCog,
-    autopopulate_add_descriptions,
-    inherit,
-)
-from src.types.core import VanirContext, Vanir
-from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
-
-from src.util import fmt
-
 import config
+from src import constants
+from src.types.command import (
+    VanirCog,
+)
+from src.types.core import Vanir, VanirContext
+from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
+from src.util import fmt
 
 if config.use_system_assets:
     from wand.image import Image
@@ -128,39 +125,6 @@ async def assure_working(ctx: VanirContext, media: MediaInterface):
     return await ctx.reply(embed=embed)
 
 
-def vanir_command(
-    hidden: bool = False, aliases: list[str] = None
-) -> Callable[[Any], commands.HybridCommand]:
-    if aliases is None:
-        aliases = []
-
-    def inner(func: Any):
-        func = autopopulate_add_descriptions(func)
-        cmd = commands.HybridCommand(func, aliases=aliases)
-        cmd.hidden = hidden
-        cmd = inherit(cmd)
-
-        return cmd
-
-    return inner
-
-
-def vanir_group(
-    hidden: bool = False, aliases: list[str] = None
-) -> Callable[[Any], VanirHybridGroup]:
-    if aliases is None:
-        aliases = []
-
-    def inner(func: Any):
-        cmd = VanirHybridGroup(
-            func, aliases=aliases, with_app_command=not hidden, hidden=hidden
-        )
-
-        return cmd
-
-    return inner
-
-
 def cog_hidden(cls: type[VanirCog]):
     """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
     original_init = cls.__init__
@@ -183,3 +147,14 @@ def safe_default(arg: Any | commands.Parameter) -> Any:
     if isinstance(arg, commands.Parameter):
         return arg.default
     return arg
+
+
+async def langcode_autocomplete(_itx: discord.Interaction, current: str):
+    options = [
+        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_NAMES.items()
+    ][:25]
+    options = sorted(
+        filter(lambda c: current.lower() in c.name.lower(), options),
+        key=lambda c: c.name,
+    )
+    return options

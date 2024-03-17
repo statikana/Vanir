@@ -5,10 +5,14 @@ from urllib.parse import urlparse
 from fuzzywuzzy import fuzz
 
 from assets.color_db import COLORS
-from src.util.pregex import SLUG_REGEX
-
+from src.util.regex import SLUG_REGEX
 
 FuzzyT = typing.TypeVar("FuzzyT")
+
+
+class Convention(Enum):
+    DECIMAL = 0
+    BINARY = 1
 
 
 def find_filename(url: str):
@@ -60,8 +64,3 @@ def fuzzysearch(
     out = list(output(v[0]) for v in flt)
 
     return out
-
-
-class Convention(Enum):
-    DECIMAL = 0
-    BINARY = 1

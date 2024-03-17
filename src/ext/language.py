@@ -1,19 +1,17 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 
-from discord import app_commands
-
-from src.types.command import VanirCog, VanirView
-from src.types.core import VanirContext, Vanir
 from src.constants import LANGUAGE_NAMES
-from src.util.command import vanir_command
-from src.types.interface import langcode_autocomplete
+from src.types.command import VanirCog, VanirView, vanir_command
+from src.types.core import Vanir, VanirContext
+from src.util.command import langcode_autocomplete
 
 
 class Language(VanirCog):
     """Definitions / Translations"""
 
-    emoji = "\N{Open Book}"
+    emoji = "\N{OPEN BOOK}"
 
     @vanir_command(aliases=["def", "d"])
     async def define(
@@ -47,7 +45,7 @@ class Language(VanirCog):
                     discord.ui.Button(
                         style=discord.ButtonStyle.url,
                         label=f"{audio_file[audio_file.rfind('-')+1:audio_file.rfind('.')].upper()} Pronunciation",
-                        emoji="\N{Speaker with Three Sound Waves}",
+                        emoji="\N{SPEAKER WITH THREE SOUND WAVES}",
                         url=audio_file,
                     )
                 )
@@ -87,7 +85,7 @@ class Language(VanirCog):
     @app_commands.autocomplete(
         source_lang=langcode_autocomplete, target_lang=langcode_autocomplete
     )
-    @commands.cooldown(2, 60, commands.BucketType.user)
+    @commands.cooldown(5, 60, commands.BucketType.user)
     async def translate(
         self,
         ctx: VanirContext,

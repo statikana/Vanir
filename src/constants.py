@@ -42,6 +42,11 @@ STRONG_CHANNEL_PERMISSIONS = (
     "manage_messages",
     "manage_channels",
     "manage_permissions",
+    "manage_roles",
+    "manage_guild",
+    "manage_threads",
+    "manage_webhooks",
+    "mention_everyone",
 )
 
 GLOBAL_CHANNEL_PERMISSIONS = (
@@ -104,12 +109,12 @@ ANSI_CODES = {
 
 ANSI = {name: f"\N{ESCAPE}[0;{code}m" for code, name in ANSI_CODES.items()}
 ANSI_EMOJIS = {
-    "grey": "\U0001FA76",
+    "grey": "\U0001fa76",
     "red": "\U00002764",
-    "green": "\U0001F49A",
-    "yellow": "\U0001F49B",
-    "blue": "\U0001F499",
-    "pink": "\U0001FA77",
-    "cyan": "\U0001FA75",
-    "white": "\U0001F90D",
+    "green": "\U0001f49a",
+    "yellow": "\U0001f49b",
+    "blue": "\U0001f499",
+    "pink": "\U0001fa77",
+    "cyan": "\U0001fa75",
+    "white": "\U0001f90d",
 }

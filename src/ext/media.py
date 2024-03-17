@@ -1,17 +1,16 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog
-from src.types.core import VanirContext, Vanir
+from src.types.command import VanirCog, vanir_command
+from src.types.core import Vanir, VanirContext
 from src.types.media import MediaConverter
-from src.util.command import assure_working, vanir_command
-from src.util.command import send_file
+from src.util.command import assure_working, send_file
 
 
 class Media(VanirCog):
     """Manipulate images and videos"""
 
-    emoji = "\N{Frame with Picture}"
+    emoji = "\N{FRAME WITH PICTURE}"
 
     @vanir_command()
     async def rotate(

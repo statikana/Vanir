@@ -1,56 +1,31 @@
 import re
+import unicodedata
 from asyncio import iscoroutinefunction
-from typing import Callable, Any
-import texttable
+from typing import Any, Callable
 
 import discord
-from discord import InteractionResponse
+import texttable
 from discord.ext import commands
 
 from src.constants import (
-    VALID_IMAGE_FORMATS,
-    GLOBAL_CHANNEL_PERMISSIONS,
-    VOICE_CHANNEL_PERMISSIONS,
-    TEXT_CHANNEL_PERMISSIONS,
     ALL_PERMISSIONS,
+    GLOBAL_CHANNEL_PERMISSIONS,
+    STRONG_CHANNEL_PERMISSIONS,
+    TEXT_CHANNEL_PERMISSIONS,
+    VALID_IMAGE_FORMATS,
+    VOICE_CHANNEL_PERMISSIONS,
 )
-from src.types.command import (
-    VanirCog,
-    AutoCachedView,
-)
-from src.types.core import VanirContext, Vanir
-from src.util.pregex import EMOJI_REGEX, SNOWFLAKE_REGEX
-
-from src.util.command import (
-    discover_cog,
-    discover_group,
-    get_display_cogs,
-    get_param_annotation,
-    vanir_command,
-)
-from src.util.fmt import format_dict, fmt_bool
-from src.util.parse import closest_color_name, find_filename, find_ext
-
-import unicodedata
+from src.types.command import VanirCog, vanir_command
+from src.types.core import Vanir, VanirContext
+from src.util.fmt import ctext, fmt_bool, fmt_dict
+from src.util.parse import closest_color_name, find_ext, find_filename
+from src.util.regex import EMOJI_REGEX, SNOWFLAKE_REGEX
 
 
 class Info(VanirCog):
     """What's this?"""
 
-    emoji = "\N{White Question Mark Ornament}"
-
-    @vanir_command()
-    @commands.cooldown(4, 60, commands.BucketType.user)
-    async def help(self, ctx: VanirContext):
-        """Stop it, get some help"""
-
-        # Cogs -> Modules
-        embed = await self.get_cog_display_embed(ctx)
-        sel = CogDisplaySelect(ctx, self)
-
-        view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
-
-        await ctx.reply(embed=embed, view=view)
+    emoji = "\N{WHITE QUESTION MARK ORNAMENT}"
 
     @vanir_command(aliases=["sf", "id"])
     @commands.cooldown(5, 120, commands.BucketType.user)
@@ -75,7 +50,6 @@ class Info(VanirCog):
 
         found: bool = False
         if search:
-
             cache_attributes = ("user", "channel", "guild", "role", "emoji")
 
             fetch_attributes = ("message", "user", "channel", "role")
@@ -200,7 +174,7 @@ class Info(VanirCog):
         if member is not None:
             data.update({"Color": closest_color_name(str(member.color)[1:])[0].title()})
 
-        embed.add_field(name="Misc. Data", value=format_dict(data), inline=False)
+        embed.add_field(name="Misc. Data", value=fmt_dict(data), inline=False)
 
         if member is not None:
             embed.add_field(
@@ -230,7 +204,7 @@ class Info(VanirCog):
                 "Created At": f"<t:{int(cat.created_at.timestamp())}:R>",
                 "NSFW?": cat.is_nsfw(),
             }
-            embed.add_field(name="Category Data", value=format_dict(data))
+            embed.add_field(name="Category Data", value=fmt_dict(data))
 
         await self.add_permission_data_from_channel(ctx, embed, channel)
 
@@ -248,7 +222,6 @@ class Info(VanirCog):
         if msg.reference is not None:
             ref = await msg.channel.fetch_message(msg.reference.message_id)
             if ref is not None:
-
                 if ref.content:
                     embed.add_field(
                         name="Replying To",
@@ -270,7 +243,7 @@ class Info(VanirCog):
                 )
 
             if mentions:
-                embed.add_field(name="Mentions", value=format_dict(mentions))
+                embed.add_field(name="Mentions", value=fmt_dict(mentions))
 
             pat = r"\s"
             content_info = {
@@ -280,7 +253,7 @@ class Info(VanirCog):
                 "# Lines": f"{len(msg.content.splitlines()):,}",
             }
 
-            embed.add_field(name="Content Info", value=format_dict(content_info))
+            embed.add_field(name="Content Info", value=fmt_dict(content_info))
 
         if msg.attachments:
             urls = [a.url.lower() for a in msg.attachments]
@@ -311,7 +284,7 @@ class Info(VanirCog):
             "Bots": len(set(filter(lambda m: m.bot, guild.members))),
             "Max Members": f"{guild.max_members:,}",
         }
-        embed.add_field(name="Member Info", value=format_dict(member_data))
+        embed.add_field(name="Member Info", value=fmt_dict(member_data))
 
         boost_data = {
             "Boost Count": f"{guild.premium_subscription_count:,}",
@@ -328,7 +301,7 @@ class Info(VanirCog):
             ),
             "Boost Level": f"{guild.premium_tier} / 3",
         }
-        embed.add_field(name="Boost Info", value=format_dict(boost_data))
+        embed.add_field(name="Boost Info", value=fmt_dict(boost_data))
         await self.add_sf_data(embed, guild.id)
         return embed
 
@@ -338,6 +311,24 @@ class Info(VanirCog):
         embed.description = await self.get_permission_table(
             {f"'{role.name[:20]}'": role.permissions}, checked=ALL_PERMISSIONS
         )
+
+        embed.add_field(
+            name="Role Info",
+            value=fmt_dict(
+                {
+                    "\N{ARTIST PALETTE}Color": closest_color_name(str(role.color)[1:])[
+                        0
+                    ].title(),
+                    "\N{SPEECH BALLOON}Mentionable?": f"`{role.mentionable}`",
+                    "\N{UP-POINTING RED TRIANGLE}Hoisted?": f"`{role.hoist}`",
+                    "\N{TWISTED RIGHTWARDS ARROWS}Position": f"`{role.position}`",
+                    "\N{ROBOT FACE}Managed by Bot?": f"`{role.is_bot_managed() or role.is_integration()}`",
+                    "\N{HEAVY BLACK HEART}\N{ZERO WIDTH JOINER}\N{FIRE}Nitro Role?": f"`{role.is_premium_subscriber()}`",
+                }
+            ),
+        )
+        if role.display_icon:
+            embed.set_thumbnail(url=role.display_icon.url)
 
         return embed
 
@@ -369,6 +360,7 @@ class Info(VanirCog):
             | texttable.Texttable.HEADER
             | texttable.Texttable.VLINES
         )
+
         for name in checked:
             table.add_row(
                 [
@@ -380,6 +372,16 @@ class Info(VanirCog):
         drawn = drawn.replace("True", f"{fmt_bool(True)} ").replace(
             "False", f"{fmt_bool(False)}   "
         )
+
+        for major in (
+            check.replace("_", " ").title()
+            for check in checked
+            if check in STRONG_CHANNEL_PERMISSIONS
+        ):
+            drawn = drawn.replace(
+                major,
+                ctext(major, "blue"),
+            )
         return f"**```ansi\n{drawn}```**"
 
     async def add_permission_data_from_channel(
@@ -426,145 +428,7 @@ class Info(VanirCog):
             "SF Generation ID": f"`{generation}`",
         }
 
-        embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
-
-    async def get_cog_display_embed(self, ctx: VanirContext) -> discord.Embed:
-        embed = ctx.embed(
-            title="Module Select",
-        )
-
-        cogs = get_display_cogs(self.bot)
-        for c in cogs:
-            embed.add_field(
-                name=f"{getattr(c, 'emoji')} {c.qualified_name}",
-                value=f"*{c.description or 'No Description'}*",
-                inline=True,
-            )
-
-        return embed
-
-    async def get_cog_info_embed(
-        self, itx: discord.Interaction, cog: commands.Cog
-    ) -> discord.Embed:
-        embed = VanirContext.syn_embed(
-            title=f"Module Info: **{cog.qualified_name}**",
-            description=f"*{cog.description or 'No Description'}*",
-            user=itx.user,
-        )
-
-        other_commands: list[commands.Command] = []
-
-        for c in cog.get_commands():
-            if isinstance(c, commands.Group):
-                embed.add_field(
-                    name=f"`{c.qualified_name}` Commands",
-                    value="\n".join(
-                        f"`\\{sub.qualified_name}`" for sub in discover_group(c)
-                    ),
-                )
-            else:
-                other_commands.append(c)
-
-        if other_commands:
-            embed.add_field(
-                name=f"{len(other_commands)} Miscellaneous Command{'s' if len(other_commands) > 1 else ''}",
-                value="\n".join(f"`\\{o.qualified_name}`" for o in other_commands),
-            )
-
-        return embed
-
-    async def get_command_info_embed(
-        self, itx: discord.Interaction, command: commands.Command
-    ) -> discord.Embed:
-        alias_generator = (
-            f"`\\{command.full_parent_name}{' ' if command.parent else ''}{c}`"
-            for c in command.aliases
-        )
-        embed = VanirContext.syn_embed(
-            title=f"Info: `\\{command.qualified_name} {command.signature}`",
-            description=f"Aliases: "
-            f"{' '.join(alias_generator) or '<no aliases>'}\n"
-            f"*{command.description or command.short_doc or 'No Description'}*",
-            user=itx.user,
-        )
-
-        for name, param in command.params.items():
-            data = {"Required": "Yes" if param.required else "No"}
-            if not param.required:
-                data["Default"] = param.displayed_default or param.default
-            embed.add_field(
-                name=f"__`{name}`__: `{get_param_annotation(param)}`",
-                value=f"*{param.description}*\n{format_dict(data)}",
-                inline=False,
-            )
-
-        return embed
-
-    async def get_command_info_select(
-        self, ctx: VanirContext, command: commands.Command
-    ):
-        return CogInfoSelect(ctx, self, command.cog)
-
-
-class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
-    """Creates a select which displays all cogs in the bot"""
-
-    def __init__(self, ctx: VanirContext, instance: Info):
-        self.ctx = ctx
-        self.instance = instance
-        options = [
-            discord.SelectOption(
-                label=c.qualified_name,
-                description=c.description or "No Description",
-                value=c.qualified_name,
-                emoji=getattr(c, "emoji"),
-            )
-            for c in get_display_cogs(self.ctx.bot)
-        ]
-        super().__init__(options=options, placeholder="Select a Module", row=0)
-
-    async def callback(self, itx: discord.Interaction):
-        """Goes to `cog info`"""
-        await self.view.collect(itx)
-        selected = self.values[0]
-        cog = self.ctx.bot.get_cog(selected)
-
-        embed = await self.instance.get_cog_info_embed(itx, cog)
-        sel = CogInfoSelect(self.ctx, self.instance, cog)
-
-        self.view.remove_item(self)
-        self.view.add_item(sel)
-
-        await InteractionResponse(itx).defer()
-        await itx.message.edit(embed=embed, view=self.view)
-
-
-class CogInfoSelect(discord.ui.Select[AutoCachedView]):
-    """Creates a select which displays commands in a cog"""
-
-    def __init__(self, ctx: VanirContext, instance: Info, cog: commands.Cog):
-        self.ctx = ctx
-        self.instance = instance
-        options = [
-            discord.SelectOption(
-                label=c.qualified_name,
-                description=f"{c.description or c.short_doc or 'No Description'}",
-                value=c.qualified_name,
-            )
-            for c in discover_cog(cog)
-        ]
-        super().__init__(options=options, placeholder="Select a Command", row=0)
-
-    async def callback(self, itx: discord.Interaction):
-        """Goes to `command info`"""
-        # we do not collect here because the response is ephemeral
-        # so no "progress is lost"
-
-        command = self.ctx.bot.get_command(self.values[0])
-
-        embed = await self.instance.get_command_info_embed(itx, command)
-
-        await itx.response.send_message(embed=embed, ephemeral=True)
+        embed.add_field(name="Snowflake Info", value=fmt_dict(data), inline=False)
 
 
 async def setup(bot: Vanir):

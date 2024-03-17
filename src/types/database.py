@@ -1,4 +1,5 @@
 from typing import TypedDict
+
 import asyncpg
 
 
@@ -7,7 +8,6 @@ class DBBase:
         self.pool: asyncpg.connection.Connection = None  # type: ignore
 
     def start(self, pool: asyncpg.Pool) -> None:
-
         self.pool = pool
 
 
@@ -36,17 +36,18 @@ TLINK = TypedDict(
 
 
 class StarBoard(DBBase):
-
-    async def get_posting_channel(self, guild_id: int) -> int:
-        return await self.pool.fetchval(
-            "SELECT channel_id FROM starboard_data WHERE guild_id = $1", guild_id
+    async def get_config(self, guild_id: int):
+        return await self.pool.fetchrow(
+            "SELECT * FROM starboard_data WHERE guild_id = $1", guild_id
         )
 
-    async def update_posting_channel(self, guild_id: int, channel_id: int) -> None:
+    async def set_config(self, guild_id: int, channel_id: int, threshold: int) -> None:
         await self.pool.execute(
-            "UPDATE starboard_data SET channel_id=$2 WHERE guild_id = $1",
+            "INSERT INTO starboard_data(guild_id, channel_id, threshold) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id) DO UPDATE SET channel_id = $2, threshold = $3",
             guild_id,
             channel_id,
+            threshold,
         )
 
     async def add_star(self, guild_id: int, original_id: int, user_id: int) -> int:
@@ -73,40 +74,53 @@ class StarBoard(DBBase):
             user_id,
         )
 
-    async def get_post_id(self, original_id: int) -> int | None:
-        return await self.pool.fetchval(
-            "SELECT starboard_post_id FROM starboard_posts WHERE original_id = $1",
-            original_id,
-        )
-
-    async def update_post_id(self, original_id: int, starboard_post_id: int) -> None:
+    async def set_post_id(self, original_id: int, starboard_post_id: int) -> None:
         await self.pool.execute(
             "UPDATE starboard_posts SET starboard_post_id = $2 WHERE original_id = $1",
             original_id,
             starboard_post_id,
         )
 
-    async def remove_post(self, starboard_post_id: int) -> None:
+    async def remove_starboard_post(self, starboard_post_id: int) -> None:
         await self.pool.execute(
             "DELETE FROM starboard_posts WHERE starboard_post_id = $1",
             starboard_post_id,
         )
 
-    async def get_star_threshold(self, guild_id: int) -> int | None:
-        return await self.pool.fetchval(
-            "SELECT threshold FROM starboard_data WHERE guild_id = $1", guild_id
-        )
-
     async def set_star_threshold(self, guild_id: int, threshold: int) -> None:
-        return await self.pool.execute(
+        await self.pool.execute(
             "UPDATE starboard_data SET threshold = $2 WHERE guild_id = $1",
             guild_id,
             threshold,
         )
 
-    async def wipe_data(self, guild_id: int) -> None:
+    async def remove_config(self, guild_id: int) -> None:
         await self.pool.execute(
             "DELETE FROM starboard_data WHERE guild_id = $1", guild_id
+        )
+
+    async def get_post_data(self, original_id: int) -> int:
+        return await self.pool.fetchrow(
+            "SELECT * FROM starboard_posts WHERE original_id = $1", original_id
+        )
+
+    async def set_starboard_post(
+        self,
+        original_id: int,
+        starboard_post_id: int,
+        guild_id: int,
+        user_id: int,
+        n_stars: int,
+    ) -> None:
+        await self.pool.execute(
+            "INSERT INTO starboard_posts(original_id, starboard_post_id, guild_id, user_id, n_stars) "
+            "VALUES ($1, $2, $3, $4, $5) "
+            "ON CONFLICT (original_id) DO UPDATE SET starboard_post_id = $2, n_stars = $5",
+            original_id,
+            starboard_post_id,
+            guild_id,
+            user_id,
+            n_stars,
         )
 
 

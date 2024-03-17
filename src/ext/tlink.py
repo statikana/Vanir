@@ -1,18 +1,16 @@
 import discord
 from discord.ext import commands
 
-from src.types.core import VanirContext
-from src.types.command import VanirCog
-from src.util.command import vanir_group
-
 from src.constants import LANGUAGE_CODES, LANGUAGE_NAMES
+from src.types.command import VanirCog, vanir_group
+from src.types.core import VanirContext
 from src.util.command import safe_default
 
 
 class TLink(VanirCog):
     """Translation Links"""
 
-    emoji = "\N{Link Symbol}"
+    emoji = "\N{LINK SYMBOL}"
 
     @vanir_group()
     @commands.guild_only()

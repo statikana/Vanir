@@ -1,16 +1,15 @@
 import asyncio
-from asyncio import subprocess
 import inspect
 import pathlib
 import time
-import discord
+from asyncio import subprocess
 
+import discord
 from discord.ext import commands
 
 from src.constants import ANSI, GITHUB_ROOT
-from src.types.command import GitHubView, VanirCog
-from src.util.command import vanir_command
-from src.types.core import VanirContext, Vanir
+from src.types.command import GitHubView, VanirCog, vanir_command
+from src.types.core import Vanir, VanirContext
 from src.types.util import timed
 from src.util.fmt import natural_join
 
@@ -18,21 +17,21 @@ from src.util.fmt import natural_join
 class Bot(VanirCog):
     """Commands that deal with the bot itself"""
 
-    emoji = "\N{Robot Face}"
+    emoji = "\N{ROBOT FACE}"
 
     @vanir_command()
     async def ping(self, ctx: VanirContext):
         """Check if the bot is down or having excessive delays"""
         delays = {
-            "\N{Shinto Shrine} Discord Gateway": self.bot.latency,
-            "\N{Earth Globe Americas} Web Requests": await timed(
+            "\N{SHINTO SHRINE} Discord Gateway": self.bot.latency,
+            "\N{EARTH GLOBE AMERICAS} Web Requests": await timed(
                 self.bot.session.get, "https://example.com"
             ),
-            "\N{Elephant} PGSQL DB": await timed(
+            "\N{ELEPHANT} PGSQL DB": await timed(
                 self.bot.db_currency.pool.fetchval, "SELECT 0"
             ),
         }
-        embed = ctx.embed("\N{Table Tennis Paddle and Ball} Pong!")
+        embed = ctx.embed("\N{TABLE TENNIS PADDLE AND BALL} Pong!")
         for name, delay in delays.items():
             embed.add_field(name=name, value=f"`{delay*1000:.3f}ms`", inline=False)
 
@@ -138,9 +137,9 @@ class Bot(VanirCog):
             # author [hash - relative time]
             # commit message
             cmd=f"git log -n 5 --pretty=format:\""
-                f"{ANSI['white']}%an [{ANSI['cyan']}%h{ANSI['white']} - "
-                f"{ANSI['red']}%ar{ANSI['white']}]%n"
-                f"{ANSI['grey']}➥%s\"",
+            f"{ANSI['white']}%an [{ANSI['cyan']}%h{ANSI['white']} - "
+            f"{ANSI['red']}%ar{ANSI['white']}]%n"
+            f"{ANSI['grey']}➥%s\"",
             # fmt: on
             stdout=asyncio.subprocess.PIPE,
         )

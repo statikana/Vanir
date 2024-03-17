@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Any
-from src.ext import MODULE_PATHS
 
 import aiohttp
 import asyncpg
@@ -11,7 +10,8 @@ from discord.ext import commands
 import config
 from src import env
 from src.env import DEEPL_API_KEY
-from src.types.database import StarBoard, Currency, Todo, TLink, TLINK
+from src.ext import MODULE_PATHS
+from src.types.database import TLINK, Currency, StarBoard, TLink, Todo
 
 
 class Vanir(commands.Bot):
