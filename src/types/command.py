@@ -183,8 +183,13 @@ class AutoCachedView(VanirView):
         back, fwd = self.previous_state, self.next_state
         self.remove_item(back)
         self.remove_item(fwd)
-        back.row += 1
-        fwd.row += 1
+        next_row = (
+            max(item.row for item in self.children + [item]) if self.children else 0
+        ) + 1
+        if next_row >= 5:
+            raise ValueError("Too many rows - max 4 with AutoCachedView")
+        back.row = next_row
+        fwd.row = next_row
         super().add_item(item)
         super().add_item(back)
         super().add_item(fwd)

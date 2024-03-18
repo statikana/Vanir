@@ -48,8 +48,8 @@ class Bot(VanirCog):
         ),
     ):
         """Retrieves a command's full source code (from github.com/StatHusky13/Vanir)"""
-        root = "https://github.com/StatHusky13/Vanir/tree/main"
-        line_preview_limit = 40
+        root = GITHUB_ROOT + "/tree/main"
+        line_preview_limit = 30
 
         if item is not None:
             # attempt to find the object
@@ -68,14 +68,14 @@ class Bot(VanirCog):
 
             url_path = f"{path[path.index('src'):]}#L{first_line_num}-L{first_line_num+n_lines}"
 
-            embed = ctx.embed(title=f"Source: {item}", url=GITHUB_ROOT + url_path)
+            embed = ctx.embed(title=f"Source: {item}", url=f"{GITHUB_ROOT}/{url_path}")
             embed.add_field(
-                name="File",
+                name="\N{FLOPPY DISK} File",
                 value=f"`{pathlib.Path(path).relative_to(pathlib.Path('.').absolute())}`",
                 inline=False,
             )
             embed.add_field(
-                name="Lines",
+                name="\N{SCROLL} Lines",
                 value=f"`{str(first_line_num).rjust(4, '0')}` to "
                 f"`{str(first_line_num + n_lines).rjust(4, '0')}` [`{n_lines}` lines]",
                 inline=False,
@@ -84,7 +84,7 @@ class Bot(VanirCog):
             # the lines are already '\n' postfix-ed
             snippet = "".join(line for line in lines[:line_preview_limit])[:4000]
             if n_lines > line_preview_limit:
-                snippet += "\n... [Snippet Cut Off]"
+                snippet += "\n... [Snippet Cut Off] "
 
             embed.description = f"```py\n{snippet}\n```"
             view = GitHubView(ctx.bot, url_path)

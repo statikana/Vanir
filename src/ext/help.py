@@ -39,31 +39,45 @@ class Help(VanirCog):
         # Cogs -> Modules
         if isinstance(thing, commands.Cog):
             embed = await self.cog_details_embed(thing, ctx.author)
-            sel = CogDetailSelect(ctx, self, thing)
+            view = AutoCachedView(self.bot, user=ctx.author)
+            display_sel = CogDisplaySelect(ctx, self)
+            for item in display_sel.options:
+                item.default = item.value == thing.qualified_name
+            view.auto_add_item(display_sel)
 
-            view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
-
-            await ctx.reply(embed=embed, view=view)
-            return
-
-        if isinstance(thing, VanirHybridGroup):
+        elif isinstance(thing, VanirHybridGroup):
             embed = await self.group_details_embed(thing, ctx.author)
-            sel = GroupDetailSelect(ctx, self, thing)
+            view = AutoCachedView(self.bot, user=ctx.author)
+            display_sel = CogDisplaySelect(ctx, self)
+            for item in display_sel.options:
+                item.default = item.value == thing.cog.qualified_name
+            view.auto_add_item(display_sel)
+
+            detail_sel = GroupDetailSelect(ctx, self, thing)
+            for item in detail_sel.options:
+                item.default = item.value == thing.qualified_name
+            detail_sel.row = 1
+            view.auto_add_item(detail_sel)
+
+        elif isinstance(thing, commands.Command):
+            embed = await self.command_details_embed(thing, ctx.author)
+            view = AutoCachedView(self.bot, user=ctx.author)
+            display_sel = CogDisplaySelect(ctx, self)
+            for item in display_sel.options:
+                item.default = item.value == thing.cog.qualified_name
+            view.auto_add_item(display_sel)
+
+            detail_sel = CogDetailSelect(ctx, self, thing.cog)
+            for item in detail_sel.options:
+                item.default = item.value == thing.qualified_name
+            detail_sel.row = 1
+            view.auto_add_item(detail_sel)
+
+        else:
+            embed = await self.main_page_embed(ctx.author)
+            sel = CogDisplaySelect(ctx, self)
 
             view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
-
-            await ctx.reply(embed=embed, view=view)
-            return
-
-        if isinstance(thing, commands.Command):
-            embed = await self.command_details_embed(thing, ctx.author)
-            await ctx.reply(embed=embed, ephemeral=True)
-            return
-
-        embed = await self.main_page_embed(ctx.author)
-        sel = CogDisplaySelect(ctx, self)
-
-        view = AutoCachedView(self.bot, user=ctx.author, items=[sel])
 
         await ctx.reply(embed=embed, view=view)
 
@@ -307,20 +321,18 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
 
     async def callback(self, itx: discord.Interaction):
         """Goes to `command info`"""
-        # we do not collect here because the response is ephemeral
-        # so no "progress is lost"
         await self.view.collect(itx)
         command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.command_details_embed(command, itx.user)
-        this = discord.utils.find(
+        this: discord.ui.Select = discord.utils.find(
             lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
             self.view.children,
         )
         for opt in this.options:
             opt.default = opt.value == self.values[0]
 
-        await itx.response.edit_message(embed=embed)
+        await itx.response.edit_message(embed=embed, view=self.view)
 
 
 class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
@@ -353,7 +365,7 @@ class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
         for opt in this.options:
             opt.default = opt.value == self.values[0]
 
-        await itx.response.edit_message(embed=embed)
+        await itx.response.edit_message(embed=embed, view=self.view)
 
 
 async def setup(bot: Vanir) -> None:
