@@ -96,7 +96,7 @@ ALL_PERMISSIONS = (
 GITHUB_ROOT = "https://github.com/statikana/Vanir"
 
 ANSI_CODES = {
-    0: "reset",  # we'll pretend this isn't dumb
+    00: "reset",  # we'll pretend this isn't dumb
     30: "grey",
     31: "red",
     32: "green",
@@ -118,3 +118,5 @@ ANSI_EMOJIS = {
     "cyan": "\U0001fa75",
     "white": "\U0001f90d",
 }
+
+MONOSPACE_FONT_HEIGHT_RATIO = 1.6

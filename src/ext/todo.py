@@ -198,21 +198,21 @@ class MarkTodoAsDone(discord.ui.Select):
     def __init__(self, options: list[tuple[str, int]]):
         super().__init__(
             placeholder="Mark tasks as DONE",
-            options=[discord.SelectOption(label=todo_label[:100], value=todo_id) for todo_label, todo_id in options],
-            max_values=25
+            options=[
+                discord.SelectOption(label=todo_label[:100], value=todo_id)
+                for todo_label, todo_id in options
+            ],
+            max_values=25,
         )
 
     async def callback(self, itx: discord.Interaction):
         view = self.view
         if not isinstance(view, AutoTablePager):
             raise RuntimeError
-        
+
         view.items
-        
-        await itx.response.edit_message(
 
-        )
-
+        await itx.response.edit_message()
 
 
 class AfterEdit(VanirView):

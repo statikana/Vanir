@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from src.constants import LANGUAGE_NAMES
+from src.logging import book
 from src.types.command import VanirCog
 from src.types.core import TranslatedMessage, VanirContext
 from src.types.database import StarBoard as StarBoardDB
@@ -117,8 +118,9 @@ class Events(VanirCog):
                 # create embed
                 author = guild.get_member(payload.user_id)
                 if author is None:
-                    logging.warning(
-                        f"cannot find starboard user in cache {payload.user_id}"
+                    book.warning(
+                        f"cannot find starboard user in cache",
+                        user=payload.user_id,
                     )
 
                 # get message content

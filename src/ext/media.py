@@ -67,6 +67,25 @@ class Media(VanirCog):
         await media.flop()
         await send_file(self.flop, msg, media)
 
+    @vanir_command()
+    async def caption(
+        self,
+        ctx: VanirContext,
+        *,
+        text: str,
+        media_atch: discord.Attachment | None = commands.param(
+            description="The media to caption",
+            default=None,
+            displayed_default="Recently sent media",
+        ),
+    ):
+        """Add a caption to media"""
+
+        media = await MediaConverter().convert(ctx, media_atch)
+        msg = await assure_working(ctx, media)
+        await media.caption(text)
+        await send_file(self.caption, msg, media)
+
 
 async def setup(bot: Vanir):
     await bot.add_cog(Media(bot))

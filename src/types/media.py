@@ -1,6 +1,7 @@
 import asyncio
 import io
 import logging
+import math
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 from urllib.parse import urlparse
@@ -10,6 +11,8 @@ import discord
 from discord.ext import commands
 from wand.image import Image
 
+from src.constants import MONOSPACE_FONT_HEIGHT_RATIO
+from src.logging import book
 from src.types.core import VanirContext
 from src.util.regex import URL_REGEX
 
@@ -44,6 +47,8 @@ class MediaInterface(Generic[MediaSource]):
     async def read(self) -> bytes: ...
 
     async def to_file(self) -> discord.File: ...
+
+    async def caption(self, text: str) -> bytes: ...
 
 
 class ImageInterface(MediaInterface[Image]):
@@ -120,6 +125,37 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         self.blob = await self.send_proc_pipe(params)
         return self.blob
 
+    async def caption(self, text: str) -> bytes:
+        print("HERE")
+        # https://stackoverflow.com/questions/17623676/text-on-video-ffmpeg
+        # https://stackoverflow.com/questions/46671252/how-to-add-black-borders-to-video
+        chars_per_line = 30
+        n_lines = math.ceil(len(text) / chars_per_line)
+
+        font_width = 10
+        font_height = MONOSPACE_FONT_HEIGHT_RATIO * font_width
+
+        pix_buff = n_lines * font_height
+        print(font_height, pix_buff, n_lines, text)
+
+        # create a buffer of white pixels to extend the video
+        extend_padding_params = (
+            f'-filter_complex "[0]pad=h={pix_buff}+ih:color=white:x=0:y=0"'
+        )
+        self.blob = await self.send_proc_pipe(extend_padding_params)
+        print(self.blob)
+
+        text_dict = {
+            "text": f"'{text}'",
+            "fontfile": "./assets/Monospace.ttf",
+            "fontsize": font_height,
+            "fontcolor": "black",
+        }
+        text_params = f"-vf {':'.join(f'{k}={v}' for k, v in text_dict.items())}"
+        self.blob = await self.send_proc_pipe(text_params)
+        print(self.blob)
+        return self.blob
+
     async def to_file(self) -> discord.File:
         return discord.File(io.BytesIO(self.blob), filename="media.webm")
 
@@ -144,7 +180,7 @@ class VideoInterface(MediaInterface[cv2.Mat]):
 
         if rt_code != 0:
             err_msg = (await proc.stderr.read()).decode("utf-8")
-            logging.warning(err_msg)
+            book.warning(err_msg, params=params)
             raise ValueError(f"ffmpeg returned non-zero status code. {err_msg}")
 
         return await proc.stdout.read()

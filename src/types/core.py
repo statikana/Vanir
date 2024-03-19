@@ -1,7 +1,6 @@
 import asyncio
-import logging
 from dataclasses import dataclass
-from typing import Any, Awaitable
+from typing import Any
 
 import aiohttp
 import asyncpg
@@ -12,6 +11,7 @@ import config
 from src import env
 from src.env import DEEPL_API_KEY
 from src.ext import MODULE_PATHS
+from src.logging import book
 from src.types.database import TLINK, Currency, StarBoard, TLink, Todo
 
 
@@ -46,7 +46,7 @@ class Vanir(commands.Bot):
 
     async def setup_hook(self) -> None:
         if self.connect_db_on_init:
-            logging.info("Instantiating database pool and wrappers")
+            book.info("Instantiating database pool and wrappers")
             self.pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
 
             if self.pool is None:
@@ -62,7 +62,7 @@ class Vanir(commands.Bot):
                 db.start(self.pool)
 
         else:
-            logging.warning("Not connecting to database")
+            book.info("Not connecting to database")
 
         await self.cache.init()
         await self.add_cogs()

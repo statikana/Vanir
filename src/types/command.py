@@ -16,6 +16,7 @@ from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
 from src.constants import GITHUB_ROOT
+from src.logging import book
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
 from src.util.fmt import fmt_bool
@@ -40,7 +41,7 @@ class VanirCog(commands.Cog):
         )
 
     async def cog_load(self):
-        logging.info(f"{self.__class__.__name__} loaded")
+        book.info(f"{self.__class__.__name__} loaded")
 
 
 class VanirView(discord.ui.View):
@@ -325,7 +326,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                         embed=embed, view=self, attachments=[file] if file else []
                     )
             else:
-                logging.warning(
+                book.warning(
                     f"Pager has no message attached "
                     f"(VanirPagerT: {VanirPagerT}), cannot update message"
                 )
@@ -552,7 +553,7 @@ def autopopulate_descriptions(func):
     except AttributeError:
         func.__discord_app_commands_param_description__ = descriptions
 
-    logging.debug(f"Populated app_command descriptions: {descriptions}")
+    book.debug(f"Populated app_command descriptions: {descriptions}")
     return func
 
 

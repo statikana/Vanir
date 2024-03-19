@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 from logging_setup import logging_setup
 from src.env import DISCORD_TOKEN
@@ -13,5 +12,4 @@ async def main():
 
 if __name__ == "__main__":
     logging_setup()
-    logging.info("Starting")
     asyncio.run(main())
