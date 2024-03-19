@@ -2,7 +2,14 @@ import asyncpg
 import discord
 from discord.ext import commands
 
-from src.types.command import AutoTablePager, TaskIDConverter, VanirCog, vanir_group
+from src.types.command import (
+    AutoTablePager,
+    TaskIDConverter,
+    VanirCog,
+    VanirPagerT,
+    VanirView,
+    vanir_group,
+)
 from src.types.core import Vanir, VanirContext
 from src.util.parse import fuzzysearch
 
@@ -32,7 +39,7 @@ class Todo(VanirCog):
             title=f"\N{WHITE HEAVY CHECK MARK} TODO: " f"{todo['title']}",
             description=f"ID: `{todo['todo_id']}`",
         )
-        await ctx.reply(embed=embed, ephemeral=True)
+        await ctx.reply(embed=embed, view=AfterEdit(ctx), ephemeral=True)
 
     @todo.command(aliases=["all"])
     async def get(
@@ -64,7 +71,9 @@ class Todo(VanirCog):
             await ctx.reply(embed=embed, ephemeral=True)
             return
 
-        await self.show_todos(ctx, results, as_image=False)
+        embed, file, view = await create_todo_gui(ctx, results, as_image=False)
+        await view.update(update_content=False)
+        await ctx.reply(embed=embed, view=view, file=file)
 
     @todo.command(aliases=["finish", "done", "completed"])
     async def complete(
@@ -82,10 +91,10 @@ class Todo(VanirCog):
         if todo is None:
             await ctx.invoke(self.get, completed_only=True)  # type: ignore
             return
-        changed = await self.bot.db_todo.complete_by_id(ctx.author.id, int(todo))
+        changed = await self.bot.db_todo.complete_by_id(int(todo))
 
         embed = ctx.embed(f"{changed['title']} Completed")
-        await ctx.reply(embed=embed, ephemeral=True)
+        await ctx.reply(embed=embed, view=AfterEdit(ctx), ephemeral=True)
 
     @todo.command(aliases=["delete", "del", "d", "r"])
     async def remove(
@@ -98,10 +107,10 @@ class Todo(VanirCog):
         ),
     ):
         """Completely removes a task from your list. You may want `\\todo done` instead."""
-        removed = await self.bot.db_todo.remove(ctx.author.id, int(todo))
+        removed = await self.bot.db_todo.remove(int(todo))
 
         embed = ctx.embed(f"{removed['title']} removed")
-        await ctx.reply(embed=embed, ephemeral=True)
+        await ctx.reply(embed=embed, view=AfterEdit(ctx), ephemeral=True)
 
     @todo.command()
     async def clear(self, ctx: VanirContext):
@@ -112,47 +121,120 @@ class Todo(VanirCog):
 
     @todo.command()
     async def search(self, ctx: VanirContext, query: str):
+        """Searches your tasks for a specific query."""
         todos = await self.bot.db_todo.get_by_user(
             ctx.author.id, include_completed=True
         )
         trimmed = fuzzysearch(query, todos, key=lambda t: t["title"], threshold=30)
-        await self.show_todos(ctx, trimmed, autosort=False)
 
-    async def show_todos(
-        self,
-        ctx: VanirContext,
-        todos: list[asyncpg.Record],
-        *,
-        autosort: bool = True,
-        as_image: bool = False,
-    ):
-        results_rows = [
-            [
-                t["title"],
-                t["timestamp_created"].strftime("%Y/%m/%d"),
-                t["completed"],
-                t["todo_id"],
-            ]
-            for t in todos
+        embed, file, view = await create_todo_gui(ctx, trimmed, autosort=False)
+        await view.update(update_content=False)
+        await ctx.reply(embed=embed, view=view, file=file)
+
+
+async def create_todo_gui(
+    ctx: VanirContext,
+    todos: list[asyncpg.Record],
+    *,
+    autosort: bool = True,
+    as_image: bool = False,
+) -> tuple[discord.Embed, discord.File, discord.ui.View]:
+    results_rows = [
+        [
+            t["title"],
+            t["timestamp_created"].strftime("%Y/%m/%d"),
+            t["completed"],
+            t["todo_id"],
         ]
-        if autosort:
-            results_rows.sort(
-                key=lambda c: (c[2], c[1])
-            )  # sort by completed?, date added
+        for t in todos
+    ]
+    if autosort:
+        results_rows.sort(key=lambda c: (c[2], c[1]))  # sort by completed?, date added
 
-        view = AutoTablePager(
-            self.bot,
-            ctx.author,
-            headers=["task", "created", "done?", "id"],
-            rows=results_rows,
+    view = AutoTablePager(
+        ctx.bot,
+        ctx.author,
+        headers=["task", "created", "done?", "id"],
+        rows=results_rows,
+        as_image=as_image,
+        rows_per_page=10,
+        include_hline=True,
+    )
+
+    return *(await view.update_embed()), view
+
+
+class TodoPager(AutoTablePager):
+    def __init__(
+        self,
+        bot: Vanir,
+        user: discord.User,
+        *,
+        as_image: bool = True,
+        headers: list[str],
+        rows: list[VanirPagerT],
+        rows_per_page: int,
+        dtypes: list[str] = None,
+        data_name: str = None,
+        include_hline: bool = False,
+    ):
+        super().__init__(
+            bot,
+            user,
             as_image=as_image,
-            rows_per_page=10,
-            include_hline=True,
+            headers=headers,
+            rows=rows,
+            rows_per_page=rows_per_page,
+            dtypes=dtypes,
+            data_name=data_name,
+            include_hline=include_hline,
         )
 
-        embed, file = await view.update_embed()
-        await view.update(update_content=False)
-        view.message = await ctx.reply(embed=embed, view=view, file=file)
+        for child in self.children:
+            child.row += 2
+
+
+class MarkTodoAsDone(discord.ui.Select):
+    def __init__(self, options: list[tuple[str, int]]):
+        super().__init__(
+            placeholder="Mark tasks as DONE",
+            options=[discord.SelectOption(label=todo_label[:100], value=todo_id) for todo_label, todo_id in options],
+            max_values=25
+        )
+
+    async def callback(self, itx: discord.Interaction):
+        view = self.view
+        if not isinstance(view, AutoTablePager):
+            raise RuntimeError
+        
+        view.items
+        
+        await itx.response.edit_message(
+
+        )
+
+
+
+class AfterEdit(VanirView):
+    def __init__(self, ctx: VanirContext):
+        super().__init__(bot=ctx.bot, user=ctx.author)
+        self.ctx = ctx
+
+    @discord.ui.button(
+        label="View TODO",
+        style=discord.ButtonStyle.primary,
+        emoji="\N{SPIRAL NOTE PAD}",
+    )
+    async def view_todo(self, itx: discord.Interaction, button: discord.ui.Button):
+        embed, file, view = await create_todo_gui(
+            ctx=self.ctx,
+            todos=await self.ctx.bot.db_todo.get_by_user(
+                itx.user.id, include_completed=True
+            ),
+        )
+        await itx.response.edit_message(
+            embed=embed, view=view, attachments=[file] if file else []
+        )
 
 
 async def setup(bot: Vanir):

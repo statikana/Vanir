@@ -39,7 +39,9 @@ class Currency(VanirCog):
         balance = await self.bot.db_currency.balance(user.id)
 
         embed = VanirContext.syn_embed(title=f"{balance:,}\N{COIN}", user=user)
-        await ctx.reply(embed=embed, view=WalletOptionsView(bot=self.bot, user=ctx.author))
+        await ctx.reply(
+            embed=embed, view=WalletOptionsView(bot=self.bot, user=ctx.author)
+        )
 
     @coins.command(aliases=["send"])
     async def give(
@@ -191,7 +193,7 @@ class GiveCoinsView(VanirView):
 class WalletOptionsView(VanirView):
     @discord.ui.button(
         label="Send",
-        emoji="\N{Package}",
+        emoji="\N{PACKAGE}",
         style=discord.ButtonStyle.primary,
     )
     async def send(self, itx: discord.Interaction, button: discord.ui.Button):
@@ -201,14 +203,13 @@ class WalletOptionsView(VanirView):
                 from_user=itx.user,
                 from_bal=await self.bot.db_currency.balance(itx.user.id),
                 is_sending=True,
-            
             )
         )
-    
+
     @discord.ui.button(
         label="Request",
-        emoji="\N{Envelope with downwards arrow above}",
-        style=discord.ButtonStyle.blurple,
+        emoji="\N{ENVELOPE WITH DOWNWARDS ARROW ABOVE}",
+        style=discord.ButtonStyle.success,
     )
     async def request(self, itx: discord.Interaction, button: discord.ui.Button):
         await itx.response.send_modal(
@@ -218,7 +219,6 @@ class WalletOptionsView(VanirView):
                 from_bal=await self.bot.db_currency.balance(itx.user.id),
                 is_sending=False,
             )
-        
         )
 
 
@@ -228,7 +228,7 @@ class AmountPromptModal(VanirModal, title="Transfer"):
         bot: Vanir,
         from_user: discord.User | discord.Member,
         from_bal: int,
-        is_sending: bool
+        is_sending: bool,
     ):
         super().__init__(bot)
         self.from_user = from_user
@@ -246,19 +246,23 @@ class AmountPromptModal(VanirModal, title="Transfer"):
 
     async def on_submit(self, itx: discord.Interaction):
         user_ident = self.user_ident.value
-        
+
         if not self.amount.value.isdigit():
             return await itx.response.send_message("Invalid amount", ephemeral=True)
         amount = int(self.amount.value)
-        
+
         if amount < 0:
-            return await itx.response.send_message("Amount cannot be negative", ephemeral=True)
+            return await itx.response.send_message(
+                "Amount cannot be negative", ephemeral=True
+            )
 
         member: discord.Member | None = None
 
         if itx.guild is None:
-            return await itx.response.send_message("This command can only be used in a server", ephemeral=True)
-        
+            return await itx.response.send_message(
+                "This command can only be used in a server", ephemeral=True
+            )
+
         if user_ident.isdigit():
             member = discord.utils.find(
                 lambda user: user.name == user_ident or user.id == int(user_ident),
@@ -268,13 +272,17 @@ class AmountPromptModal(VanirModal, title="Transfer"):
             member = discord.utils.find(
                 lambda user: user.name == user_ident, itx.guild.members
             )
-        
+
         if member is None:
-            return await itx.response.send_message(f"No user with the name or ID {user_ident}", ephemeral=True)
+            return await itx.response.send_message(
+                f"No user with the name or ID {user_ident}", ephemeral=True
+            )
 
         if member.id == itx.user.id:
-            return await itx.response.send_message("You cannot mention yourself", ephemeral=True)
-        
+            return await itx.response.send_message(
+                "You cannot mention yourself", ephemeral=True
+            )
+
         if self.is_sending:
             from_bal = self.from_bal
             to_bal = await self.bot.db_currency.balance(member.id)
@@ -289,13 +297,16 @@ class AmountPromptModal(VanirModal, title="Transfer"):
             to_user = self.from_user
 
         if from_bal < amount:
-            return await itx.response.send_message(f"You only have {from_bal:,}\N{COIN}, you cannot send {amount:,}\N{COIN}", ephemeral=True)
+            return await itx.response.send_message(
+                f"You only have {from_bal:,}\N{COIN}, you cannot send {amount:,}\N{COIN}",
+                ephemeral=True,
+            )
 
         cog: Currency = self.bot.get_cog("Currency")
 
         if cog is None:
             raise RuntimeError("Currency cog not found")
-        
+
         embed, view = await cog.init_funds_transfer(
             from_user=from_user,
             to_user=to_user,
@@ -304,8 +315,6 @@ class AmountPromptModal(VanirModal, title="Transfer"):
             to_bal=to_bal,
         )
         await itx.response.edit_message(embed=embed, view=view)
-
-        
 
 
 async def setup(bot: Vanir) -> None:

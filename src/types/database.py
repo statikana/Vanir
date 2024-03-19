@@ -184,7 +184,7 @@ class Todo(DBBase):
             include_completed,
         )
 
-    async def complete_by_id(self, user_id: int, todo_id: int) -> TASK | None:
+    async def complete_by_id(self, todo_id: int) -> TASK | None:
         try:
             todo_id = int(todo_id)
         except TypeError:
@@ -192,9 +192,8 @@ class Todo(DBBase):
         return await self.pool.fetchrow(
             "UPDATE todo_data "
             "SET completed = True "
-            "WHERE user_id = $1 AND todo_id = $2 "
+            "WHERE todo_id = $1 "
             "RETURNING *",
-            user_id,
             todo_id,
         )
 
@@ -208,10 +207,9 @@ class Todo(DBBase):
             todo_title,
         )
 
-    async def get_by_id(self, user_id: int, todo_id: int) -> TASK | None:
+    async def get_by_id(self, todo_id: int) -> TASK | None:
         return await self.pool.fetchrow(
-            "SELECT * FROM todo_data WHERE user_id = $1 AND todo_id = $2",
-            user_id,
+            "SELECT * FROM todo_data WHERE todo_id = $1",
             todo_id,
         )
 
@@ -222,12 +220,9 @@ class Todo(DBBase):
             title,
         )
 
-    async def remove(self, user_id: int, todo_id: int) -> TASK | None:
+    async def remove(self, todo_id: int) -> TASK | None:
         return await self.pool.fetchrow(
-            "DELETE FROM todo_data "
-            "WHERE user_id = $1 AND todo_id = $2 "
-            "RETURNING *",
-            user_id,
+            "DELETE FROM todo_data " "WHERE todo_id = $1 " "RETURNING *",
             todo_id,
         )
 

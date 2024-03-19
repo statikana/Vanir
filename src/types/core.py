@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Awaitable
 
 import aiohttp
 import asyncpg
@@ -47,12 +48,19 @@ class Vanir(commands.Bot):
         if self.connect_db_on_init:
             logging.info("Instantiating database pool and wrappers")
             self.pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
+
             if self.pool is None:
                 raise RuntimeError("Could not connect to database")
-            self.db_starboard.start(self.pool)
-            self.db_currency.start(self.pool)
-            self.db_todo.start(self.pool)
-            self.db_link.start(self.pool)
+
+            databases = [
+                self.db_starboard,
+                self.db_currency,
+                self.db_todo,
+                self.db_link,
+            ]
+            for db in databases:
+                db.start(self.pool)
+
         else:
             logging.warning("Not connecting to database")
 
@@ -60,8 +68,7 @@ class Vanir(commands.Bot):
         await self.add_cogs()
 
     async def add_cogs(self):
-        for ext in MODULE_PATHS:
-            await self.load_extension(ext)
+        asyncio.gather(*(self.load_extension(ext) for ext in MODULE_PATHS))
 
         await self.load_extension("jishaku")
 
@@ -135,7 +142,9 @@ class VanirSession(aiohttp.ClientSession):
             },
         )
 
-    async def deepl(self, path: str, headers: dict | None = None, json: dict | None = None):
+    async def deepl(
+        self, path: str, headers: dict | None = None, json: dict | None = None
+    ):
         if headers is None:
             headers = {}
         if json is None:

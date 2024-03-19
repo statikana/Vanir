@@ -488,13 +488,13 @@ class CustomPageModal(VanirModal, title="Select Page"):
 
 
 class TaskIDConverter(commands.Converter[int]):
-    async def convert(self, ctx: commands.Context, argument: str) -> int:
+    async def convert(self, ctx: VanirContext, argument: str) -> int:
         if argument.isdigit():
-            todo = await ctx.bot.db_todo.get_todo_by_id(ctx.author.id, int(argument))
+            todo = await ctx.bot.db_todo.get_by_id(int(argument))
             if todo is not None:
                 return int(argument)
 
-        task_id = await ctx.bot.db_todo.get_task_id_by_name(ctx.author.id, argument)
+        task_id = await ctx.bot.db_todo.get_by_name(ctx.author.id, argument)
         if task_id is None:
             raise commands.CommandInvokeError(
                 ValueError("Could not find task with name or ID " + argument)
