@@ -67,23 +67,6 @@ class Media(VanirCog):
         await media.flop()
         await send_file(self.flop, msg, media)
 
-    @vanir_command()
-    async def invert(
-        self,
-        ctx: VanirContext,
-        media_atch: discord.Attachment | None = commands.param(
-            description="The media to invert",
-            default=None,
-            displayed_default="Recently sent media",
-        ),
-    ):
-        """Invert media colors"""
-
-        media = await MediaConverter().convert(ctx, media_atch)
-        msg = await assure_working(ctx, media)
-        await media.invert()
-        await send_file(self.invert, msg, media)
-
 
 async def setup(bot: Vanir):
     await bot.add_cog(Media(bot))

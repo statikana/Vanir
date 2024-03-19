@@ -47,6 +47,8 @@ class Vanir(commands.Bot):
         if self.connect_db_on_init:
             logging.info("Instantiating database pool and wrappers")
             self.pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
+            if self.pool is None:
+                raise RuntimeError("Could not connect to database")
             self.db_starboard.start(self.pool)
             self.db_currency.start(self.pool)
             self.db_todo.start(self.pool)
@@ -76,7 +78,7 @@ class VanirContext(commands.Context):
         self,
         title: str | None = None,
         description: str | None = None,
-        color: discord.Color = None,
+        color: discord.Color | None = None,
         url: str | None = None,
     ) -> discord.Embed:
         if color is None:
@@ -100,7 +102,7 @@ class VanirContext(commands.Context):
     def syn_embed(
         title: str | None = None,
         description: str | None = None,
-        color: discord.Color = None,
+        color: discord.Color | None = None,
         url: str | None = None,
         *,
         user: discord.User | discord.Member,
@@ -133,7 +135,7 @@ class VanirSession(aiohttp.ClientSession):
             },
         )
 
-    async def deepl(self, path: str, headers: dict = None, json: dict = None):
+    async def deepl(self, path: str, headers: dict | None = None, json: dict | None = None):
         if headers is None:
             headers = {}
         if json is None:
