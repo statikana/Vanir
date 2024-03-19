@@ -5,7 +5,7 @@ import asyncpg
 
 class DBBase:
     def __init__(self):
-        self.pool: asyncpg.connection.Connection = None  # type: ignore
+        self.pool: asyncpg.Pool = None  # type: ignore
 
     def start(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
