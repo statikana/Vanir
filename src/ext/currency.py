@@ -25,7 +25,7 @@ class Currency(VanirCog):
         """Manage your coins"""
         await ctx.invoke(self.balance, user)
 
-    @coins.command(aliases=["bal", "check"])
+    @coins.command(aliases=["bal", "check", "wallet", "wal"])
     async def balance(
         self,
         ctx: VanirContext,
@@ -39,7 +39,7 @@ class Currency(VanirCog):
         balance = await self.bot.db_currency.balance(user.id)
 
         embed = VanirContext.syn_embed(title=f"{balance:,}\N{COIN}", user=user)
-        await ctx.reply(embed=embed)
+        await ctx.reply(embed=embed, view=WalletOptionsView(bot=self.bot, user=ctx.author))
 
     @coins.command(aliases=["send"])
     async def give(
