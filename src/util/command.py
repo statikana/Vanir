@@ -14,6 +14,7 @@ from src.types.command import (
 from src.types.core import Vanir, VanirContext
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 from src.util import fmt
+from src.util.parse import find_ext
 
 if config.use_system_assets:
     from wand.image import Image
@@ -80,7 +81,7 @@ async def get_media_info(media: MediaInterface):
         img = Image(blob=blob)
         return MediaInfo(f"image/{img.format}", img.length_of_bytes)
     if isinstance(media, VideoInterface):
-        ext = fmt.find_ext(media.url)
+        ext = find_ext(media.url)
         return MediaInfo(f"image/{ext}", len(blob))
 
 

@@ -1,7 +1,10 @@
+import datetime
 import sys
+from logging import LogRecord as BaseLogRecord
 
 import logbook
-from logbook import Logger, LogRecord
+from logbook import Logger
+from logbook import LogRecord as LogbookLogRecord
 
 from src.constants import ANSI
 
@@ -12,20 +15,35 @@ class VanirFormatter(logbook.StreamHandler):
     def __init__(self):
         super().__init__(sys.stdout, level=logbook.INFO)
 
-    def format(self, record: LogRecord) -> str:
-        time = f"{record.time:%X}"
-        level = f"{record.level_name:7}".lower()
-        level_color = {
-            "debug": ANSI["grey"],
-            "info": ANSI["green"],
-            "warning": ANSI["yellow"],
-            "error": ANSI["red"],
-            "critical": ANSI["red"],
-        }.get(record.level_name.lower(), ANSI["reset"])
+    def format(self, record: LogbookLogRecord | BaseLogRecord) -> str:
+        if isinstance(record, LogbookLogRecord):
+            time = f"{record.time:%X}"
+            level = f"{record.level_name:7}".lower()
+            level_color = {
+                "debug": ANSI["grey"],
+                "info": ANSI["green"],
+                "warning": ANSI["yellow"],
+                "error": ANSI["red"],
+                "critical": ANSI["red"],
+            }[record.level_name.lower()]
 
-        thread = f"{record.thread_name}"
-        message = record.message
-        return f"{ANSI['grey']}{time} {ANSI['reset']}[{level_color}{level}{ANSI['reset']}] {ANSI['white']}{message}"
+            message = record.message
+            return f"{ANSI['grey']}{time} {ANSI['reset']}[{level_color}{level}{ANSI['reset']}] {ANSI['white']}{message}"
+        elif isinstance(record, BaseLogRecord):
+            time = f"{datetime.datetime.fromtimestamp(record.created):%X}"
+            level = f"{record.levelname:7}".lower()
+            level_color = {
+                "debug": ANSI["grey"],
+                "info": ANSI["green"],
+                "warning": ANSI["yellow"],
+                "error": ANSI["red"],
+                "critical": ANSI["red"],
+            }[record.levelname.lower()]
+            message = record.getMessage()
+            if record.exc_info:
+                message += f": {record.exc_info[1]}"
+
+            return f"{ANSI['grey']}{time} {ANSI['reset']}[{level_color}{level}{ANSI['reset']}] {ANSI['red']}[stdlogger] {ANSI['white']}{message}"
 
 
 book.handlers.append(VanirFormatter())

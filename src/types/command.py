@@ -488,19 +488,16 @@ class CustomPageModal(VanirModal, title="Select Page"):
         await self.view.update(itx=itx, source_button=VanirPager.go_to_page)
 
 
-class TaskIDConverter(commands.Converter[int]):
-    async def convert(self, ctx: VanirContext, argument: str) -> int:
-        if argument.isdigit():
-            todo = await ctx.bot.db_todo.get_by_id(int(argument))
-            if todo is not None:
-                return int(argument)
+class CloseButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            style=discord.ButtonStyle.danger,
+            label="Close",
+            emoji="\N{HEAVY MULTIPLICATION X}",
+        )
 
-        task_id = await ctx.bot.db_todo.get_by_name(ctx.author.id, argument)
-        if task_id is None:
-            raise commands.CommandInvokeError(
-                ValueError("Could not find task with name or ID " + argument)
-            )
-        return task_id
+    async def callback(self, itx: discord.Interaction):
+        await itx.message.delete()
 
 
 @dataclass

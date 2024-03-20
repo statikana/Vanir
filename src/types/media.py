@@ -126,7 +126,7 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         return self.blob
 
     async def caption(self, text: str) -> bytes:
-        print("HERE")
+        book.info("Here")
         # https://stackoverflow.com/questions/17623676/text-on-video-ffmpeg
         # https://stackoverflow.com/questions/46671252/how-to-add-black-borders-to-video
         chars_per_line = 30
@@ -135,7 +135,7 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         font_width = 10
         font_height = MONOSPACE_FONT_HEIGHT_RATIO * font_width
 
-        pix_buff = n_lines * font_height
+        pix_buff = math.ceil(n_lines * font_height)
         print(font_height, pix_buff, n_lines, text)
 
         # create a buffer of white pixels to extend the video
@@ -170,14 +170,16 @@ class VideoInterface(MediaInterface[cv2.Mat]):
             f'ffmpeg -hide_banner -loglevel error -i "{self.url.geturl()}" {params} -f '
             f"matroska pipe:1"
         )
+        print(command)
         proc = await asyncio.create_subprocess_shell(
             cmd=command,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        print("CREATED")
         rt_code = await proc.wait()
-
+        print("RETURNED", rt_code)
         if rt_code != 0:
             err_msg = (await proc.stderr.read()).decode("utf-8")
             book.warning(err_msg, params=params)

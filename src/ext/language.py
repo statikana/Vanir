@@ -33,7 +33,7 @@ class Language(VanirCog):
         json = (await response.json())[0]
         title = f"{term}"
 
-        if json["phonetic"]:
+        if json.get("phonetic"):
             title += f" [{json['phonetic']}]"
 
         embed = ctx.embed(title, url=json["sourceUrls"][0])

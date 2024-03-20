@@ -1,7 +1,13 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, VanirHybridCommand, VanirView
+from src.types.command import (
+    AcceptItx,
+    CloseButton,
+    VanirCog,
+    VanirHybridCommand,
+    VanirView,
+)
 from src.types.core import Vanir, VanirContext
 from src.util.command import cog_hidden
 from src.util.parse import fuzzysearch
@@ -13,6 +19,8 @@ class Errors(VanirCog):
     async def on_command_error(
         self, source: VanirContext | discord.Interaction, error: commands.CommandError
     ):
+        if self.bot.debug:
+            raise error
         user = source.author if isinstance(source, VanirContext) else source.user
         view: discord.ui.View | None = None
 
@@ -38,12 +46,16 @@ class Errors(VanirCog):
         commands = self.bot.walk_commands()
         results = fuzzysearch(
             source.message.content[1:],
-            list(cmd for cmd in commands if not cmd.hidden),
+            list(
+                cmd
+                for cmd in commands
+                if not cmd.hidden and not cmd.qualified_name.startswith("jishaku")
+            ),
             key=lambda c: c.qualified_name,
-            threshold=80,
+            threshold=60,
         )
         if not results:
-            return
+            return await source.message.add_reaction("\N{WHITE QUESTION MARK ORNAMENT}")
 
         def alias_string(cmd: VanirHybridCommand):
             if cmd.aliases:
@@ -60,10 +72,58 @@ class Errors(VanirCog):
             user=user,
             color=discord.Color.red(),
         )
+        if isinstance(source, discord.Interaction):
+            try:
+                source = VanirContext.from_interaction(source)
+            except ValueError:
+                pass
+
         if isinstance(source, VanirContext):
-            await source.reply(embed=embed, ephemeral=True)
+            view = CommandNotFoundHelper(source, results[:25])
         else:
-            await source.response.send_message(embed=embed, ephemeral=True)
+            view = None
+
+        await source.reply(embed=embed, view=view, ephemeral=True)
+
+
+class CommandNotFoundHelper(VanirView):
+    def __init__(self, ctx: VanirContext, commands: list[commands.Command]):
+        super().__init__(bot=ctx.bot, user=ctx.author)
+        self.ctx = ctx
+        self.commands = commands
+
+        self.add_item(RerouteCommandSelect(ctx, commands))
+        self.add_item(CloseButton())
+
+
+class RerouteCommandSelect(discord.ui.Select):
+    def __init__(self, ctx: VanirContext, commands: list[commands.Command]):
+        options = [
+            discord.SelectOption(
+                label=cmd.qualified_name,
+                description=cmd.short_doc,
+                value=cmd.qualified_name,
+            )
+            for cmd in commands
+        ]
+        super().__init__(options=options, placeholder="Did you mean...", max_values=1)
+        self.ctx = ctx
+
+    async def callback(self, itx: discord.Interaction):
+        await itx.message.delete()
+        previous = self.ctx.message.content.split()
+        new = self.values[0].split()
+        previous[: len(new)] = new
+        fixed_content = " ".join(previous)
+        prefixes = await self.ctx.bot.get_prefix(self.ctx.message)
+
+        if isinstance(prefixes, str):
+            prefix = prefixes
+        else:
+            prefix = prefixes[0]
+
+        self.ctx.message.content = f"{prefix}{fixed_content}"
+        await self.ctx.bot.process_commands(self.ctx.message)
 
 
 class GetHelpView(VanirView):

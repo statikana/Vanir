@@ -4,13 +4,13 @@ from discord.ext import commands
 
 from src.types.command import (
     AutoTablePager,
-    TaskIDConverter,
     VanirCog,
     VanirPagerT,
     VanirView,
     vanir_group,
 )
 from src.types.core import Vanir, VanirContext
+from src.types.interface import TaskIDConverter
 from src.util.parse import fuzzysearch
 
 

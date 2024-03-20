@@ -10,10 +10,6 @@ from src.util.command import cog_hidden
 
 @cog_hidden
 class Dev(VanirCog):
-    def __init__(self, bot):
-        super().__init__(bot)
-        self.bot = bot
-
     @commands.group()
     @commands.is_owner()
     async def dev(self, ctx):
@@ -21,7 +17,6 @@ class Dev(VanirCog):
         pass
 
     @dev.command()
-    @commands.is_owner()
     async def sync(self, ctx: VanirContext, *, guild_id: str | None = None):
         """Syncs commands to discord"""
         if guild_id:
@@ -34,7 +29,6 @@ class Dev(VanirCog):
         )
 
     @dev.command()
-    @commands.is_owner()
     async def desync(self, ctx: VanirContext):
         """Removes all commands, then syncs"""
         self.bot.recursively_remove_all_commands()
@@ -42,25 +36,29 @@ class Dev(VanirCog):
         await ctx.reply(str(ctx.bot.commands))
 
     @dev.command()
-    @commands.is_owner()
     async def echo(self, ctx: VanirContext, *, message: str):
         """Replies"""
         await ctx.reply(message)
 
     @dev.command()
-    @commands.is_owner()
     async def setbal(self, ctx: VanirContext, user: discord.User, amount: int):
         """Manually set user balance"""
         await self.bot.db_currency.set_balance(user.id, amount)
         await ctx.reply(f"{user.id} -> {amount}")
 
     @dev.command()
-    @commands.is_owner()
     async def sql(self, ctx: VanirContext, *, query: str):
         """Run a SQL query"""
         async with self.bot.pool.acquire() as conn:
             result = await conn.fetch(query)
             await ctx.reply(str(result))
+
+    @dev.command(aliases=["dbg"])
+    async def debug(self, ctx: VanirContext, val: bool | None = None):
+        """Toggle debug mode"""
+        if val is not None:
+            self.bot.debug = val
+        await ctx.reply(f"Debug mode is {self.bot.debug}")
 
 
 async def setup(bot):
