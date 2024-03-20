@@ -1,3 +1,4 @@
+import traceback
 import discord
 from discord.ext import commands
 
@@ -11,6 +12,7 @@ from src.types.command import (
 from src.types.core import Vanir, VanirContext
 from src.util.command import cog_hidden
 from src.util.parse import fuzzysearch
+from src.logging import book
 
 
 @cog_hidden
@@ -20,7 +22,12 @@ class Errors(VanirCog):
         self, source: VanirContext | discord.Interaction, error: commands.CommandError
     ):
         if self.bot.debug:
+            tb = traceback.extract_tb(tb=(error.__cause__ or error).__traceback__)
+            tb_str = "\n".join(traceback.format_list(tb))
+            book.error(tb_str)
+            await source.reply(embed=discord.Embed(description=discord.utils.escape_markdown(tb_str)))
             raise error
+        
         user = source.author if isinstance(source, VanirContext) else source.user
         view: discord.ui.View | None = None
 

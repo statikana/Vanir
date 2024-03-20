@@ -280,6 +280,8 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         """Called after every button press - enables and disables the
         appropriate buttons, and changes colors. Also fetches the
         new embed and edits the message and view to the new content."""
+        if itx is not None:
+            self.message = itx.message
         if self.close.disabled:
             await itx.response.edit_message(view=self)
             return
@@ -293,7 +295,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         else:
             VanirPager.enable(self.next, self.last)
 
-        self.close.label = f"Page {self.cur_page+1}/{self.n_pages}"
+        self.close.label = f"Page {self.cur_page+1}/{self.n_pages} [{len(self.items)}]"
 
         if source_button is not None:
             for i in self.children:

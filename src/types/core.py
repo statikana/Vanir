@@ -35,7 +35,7 @@ class Vanir(commands.Bot):
 
         self.launch_time = discord.utils.utcnow()
 
-        self.debug: bool = False
+        self.debug: bool = True
 
     async def get_context(
         self,

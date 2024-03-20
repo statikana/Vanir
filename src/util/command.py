@@ -144,8 +144,10 @@ def cog_hidden(cls: type[VanirCog]):
     return cls
 
 
-def safe_default(arg: Any | commands.Parameter) -> Any:
+def safe_default(arg: Any | commands.Parameter, /, ctx: VanirContext | None = None) -> Any:
     if isinstance(arg, commands.Parameter):
+        if ctx is not None:
+            return arg.get_default(ctx)
         return arg.default
     return arg
 

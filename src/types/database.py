@@ -184,18 +184,18 @@ class Todo(DBBase):
             include_completed,
         )
 
-    async def complete_by_id(self, todo_id: int) -> TASK | None:
-        try:
-            todo_id = int(todo_id)
-        except TypeError:
-            return None
-        return await self.pool.fetchrow(
+    async def complete_by_id(self, *todo_ids: int) -> TASK | list[TASK] | None:
+        vals = await self.pool.fetch(
             "UPDATE todo_data "
             "SET completed = True "
-            "WHERE todo_id = $1 "
+            "WHERE todo_id = ANY($1)"
             "RETURNING *",
-            todo_id,
+            todo_ids,
         )
+        if len(todo_ids) == 1:
+            return vals[0]
+        return vals
+        
 
     async def complete_by_name(self, user_id: int, todo_title: str) -> TASK | None:
         return await self.pool.fetchrow(
@@ -214,7 +214,7 @@ class Todo(DBBase):
         )
 
     async def get_by_name(self, user_id: int, title: str) -> TASK | None:
-        return await self.pool.fetchval(
+        return await self.pool.fetchrow(
             "SELECT * FROM todo_data WHERE user_id = $1 AND title = $2",
             user_id,
             title,
