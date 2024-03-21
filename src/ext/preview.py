@@ -1,15 +1,20 @@
+import asyncio
 import io
 
 import discord
 from discord import Interaction
 from discord.ext import commands
 
-from src.constants import ANSI, ANSI_EMOJIS
+from src.constants import ANSI, ANSI_EMOJIS, EMOJIS
 from src.types.command import ModalField, VanirCog, VanirModal, VanirView, vanir_command
 from src.types.core import Vanir, VanirContext
 
 
 class Preview(VanirCog):
+    """Formatting stuffs"""
+
+    emoji = "\N{LEFT-POINTING MAGNIFYING GLASS}"
+
     @vanir_command()
     async def ansi(
         self,
@@ -30,6 +35,7 @@ class Preview(VanirCog):
         self,
         ctx: VanirContext,
     ):
+        """A simple embed builder"""
         embed = discord.Embed(title="Example Title")
         view = EmbedView(ctx, embed)
         await ctx.reply(embed=embed, view=view)
@@ -154,37 +160,98 @@ class EmbedView(VanirView):
         self.embed = embed
 
     @discord.ui.button(
-        label="Title", emoji="\N{NAME BADGE}", style=discord.ButtonStyle.blurple, row=0
+        label="Edit:", style=discord.ButtonStyle.grey, disabled=True, row=0
     )
+    async def _header_edit(self, itx: discord.Interaction, button: discord.Button):
+        return
+
+    @discord.ui.button(label="Content", style=discord.ButtonStyle.blurple, row=0)
     async def set_title(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
             itx,
-            "Set Title",
-            fields=[ModalField("Title Text")],
+            "Set Content",
+            fields=[
+                ModalField("Title Text", required=False, default=self.embed.title),
+                ModalField(
+                    "Description Text",
+                    style=discord.TextStyle.long,
+                    required=False,
+                    default=self.embed.description,
+                ),
+            ],
         )
         self.embed.title = values[0]
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
+        self.embed.description = values[1]
+        try:
+            await itx.followup.edit_message(itx.message.id, embed=self.embed)
+        except discord.HTTPException:
+            res = await itx.followup.send(embed=discord.Embed(color=discord.Color.red(), description="You need some kind of content. Try adding something else."), wait=True)
+            if res is not None:
+                await asyncio.sleep(5)
+                await res.delete()
 
     @discord.ui.button(
-        label="Description",
-        emoji="\N{SPEECH BALLOON}",
+        label="Footer",
         style=discord.ButtonStyle.blurple,
         row=0,
     )
-    async def set_description(self, itx: discord.Interaction, button: discord.Button):
+    async def set_footer(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
             itx,
-            "Set Description",
-            fields=[ModalField("Description Text", style=discord.TextStyle.long)],
+            title="Set Footer",
+            fields=[
+                ModalField("Enter Footer Text", default=self.embed.footer.text, required=False),
+                ModalField("Enter Footer Icon URL", default=self.embed.footer.icon_url, required=False),
+            ],
         )
-        self.embed.description = values[0]
+        if not any(values):
+            self.embed.remove_footer()
+        else:
+            self.embed.set_footer(text=values[0], icon_url=values[1])
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
-        label="Add Field",
+        label="Author",
+        style=discord.ButtonStyle.blurple,
+        row=0,
+    )
+    async def set_author(self, itx: discord.Interaction, button: discord.Button):
+        values = await self._generate_modal(
+            itx,
+            "Set Author",
+            fields=[
+                ModalField("Enter Author Name"),
+                ModalField("Enter Author Icon URL", required=False),
+                ModalField("Enter Author URL", required=False),
+            ],
+        )
+        self.embed.set_author(name=values[0], icon_url=values[1], url=values[2])
+        await itx.followup.edit_message(itx.message.id, embed=self.embed)
+
+    @discord.ui.button(
+        label="URL",
+        style=discord.ButtonStyle.blurple,
+        row=0,
+    )
+    async def set_url(self, itx: discord.Interaction, button: discord.Button):
+        values = await self._generate_modal(
+            itx,
+            "Set URL",
+            fields=[ModalField("Enter Embed URL", style=discord.TextStyle.long)],
+        )
+        self.embed.url = values[0]
+        await itx.followup.edit_message(itx.message.id, embed=self.embed)
+
+    @discord.ui.button(
+        label="Fields:", style=discord.ButtonStyle.grey, disabled=True, row=1
+    )
+    async def _header_fields(self, itx: discord.Interaction, button: discord.Button):
+        return
+
+    @discord.ui.button(
         emoji="\N{HEAVY PLUS SIGN}",
         style=discord.ButtonStyle.success,
-        row=0,
+        row=1,
     )
     async def add_field(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
@@ -204,14 +271,20 @@ class EmbedView(VanirView):
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
-        label="Remove Field",
-        emoji="\N{CROSS MARK}",
+        emoji="\N{HEAVY MULTIPLICATION X}",
         style=discord.ButtonStyle.danger,
-        row=0,
+        row=1,
     )
     async def remove_field(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
-            itx, "Remove Field", fields=[ModalField("Field Name to Remove")]
+            itx,
+            "Remove Field",
+            fields=[
+                ModalField(
+                    "Field Name to Remove",
+                    placeholder=f"Choose from: {', '.join(f.name for f in self.embed.fields)}",
+                )
+            ],
         )
         before = self.embed.fields.copy()
         self.embed.clear_fields()
@@ -224,10 +297,15 @@ class EmbedView(VanirView):
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
+        label="Style:", style=discord.ButtonStyle.grey, disabled=True, row=2
+    )
+    async def _header_style(self, itx: discord.Interaction, button: discord.Button):
+        return
+
+    @discord.ui.button(
         label="Color",
-        emoji="\N{ARTIST PALETTE}",
         style=discord.ButtonStyle.blurple,
-        row=1,
+        row=2,
     )
     async def set_color(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
@@ -239,23 +317,9 @@ class EmbedView(VanirView):
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
-        label="Thumbnail",
-        emoji="\N{CAMERA}",
-        style=discord.ButtonStyle.blurple,
-        row=1,
-    )
-    async def set_thumbnail(self, itx: discord.Interaction, button: discord.Button):
-        values = await self._generate_modal(
-            itx, "Set Thumbnail", fields=[ModalField("Enter Thumbnail URL")]
-        )
-        self.embed.set_thumbnail(url=values[0])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
         label="Image",
-        emoji="\N{FRAME WITH PICTURE}",
         style=discord.ButtonStyle.blurple,
-        row=1,
+        row=2,
     )
     async def set_image(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
@@ -265,62 +329,22 @@ class EmbedView(VanirView):
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
-        label="Footer",
-        emoji="\N{SMALL BLUE DIAMOND}",
+        label="Thumbnail",
         style=discord.ButtonStyle.blurple,
         row=2,
     )
-    async def set_footer(self, itx: discord.Interaction, button: discord.Button):
+    async def set_thumbnail(self, itx: discord.Interaction, button: discord.Button):
         values = await self._generate_modal(
-            itx,
-            title="Set Footer",
-            fields=[
-                ModalField("Enter Footer Text"),
-                ModalField("Enter Footer Icon URL", required=False),
-            ],
+            itx, "Set Thumbnail", fields=[ModalField("Enter Thumbnail URL")]
         )
-        self.embed.set_footer(text=values[0], icon_url=values[1])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
-        label="Author",
-        emoji="\N{WRITING HAND}",
-        style=discord.ButtonStyle.blurple,
-        row=2,
-    )
-    async def set_author(self, itx: discord.Interaction, button: discord.Button):
-        values = await self._generate_modal(
-            itx,
-            "Set Author",
-            fields=[
-                ModalField("Enter Author Name"),
-                ModalField("Enter Author Icon URL", required=False),
-                ModalField("Enter Author URL", required=False),
-            ],
-        )
-        self.embed.set_author(name=values[0], icon_url=values[1], url=values[2])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
-        label="URL",
-        emoji="\N{GLOBE WITH MERIDIANS}",
-        style=discord.ButtonStyle.grey,
-        row=2,
-    )
-    async def set_url(self, itx: discord.Interaction, button: discord.Button):
-        values = await self._generate_modal(
-            itx,
-            "Set URL",
-            fields=[ModalField("Enter Embed URL", style=discord.TextStyle.long)],
-        )
-        self.embed.url = values[0]
+        self.embed.set_thumbnail(url=values[0])
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
         label="Send",
         emoji="\N{ENVELOPE WITH DOWNWARDS ARROW ABOVE}",
         style=discord.ButtonStyle.success,
-        row=2,
+        row=3,
     )
     async def send(self, itx: discord.Interaction, button: discord.Button):
         if itx.message is not None:  # not ephemeral
