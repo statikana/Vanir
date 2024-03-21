@@ -2,7 +2,6 @@ import asyncio
 import enum
 import inspect
 import io
-import logging
 import math
 import re
 from asyncio import iscoroutinefunction
@@ -15,7 +14,7 @@ from discord import Interaction
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from src.constants import GITHUB_ROOT
+from src.constants import GITHUB_ROOT, EMOJIS
 from src.logging import book
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
@@ -228,18 +227,18 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
         self.message: discord.Message | None = None
 
-    @discord.ui.button(emoji="\N{BLACK LEFT-POINTING DOUBLE TRIANGLE}", disabled=True)
+    @discord.ui.button(emoji=discord.PartialEmoji(name="bb_arrow", id=EMOJIS["bb_arrow"]), disabled=True)
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = 0
         await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{LEFTWARDS BLACK ARROW}", disabled=True)
+    @discord.ui.button(emoji=discord.PartialEmoji(name="b_arrow", id=EMOJIS["b_arrow"]), disabled=True)
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page -= 1
         await self.update(itx, button)
 
     @discord.ui.button(
-        emoji="\N{HEAVY MULTIPLICATION X}",
+        emoji=discord.PartialEmoji(name="close", id=EMOJIS["close"]),
         style=discord.ButtonStyle.danger,
         custom_id="constant-style:finish",
     )
@@ -251,12 +250,12 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         await self.update(itx, button)
         self.stop()
 
-    @discord.ui.button(emoji="\N{BLACK RIGHTWARDS ARROW}", disabled=True)
+    @discord.ui.button(emoji=discord.PartialEmoji(name="f_arrow", id=EMOJIS["f_arrow"]), disabled=True)
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page += 1
         await self.update(itx, button)
 
-    @discord.ui.button(emoji="\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE}", disabled=True)
+    @discord.ui.button(emoji=discord.PartialEmoji(name="ff_arrow", id=EMOJIS["ff_arrow"]), disabled=True)
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = self.n_pages - 1
         await self.update(itx, button)
@@ -495,7 +494,7 @@ class CloseButton(discord.ui.Button):
         super().__init__(
             style=discord.ButtonStyle.danger,
             label="Close",
-            emoji="\N{HEAVY MULTIPLICATION X}",
+            emoji=discord.PartialEmoji(name="close", id=EMOJIS["close"]),
         )
 
     async def callback(self, itx: discord.Interaction):

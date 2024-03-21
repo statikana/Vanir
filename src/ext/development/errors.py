@@ -3,17 +3,16 @@ import discord
 from discord.ext import commands
 
 from src.types.command import (
-    AcceptItx,
     CloseButton,
     VanirCog,
-    VanirHybridCommand,
     VanirView,
 )
 from src.types.core import Vanir, VanirContext
 from src.util.command import cog_hidden
 from src.util.parse import fuzzysearch
 from src.logging import book
-
+from src.constants import EMOJIS
+from src.ext.help import Help
 
 @cog_hidden
 class Errors(VanirCog):
@@ -21,12 +20,25 @@ class Errors(VanirCog):
     async def on_command_error(
         self, source: VanirContext | discord.Interaction, error: commands.CommandError
     ):
-        if self.bot.debug:
-            tb = traceback.extract_tb(tb=(error.__cause__ or error).__traceback__)
-            tb_str = "\n".join(traceback.format_list(tb))
-            book.error(tb_str)
-            await source.reply(embed=discord.Embed(description=discord.utils.escape_markdown(tb_str)))
-            raise error
+        book.info(f"Handling error in command {source.command}", exc_info=error)
+        if self.bot.debug and not isinstance(error, commands.CommandNotFound):
+            name = source.command.qualified_name if source.command else "<NONE>"
+            try:
+                raise error
+            except Exception as e:
+                book.error(
+                    f"Error in {name} command: {e}",
+                    exc_info=traceback.format_exc(),
+                )
+                await source.reply(
+                    embed=discord.Embed(
+                        title="An error occurred while processing this command",
+                        description=f"```{e}```",
+                        color=discord.Color.red(),
+                    ),
+                )
+            return
+                
         
         user = source.author if isinstance(source, VanirContext) else source.user
         view: discord.ui.View | None = None
@@ -64,18 +76,10 @@ class Errors(VanirCog):
         if not results:
             return await source.message.add_reaction("\N{WHITE QUESTION MARK ORNAMENT}")
 
-        def alias_string(cmd: VanirHybridCommand):
-            if cmd.aliases:
-                return f"[{', '.join(f'`{a}`' for a in cmd.aliases)}]"
-            return ""
-
-        recommended = "\n".join(
-            f"• `\{cmd.qualified_name}` {alias_string(cmd)}\n➥*{cmd.short_doc}*"
-            for cmd in results[:5]
-        )
+        command = results[0]
+        
         embed = VanirContext.syn_embed(
-            title="Command not found",
-            description=f"Did you mean...\n{recommended}",
+            description=f"I don't know that command.\nDid you mean `\\{command.qualified_name}`?\n>>> *{command.short_doc}*",
             user=user,
             color=discord.Color.red(),
         )
@@ -86,7 +90,7 @@ class Errors(VanirCog):
                 pass
 
         if isinstance(source, VanirContext):
-            view = CommandNotFoundHelper(source, results[:25])
+            view = CommandNotFoundHelper(source, command)
         else:
             view = None
 
@@ -94,33 +98,25 @@ class Errors(VanirCog):
 
 
 class CommandNotFoundHelper(VanirView):
-    def __init__(self, ctx: VanirContext, commands: list[commands.Command]):
+    def __init__(self, ctx: VanirContext, command: commands.Command):
         super().__init__(bot=ctx.bot, user=ctx.author)
         self.ctx = ctx
-        self.commands = commands
+        self.command = command
 
-        self.add_item(RerouteCommandSelect(ctx, commands))
         self.add_item(CloseButton())
 
-
-class RerouteCommandSelect(discord.ui.Select):
-    def __init__(self, ctx: VanirContext, commands: list[commands.Command]):
-        options = [
-            discord.SelectOption(
-                label=cmd.qualified_name,
-                description=cmd.short_doc,
-                value=cmd.qualified_name,
-            )
-            for cmd in commands
-        ]
-        super().__init__(options=options, placeholder="Did you mean...", max_values=1)
-        self.ctx = ctx
-
-    async def callback(self, itx: discord.Interaction):
+    @discord.ui.button(
+        label="Run",
+        emoji=discord.PartialEmoji(name="execute", id=EMOJIS["execute"]),
+        style=discord.ButtonStyle.success,
+    )
+    async def run_command(self, itx: discord.Interaction, button: discord.ui.Button):
         await itx.message.delete()
         previous = self.ctx.message.content.split()
-        new = self.values[0].split()
+        new = self.command.qualified_name.split()
+        
         previous[: len(new)] = new
+        
         fixed_content = " ".join(previous)
         prefixes = await self.ctx.bot.get_prefix(self.ctx.message)
 
@@ -131,6 +127,15 @@ class RerouteCommandSelect(discord.ui.Select):
 
         self.ctx.message.content = f"{prefix}{fixed_content}"
         await self.ctx.bot.process_commands(self.ctx.message)
+        
+    @discord.ui.button(
+        label="Help",
+        emoji=discord.PartialEmoji(name="info", id=EMOJIS["info"]),
+        style=discord.ButtonStyle.blurple,
+    )
+    async def get_help(self, itx: discord.Interaction, button: discord.ui.Button):
+        instance: Help = self.ctx.bot.get_cog("Help")
+        await self.ctx.invoke(instance.help, thing=self.command)
 
 
 class GetHelpView(VanirView):

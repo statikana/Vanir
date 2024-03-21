@@ -35,7 +35,6 @@ class Help(VanirCog):
         ),
     ):
         """Stop it, get some help"""
-
         # Cogs -> Modules
         if isinstance(thing, commands.Cog):
             embed = await self.cog_details_embed(thing, ctx.author)

@@ -14,7 +14,6 @@ from src.types.core import Vanir, VanirContext
 from src.types.interface import TaskIDConverter
 from src.util.parse import fuzzysearch
 from src.util.command import safe_default
-from src.types.database import Todo as TodoDB, TASK
 
 
 class Todo(VanirCog):
@@ -24,6 +23,7 @@ class Todo(VanirCog):
 
     @vanir_group()
     async def todo(self, ctx: VanirContext, *, task: str = None):
+        """Get your todo list"""
         if task is None:
             await ctx.invoke(self.get, True, False)  # type: ignore
         else:
