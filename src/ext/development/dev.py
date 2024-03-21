@@ -59,7 +59,7 @@ class Dev(VanirCog):
         if val is not None:
             self.bot.debug = val
         await ctx.reply(f"Debug mode is {self.bot.debug}")
-    
+
     @dev.command()
     async def error(self, ctx: VanirContext):
         """Throw an error"""

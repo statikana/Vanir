@@ -195,7 +195,6 @@ class Todo(DBBase):
         if len(todo_ids) == 1:
             return vals[0]
         return vals
-        
 
     async def complete_by_name(self, user_id: int, todo_title: str) -> TASK | None:
         return await self.pool.fetchrow(

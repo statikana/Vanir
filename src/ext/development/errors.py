@@ -1,7 +1,11 @@
 import traceback
+
 import discord
 from discord.ext import commands
 
+from src.constants import EMOJIS
+from src.ext.help import Help
+from src.logging import book
 from src.types.command import (
     CloseButton,
     VanirCog,
@@ -10,9 +14,7 @@ from src.types.command import (
 from src.types.core import Vanir, VanirContext
 from src.util.command import cog_hidden
 from src.util.parse import fuzzysearch
-from src.logging import book
-from src.constants import EMOJIS
-from src.ext.help import Help
+
 
 @cog_hidden
 class Errors(VanirCog):
@@ -38,8 +40,7 @@ class Errors(VanirCog):
                     ),
                 )
             return
-                
-        
+
         user = source.author if isinstance(source, VanirContext) else source.user
         view: discord.ui.View | None = None
 
@@ -77,7 +78,7 @@ class Errors(VanirCog):
             return await source.message.add_reaction("\N{WHITE QUESTION MARK ORNAMENT}")
 
         command = results[0]
-        
+
         embed = VanirContext.syn_embed(
             description=f"I don't know that command.\nDid you mean `\\{command.qualified_name}`?\n>>> *{command.short_doc}*",
             user=user,
@@ -114,9 +115,9 @@ class CommandNotFoundHelper(VanirView):
         await itx.message.delete()
         previous = self.ctx.message.content.split()
         new = self.command.qualified_name.split()
-        
+
         previous[: len(new)] = new
-        
+
         fixed_content = " ".join(previous)
         prefixes = await self.ctx.bot.get_prefix(self.ctx.message)
 
@@ -127,7 +128,7 @@ class CommandNotFoundHelper(VanirView):
 
         self.ctx.message.content = f"{prefix}{fixed_content}"
         await self.ctx.bot.process_commands(self.ctx.message)
-        
+
     @discord.ui.button(
         label="Help",
         emoji=discord.PartialEmoji(name="info", id=EMOJIS["info"]),

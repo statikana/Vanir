@@ -73,21 +73,21 @@ class BotObjectConverter(commands.Converter[BotObjectT]):
 class TaskIDConverter(commands.Converter[int]):
     def __init__(self, required: bool = True):
         self.required = required
+
     async def convert(self, ctx: VanirContext, argument: str) -> int:
         if argument.isdigit():
             todo = await ctx.bot.db_todo.get_by_id(int(argument))
             if todo is not None:
                 return int(argument)
-            
+
         task = await ctx.bot.db_todo.get_by_name(ctx.author.id, argument)
 
         if task is not None:
             return task["todo_id"]
-        
+
         if not self.required:
             return None
-        
+
         raise commands.CommandInvokeError(
             ValueError("Could not find task with name or ID " + argument)
         )
-        

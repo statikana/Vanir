@@ -14,7 +14,7 @@ from discord import Interaction
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
-from src.constants import GITHUB_ROOT, EMOJIS
+from src.constants import EMOJIS, GITHUB_ROOT
 from src.logging import book
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
@@ -227,12 +227,17 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
         self.message: discord.Message | None = None
 
-    @discord.ui.button(emoji=discord.PartialEmoji(name="bb_arrow", id=EMOJIS["bb_arrow"]), disabled=True)
+    @discord.ui.button(
+        emoji=discord.PartialEmoji(name="bb_arrow", id=EMOJIS["bb_arrow"]),
+        disabled=True,
+    )
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = 0
         await self.update(itx, button)
 
-    @discord.ui.button(emoji=discord.PartialEmoji(name="b_arrow", id=EMOJIS["b_arrow"]), disabled=True)
+    @discord.ui.button(
+        emoji=discord.PartialEmoji(name="b_arrow", id=EMOJIS["b_arrow"]), disabled=True
+    )
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page -= 1
         await self.update(itx, button)
@@ -250,12 +255,17 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         await self.update(itx, button)
         self.stop()
 
-    @discord.ui.button(emoji=discord.PartialEmoji(name="f_arrow", id=EMOJIS["f_arrow"]), disabled=True)
+    @discord.ui.button(
+        emoji=discord.PartialEmoji(name="f_arrow", id=EMOJIS["f_arrow"]), disabled=True
+    )
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page += 1
         await self.update(itx, button)
 
-    @discord.ui.button(emoji=discord.PartialEmoji(name="ff_arrow", id=EMOJIS["ff_arrow"]), disabled=True)
+    @discord.ui.button(
+        emoji=discord.PartialEmoji(name="ff_arrow", id=EMOJIS["ff_arrow"]),
+        disabled=True,
+    )
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page = self.n_pages - 1
         await self.update(itx, button)

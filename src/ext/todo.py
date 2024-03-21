@@ -1,4 +1,5 @@
 from inspect import Parameter
+
 import asyncpg
 import discord
 from discord.ext import commands
@@ -6,14 +7,14 @@ from discord.ext import commands
 from src.types.command import (
     AutoTablePager,
     VanirCog,
-    VanirView,
     VanirPagerT,
+    VanirView,
     vanir_group,
 )
 from src.types.core import Vanir, VanirContext
 from src.types.interface import TaskIDConverter
-from src.util.parse import fuzzysearch
 from src.util.command import safe_default
+from src.util.parse import fuzzysearch
 
 
 class Todo(VanirCog):
@@ -99,7 +100,7 @@ class Todo(VanirCog):
         if todo is None or isinstance(todo, Parameter):
             await ctx.invoke(self.get, include_completed=True, completed_only=True)  # type: ignore
             return
-        
+
         changed = await self.bot.db_todo.complete_by_id(todo)
 
         embed = ctx.embed(f"{changed['title']} Completed")
@@ -209,7 +210,10 @@ class TodoPager(AutoTablePager):
                 MarkTodoAsDone(
                     ctx=self.ctx,
                     all=rows,
-                    options=rows[self.cur_page * rows_per_page : (self.cur_page + 1) * rows_per_page],
+                    options=rows[
+                        self.cur_page * rows_per_page : (self.cur_page + 1)
+                        * rows_per_page
+                    ],
                 )
             )
 
@@ -217,13 +221,14 @@ class TodoPager(AutoTablePager):
                 child.row = None
                 self.add_item(child)
 
+
 class MarkTodoAsDone(discord.ui.Select[TodoPager]):
     def __init__(self, ctx: VanirContext, all: list, options: list):
         select_options = [
-                discord.SelectOption(label=todo[0][:100], value=todo[3])
-                for todo in options
-                if not todo[2]
-            ]
+            discord.SelectOption(label=todo[0][:100], value=todo[3])
+            for todo in options
+            if not todo[2]
+        ]
         super().__init__(
             placeholder="Mark tasks as done...",
             options=select_options,
@@ -240,15 +245,16 @@ class MarkTodoAsDone(discord.ui.Select[TodoPager]):
         for todo in self.all:
             if todo[3] in to_mark:
                 todo[2] = True
-        
+
         embed, file, view = await create_todo_gui(
-            ctx=self.ctx,  todos=self.all, autosort=False
+            ctx=self.ctx, todos=self.all, autosort=False
         )
         view.cur_page = self.view.cur_page
         await view.update(itx, update_content=False)
         await itx.response.edit_message(
             embed=embed, view=view, attachments=[file] if file else []
         )
+
 
 class AfterEdit(VanirView):
     def __init__(self, ctx: VanirContext):
