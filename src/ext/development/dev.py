@@ -88,14 +88,14 @@ class Dev(VanirCog):
                 err[cmd[0]] = (await proc.stderr.read()).decode()
                 break
 
-            embed = ctx.embed("git")
-            embed.add_field(
-                name="Output", value="\n".join(f"**{k}**\n{v}" for k, v in out.items())
-            )
-            embed.add_field(
-                name="Error", value="\n".join(f"**{k}**\n{v}" for k, v in err.items())
-            )
-            await ctx.reply(embed=embed)
+        embed = ctx.embed("git")
+        embed.add_field(
+            name="Output", value="\n".join(f"**{k}**\n{v}" for k, v in out.items())
+        )
+        embed.add_field(
+            name="Error", value="\n".join(f"**{k}**\n{v}" for k, v in err.items())
+        )
+        await ctx.reply(embed=embed)
 
 
 async def setup(bot: Vanir):

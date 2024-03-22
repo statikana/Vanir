@@ -41,6 +41,7 @@ class Server(VanirCog):
         ),
     ):
         """Purges a channel of bot messages or commands which prompted Vanir to respond"""
+        await ctx.defer()
         messages = await ctx.channel.purge(
             limit=n_messages + 1,
             check=lambda m: m.author.bot
@@ -71,6 +72,7 @@ class Server(VanirCog):
         ),
     ):
         """Deletes the last `max_messages` messages by a member in every channel"""
+        await ctx.defer()
         if channel is None:
             data = {
                 channel: 0

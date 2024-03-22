@@ -1,5 +1,7 @@
 from typing import NamedTuple
 
+from assets.color_db import COLORS as COLOR_INDEX  # type: ignore
+
 LANGUAGE_NAMES = {
     "AR": "Arabic",
     "BG": "Bulgarian",
