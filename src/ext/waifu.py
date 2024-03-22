@@ -23,7 +23,7 @@ from src.util.fmt import fmt_dict, fmt_size
 
 class Waifu(VanirCog):
     """Prety self-explanatory"""
-    
+
     emoji = str(EMOJIS["waifuim"])
 
     @vanir_group(aliases=["wf"])
@@ -43,7 +43,8 @@ class Waifu(VanirCog):
         ),
         only_nsfw: bool = commands.param(
             description="Whether to get a NSFW image", default=False
-        ),):
+        ),
+    ):
         """Prety self-explanatory [default: `\\wf get ...`]"""
         await ctx.invoke(
             self.get,
@@ -114,7 +115,7 @@ async def get_results(
         list(extract_tags(excluded_tags or "")),
     )
     only_nsfw = only_nsfw or (all(tag.is_nsfw for tag in inc) and len(inc) > 0)
-    
+
     if (only_nsfw or any(tag.is_nsfw for tag in inc)) and not ctx.channel.is_nsfw():
         raise commands.NSFWChannelRequired(ctx.channel)
 
