@@ -35,9 +35,11 @@ class VanirCog(commands.Cog):
 
     def __init__(self, bot: Vanir):
         self.bot = bot
-        self.hidden: bool = (
-            False  # gets set to true if the class is decorated by @hidden
-        )
+
+        # gets set by @cog_hidden and @uses_sys_assets
+        self.hidden: bool = False
+        self.uses_sys_assets: bool = False
+
 
     async def cog_load(self):
         book.info(f"{self.__class__.__name__} loaded")
@@ -612,6 +614,10 @@ def vanir_group(
         return cmd
 
     return inner
+
+
+def uses_sys_assets(cls: VanirCog):
+    cls.uses_sys_assets = True
 
 
 BotObjectT = TypeVar("BotObjectT", VanirHybridCommand, VanirHybridGroup, VanirCog)

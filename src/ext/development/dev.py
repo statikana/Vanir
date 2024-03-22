@@ -72,9 +72,36 @@ class Dev(VanirCog):
     @dev.command()
     async def git(self, ctx: VanirContext, *, message: str):
         """Does a git cycle"""
-        shell = await asyncio.create_subprocess_shell(
-            f"git add . && git commit -m '{message}' && git push",
-        )
+        out: dict[str, str | None] = []
+        err: dict[str, str | None] = []
+        for cmd in (
+            ["add", "."]
+            ["commit", "-m", message],
+            ["push"],
+        ):
+            proc = await asyncio.create_subprocess_exec(
+                "git",
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            ret = await proc.wait()
+            if ret == 0:
+                out[cmd[0]] = (await proc.stdout.read()).decode()
+            else:
+                err[cmd[0]] = (await proc.stderr.read()).decode()
+                break
+            
+            embed = ctx.embed("git")
+            embed.add_field(
+                name="Output",
+                value="\n".join(f"**{k}**\n{v}" for k, v in out.items())
+            )
+            embed.add_field(
+                name="Error",
+                value="\n".join(f"**{k}**\n{v}" for k, v in err.items())
+            )
+            await ctx.reply(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Dev(bot))

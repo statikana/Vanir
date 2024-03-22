@@ -1,12 +1,13 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, vanir_command
+from src.types.command import VanirCog, vanir_command, uses_sys_assets
 from src.types.core import Vanir, VanirContext
 from src.types.media import MediaConverter
 from src.util.command import assure_working, send_file
 
 
+@uses_sys_assets
 class Media(VanirCog):
     """Manipulate images and videos"""
 
