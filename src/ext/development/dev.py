@@ -1,3 +1,6 @@
+import asyncio
+import os
+
 import discord
 from discord.ext import commands
 
@@ -6,6 +9,7 @@ from src.types.command import (
 )
 from src.types.core import VanirContext
 from src.util.command import cog_hidden
+
 
 
 @cog_hidden
@@ -64,8 +68,6 @@ class Dev(VanirCog):
     async def error(self, ctx: VanirContext):
         """Throw an error"""
         raise ValueError("This is a test error")
-    
-    
 
 
 async def setup(bot):
