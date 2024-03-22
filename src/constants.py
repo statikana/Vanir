@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 LANGUAGE_NAMES = {
     "AR": "Arabic",
     "BG": "Bulgarian",
@@ -121,12 +123,30 @@ ANSI_EMOJIS = {
 
 MONOSPACE_FONT_HEIGHT_RATIO = 1.6
 
+
+class VanirEmoji(NamedTuple):
+    name: str
+    id: int
+    animated: bool
+
+    def __str__(self):
+        return f"<{"a" if self.animated else ""}:{self.name}:{self.id}>"
+
+    __repr__ = __str__
+
+
 EMOJIS = {
-    "b_arrow": 1220034776426352670,
-    "bb_arrow": 1220035023827374080,
-    "f_arrow": 1220034630992789575,
-    "ff_arrow": 1220034497454801006,
-    "close": 1220186816225874091,
-    "execute": 1220179060928282805,
-    "info": 1220177488886501529,
+    "b_arrow": VanirEmoji(name="b_arrow", id=1220034776426352670, animated=False),
+    "bb_arrow": VanirEmoji(name="bb_arrow", id=1220035023827374080, animated=False),
+    "f_arrow": VanirEmoji(name="f_arrow", id=1220034630992789575, animated=False),
+    "ff_arrow": VanirEmoji(name="ff_arrow", id=1220034497454801006, animated=False),
+    "close": VanirEmoji(name="close", id=1220186816225874091, animated=False),
+    "execute": VanirEmoji(name="execute", id=1220179060928282805, animated=False),
+    "info": VanirEmoji(name="info", id=1220177488886501529, animated=False),
+    "patreon": VanirEmoji(name="patreon", id=1220769788159066132, animated=False),
+    "pixiv": VanirEmoji(name="pixiv", id=1220769964030431243, animated=False),
+    "x": VanirEmoji(name="x", id=1220770263566778529, animated=False),
+    "deviant_art": VanirEmoji(
+        name="deviant_art", id=1220770290670244042, animated=False
+    ),
 }

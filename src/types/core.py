@@ -163,6 +163,7 @@ class VanirSession(aiohttp.ClientSession):
 
         return await self.post(url + path, headers=headers, json=json)
 
+
 class BotCache:
     def __init__(self, bot: Vanir):
         self.bot = bot

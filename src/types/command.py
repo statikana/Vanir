@@ -228,7 +228,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         self.message: discord.Message | None = None
 
     @discord.ui.button(
-        emoji=discord.PartialEmoji(name="bb_arrow", id=EMOJIS["bb_arrow"]),
+        emoji=str(EMOJIS["bb_arrow"]),
         disabled=True,
     )
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
@@ -236,14 +236,15 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         await self.update(itx, button)
 
     @discord.ui.button(
-        emoji=discord.PartialEmoji(name="b_arrow", id=EMOJIS["b_arrow"]), disabled=True
+        emoji=str(EMOJIS["b_arrow"]),
+        disabled=True,
     )
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page -= 1
         await self.update(itx, button)
 
     @discord.ui.button(
-        emoji=discord.PartialEmoji(name="close", id=EMOJIS["close"]),
+        emoji=str(EMOJIS["close"]),
         style=discord.ButtonStyle.danger,
         custom_id="constant-style:finish",
     )
@@ -256,14 +257,15 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         self.stop()
 
     @discord.ui.button(
-        emoji=discord.PartialEmoji(name="f_arrow", id=EMOJIS["f_arrow"]), disabled=True
+        emoji=str(EMOJIS["f_arrow"]),
+        disabled=True,
     )
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
         self.cur_page += 1
         await self.update(itx, button)
 
     @discord.ui.button(
-        emoji=discord.PartialEmoji(name="ff_arrow", id=EMOJIS["ff_arrow"]),
+        emoji=str(EMOJIS["ff_arrow"]),
         disabled=True,
     )
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
@@ -504,7 +506,7 @@ class CloseButton(discord.ui.Button):
         super().__init__(
             style=discord.ButtonStyle.danger,
             label="Close",
-            emoji=discord.PartialEmoji(name="close", id=EMOJIS["close"]),
+            emoji=str(EMOJIS["close"]),
         )
 
     async def callback(self, itx: discord.Interaction):

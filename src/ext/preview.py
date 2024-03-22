@@ -5,7 +5,7 @@ import discord
 from discord import Interaction
 from discord.ext import commands
 
-from src.constants import ANSI, ANSI_EMOJIS, EMOJIS
+from src.constants import ANSI, ANSI_EMOJIS
 from src.types.command import ModalField, VanirCog, VanirModal, VanirView, vanir_command
 from src.types.core import Vanir, VanirContext
 
@@ -185,7 +185,13 @@ class EmbedView(VanirView):
         try:
             await itx.followup.edit_message(itx.message.id, embed=self.embed)
         except discord.HTTPException:
-            res = await itx.followup.send(embed=discord.Embed(color=discord.Color.red(), description="You need some kind of content. Try adding something else."), wait=True)
+            res = await itx.followup.send(
+                embed=discord.Embed(
+                    color=discord.Color.red(),
+                    description="You need some kind of content. Try adding something else.",
+                ),
+                wait=True,
+            )
             if res is not None:
                 await asyncio.sleep(5)
                 await res.delete()
@@ -200,8 +206,14 @@ class EmbedView(VanirView):
             itx,
             title="Set Footer",
             fields=[
-                ModalField("Enter Footer Text", default=self.embed.footer.text, required=False),
-                ModalField("Enter Footer Icon URL", default=self.embed.footer.icon_url, required=False),
+                ModalField(
+                    "Enter Footer Text", default=self.embed.footer.text, required=False
+                ),
+                ModalField(
+                    "Enter Footer Icon URL",
+                    default=self.embed.footer.icon_url,
+                    required=False,
+                ),
             ],
         )
         if not any(values):

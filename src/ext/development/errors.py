@@ -28,17 +28,27 @@ class Errors(VanirCog):
             try:
                 raise error
             except Exception as e:
+                tb = traceback.format_exc()
                 book.error(
                     f"Error in {name} command: {e}",
-                    exc_info=traceback.format_exc(),
+                    exc_info=tb,
                 )
-                await source.reply(
-                    embed=discord.Embed(
-                        title="An error occurred while processing this command",
-                        description=f"```{e}```",
-                        color=discord.Color.red(),
-                    ),
-                )
+                if isinstance(source, VanirContext):
+                    await source.reply(
+                        embed=discord.Embed(
+                            title="An error occurred while processing this command",
+                            description=f"```{tb}```",
+                            color=discord.Color.red(),
+                        ),
+                    )
+                else:
+                    await source.response.send_message(
+                        embed=discord.Embed(
+                            title="An error occurred while processing this command",
+                            description=f"```{tb}```",
+                            color=discord.Color.red(),
+                        ),
+                    )
             return
 
         user = source.author if isinstance(source, VanirContext) else source.user
