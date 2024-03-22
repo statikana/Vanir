@@ -1,3 +1,6 @@
+import asyncio
+import os
+
 import discord
 from discord.ext import commands
 
@@ -6,6 +9,7 @@ from src.types.command import (
 )
 from src.types.core import VanirContext
 from src.util.command import cog_hidden
+
 
 
 @cog_hidden
@@ -64,7 +68,13 @@ class Dev(VanirCog):
     async def error(self, ctx: VanirContext):
         """Throw an error"""
         raise ValueError("This is a test error")
-
+    
+    @dev.command()
+    async def git(self, ctx: VanirContext, *, message: str):
+        """Does a git cycle"""
+        shell = await asyncio.create_subprocess_shell(
+            f"git add . && git commit -m '{message}' && git push",
+        )
 
 async def setup(bot):
     await bot.add_cog(Dev(bot))
