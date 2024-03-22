@@ -36,7 +36,7 @@ class TLink(VanirCog):
         ),
     ):
         """
-        Links channels together for translation. If no arguments are provided, lists all translation links.
+        Links channels together for translation [default: `\\tlink list` or `\\tlink create ...`]
         """
         from_channel = safe_default(from_channel)
         if from_channel is not None:

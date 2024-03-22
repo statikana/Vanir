@@ -68,10 +68,11 @@ class Dev(VanirCog):
     @dev.command()
     async def git(self, ctx: VanirContext, *, message: str):
         """Does a git cycle"""
-        out: dict[str, str | None] = []
-        err: dict[str, str | None] = []
+        out: dict[str, str | None] = {}
+        err: dict[str, str | None] = {}
         for cmd in (
-            ["add", "."]["commit", "-m", message],
+            ["add", "."],
+            ["commit", "-m", message],
             ["push"],
         ):
             proc = await asyncio.create_subprocess_exec(

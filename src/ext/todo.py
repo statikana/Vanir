@@ -3,6 +3,7 @@ from inspect import Parameter
 import asyncpg
 import discord
 from discord.ext import commands
+from discord.ui.button import Button
 
 from src.types.command import (
     AutoTablePager,
@@ -24,7 +25,7 @@ class Todo(VanirCog):
 
     @vanir_group()
     async def todo(self, ctx: VanirContext, *, task: str = None):
-        """Get your todo list"""
+        """Get your todo list [default: `\\todo get` or `\\todo add <task>`]"""
         if task is None:
             await ctx.invoke(self.get, True, False)  # type: ignore
         else:
@@ -201,51 +202,72 @@ class TodoPager(AutoTablePager):
             include_hline=include_hline,
         )
         self.ctx = ctx
-        if any(not todo[2] for todo in rows):
-            prev = self.children
-            for child in prev:
-                self.remove_item(child)
+        prev = self.children
+        for child in prev:
+            self.remove_item(child)
 
-            self.add_item(
-                MarkTodoAsDone(
-                    ctx=self.ctx,
-                    all=rows,
-                    options=rows[
-                        self.cur_page * rows_per_page : (self.cur_page + 1)
-                        * rows_per_page
-                    ],
-                )
+        self.add_item(
+            MarkTodoAsDone(
+                ctx=self.ctx,
+                all=rows,
+                options=rows[
+                    self.cur_page * rows_per_page : (self.cur_page + 1)
+                    * rows_per_page
+                ],
             )
+        )
 
-            for child in prev:
-                child.row = None
-                self.add_item(child)
+        for child in prev:
+            child.row = None
+            self.add_item(child)
+        
+    async def update(self, itx: discord.Interaction = None, source_button: Button = None, update_content: bool = True):
+        done_selector: MarkTodoAsDone = discord.utils.get(self.children, custom_id="mark_todo_as_done")
+        if done_selector is None:
+            return
+        done_selector.options = [
+            discord.SelectOption(label=todo[0][:100], value=todo[3], default=todo[2])
+            for todo in self.rows[self.cur_page * self.items_per_page : (self.cur_page + 1) * self.items_per_page]
+        ]
+        done_selector.max_values = len(done_selector.options)
+        for opt in done_selector.options:
+            opt.default = discord.utils.find(lambda r: r[3]==opt.value, self.rows)[2]
+            
+        await super().update(itx, source_button, update_content)
+        
 
 
 class MarkTodoAsDone(discord.ui.Select[TodoPager]):
     def __init__(self, ctx: VanirContext, all: list, options: list):
         select_options = [
-            discord.SelectOption(label=todo[0][:100], value=todo[3])
+            discord.SelectOption(label=todo[0][:100], value=todo[3], default=todo[2])
             for todo in options
-            if not todo[2]
         ]
         super().__init__(
             placeholder="Mark tasks as done...",
             options=select_options,
             max_values=len(select_options),
             row=0,
+            custom_id="mark_todo_as_done",
         )
         self.ctx = ctx
         self.all = all
 
     async def callback(self, itx: discord.Interaction):
-        to_mark = [int(v) for v in self.values]
-        await self.ctx.bot.db_todo.complete_by_id(*to_mark)
+        all_set = set(int(opt.value) for opt in self.options)
+        
+        mark_as_done = set(int(v) for v in self.values)
+        mark_as_not_done = all_set - mark_as_done
+        
+        await self.ctx.bot.db_todo.complete_by_id(*mark_as_done)
+        await self.ctx.bot.db_todo.uncomplete_by_id(*mark_as_not_done)
 
         for todo in self.all:
-            if todo[3] in to_mark:
+            if todo[3] in mark_as_done:
                 todo[2] = True
-
+            elif todo[3] in mark_as_not_done:
+                todo[2] = False
+                
         embed, file, view = await create_todo_gui(
             ctx=self.ctx, todos=self.all, autosort=False
         )

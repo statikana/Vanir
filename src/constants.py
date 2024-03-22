@@ -149,4 +149,5 @@ EMOJIS = {
     "deviant_art": VanirEmoji(
         name="deviant_art", id=1220770290670244042, animated=False
     ),
+    "waifuim": VanirEmoji(name="waifuim", id=1220801796977725531, animated=False),
 }

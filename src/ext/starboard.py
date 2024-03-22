@@ -24,7 +24,7 @@ class StarBoard(VanirCog):
             default=1,
         ),
     ):
-        """Automate a StarBoard channel, featuring popular posts in any channel"""
+        """Feature hot posts! [default: `\\starboard get` or `\\starboard setup ...`]"""
         if channel is not None:
             await ctx.invoke(self.setup, channel=channel, threshold=threshold)
         else:

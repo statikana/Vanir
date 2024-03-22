@@ -23,36 +23,39 @@ from src.util.fmt import fmt_dict, fmt_size
 
 class Waifu(VanirCog):
     """Prety self-explanatory"""
+    
+    emoji = str(EMOJIS["waifuim"])
 
     @vanir_group(aliases=["wf"])
-    async def waifu(self, ctx: VanirContext, *, args: str = ""):
-        """Prety self-explanatory"""
-        if args:
-            tags = args.split()
-            if len(tags) == 1:
-                inc, exc = args, None
-            elif len(tags) == 2:
-                inc, exc = tags
-            else:
-                raise commands.TooManyArguments(f"Expected at most 2, got {len(tags)}")
-            await ctx.invoke(
-                self.get,
-                included_tags=inc,
-                excluded_tags=exc,
-                only_nsfw=False,
-                gif=False,
-            )
-        else:
-            await ctx.invoke(
-                self.get,
-                included_tags=None,
-                excluded_tags=None,
-                only_nsfw=False,
-                gif=False,
-            )
+    async def waifu(
+        self,
+        ctx: VanirContext,
+        included_tags: str = commands.param(
+            description="Comma-separated list of tags to include in the search [see `\\wf tags`]",
+            default="",
+        ),
+        excluded_tags: str = commands.param(
+            description="Comma-separated list of tags to exclude from the search [see `\\wf tags`]",
+            default="ero,ecchi",
+        ),
+        gif: bool = commands.param(
+            description="Whether to get a gif instead of an image", default=False
+        ),
+        only_nsfw: bool = commands.param(
+            description="Whether to get a NSFW image", default=False
+        ),):
+        """Prety self-explanatory [default: `\\wf get ...`]"""
+        await ctx.invoke(
+            self.get,
+            included_tags=included_tags,
+            excluded_tags=excluded_tags,
+            gif=gif,
+            only_nsfw=only_nsfw,
+        )
 
     @waifu.command()
     async def tags(self, ctx: VanirContext):
+        """Get a list of all available tags on waifu.im"""
         response = await self.bot.session.get("https://api.waifu.im/tags?full=1")
         response.raise_for_status()
 
@@ -78,12 +81,12 @@ class Waifu(VanirCog):
         self,
         ctx: VanirContext,
         included_tags: str = commands.param(
-            description="Comma-separated list of tags to include in the search [see \\wf tags]",
+            description="Comma-separated list of tags to include in the search [see `\\wf tags`]",
             default="",
         ),
         excluded_tags: str = commands.param(
-            description="Comma-separated list of tags to exclude from the search [see \\wf tags]",
-            default="nsfw,ero,ecchi",
+            description="Comma-separated list of tags to exclude from the search [see `\\wf tags`]",
+            default="",
         ),
         gif: bool = commands.param(
             description="Whether to get a gif instead of an image", default=False
@@ -92,7 +95,7 @@ class Waifu(VanirCog):
             description="Whether to get a NSFW image", default=False
         ),
     ):
-        """Gets you a waifu image from waifu.im. For valid tags, see \\wf tags for tags"""
+        """Gets you a waifu image from waifu.im. See `\\wf tags` for a list of available tags."""
         embed, view = await get_results(
             ctx, included_tags, excluded_tags, gif, only_nsfw
         )
@@ -110,7 +113,10 @@ async def get_results(
         list(extract_tags(included_tags or "")),
         list(extract_tags(excluded_tags or "")),
     )
-    only_nsfw = only_nsfw or all(tag.is_nsfw for tag in inc)
+    only_nsfw = only_nsfw or (all(tag.is_nsfw for tag in inc) and len(inc) > 0)
+    
+    if (only_nsfw or any(tag.is_nsfw for tag in inc)) and not ctx.channel.is_nsfw():
+        raise commands.NSFWChannelRequired(ctx.channel)
 
     url = "https://api.waifu.im/search"
     headers = {"Authorization": f"Bearer {WAIFU_IM_API_TOKEN}"}
@@ -121,7 +127,10 @@ async def get_results(
         query += f"&excluded_tags={tag.name}"
 
     response = await ctx.bot.session.get(f"{url}?{query}", headers=headers)
-    image_json = (await response.json())["images"][0]
+    json = await response.json()
+    if "detail" in json:
+        raise ValueError(json["detail"] + f"\nuri: {response.url}")
+    image_json = json["images"][0]
     image = WaifuData._from_dict(image_json)
 
     embed = ctx.embed()
@@ -144,7 +153,7 @@ async def get_results(
 
 class TagNames(Enum):
     waifu = "waifu"
-    maid = "main"
+    maid = "maid"
     marin_kitagawa = "marin-kitagawa"
     mori_calliope = "mori-calliope"
     raiden_shogun = "raiden-shogun"
@@ -413,8 +422,9 @@ def extract_tags(tag_string: str) -> Generator[FullTag, None, None]:
             obj = TagNames(tag)
             full_tag = getattr(TagData, obj.name)
             yield full_tag
-    except (TypeError, ValueError, AttributeError):
-        raise ValueError(f"Invalid tag: {tag}")
+    except (TypeError, ValueError, AttributeError) as e:
+        print(e)
+        raise ValueError(f"Invalid tag: {tag}") from e
 
 
 async def setup(bot: Vanir):

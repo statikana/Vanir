@@ -130,7 +130,7 @@ class AutoCachedView(VanirView):
         self.previous_state.disabled = True
         self.next_state.disabled = True
 
-    @discord.ui.button(emoji="\N{BLACK LEFT-POINTING TRIANGLE}", row=1)
+    @discord.ui.button(emoji=str(EMOJIS["b_arrow"]), row=1)
     async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
         if self.state_index is None:
             await self.collect(itx)
@@ -139,7 +139,7 @@ class AutoCachedView(VanirView):
             self.state_index -= 1
         await self.update_to_state(itx)
 
-    @discord.ui.button(emoji="\N{BLACK RIGHT-POINTING TRIANGLE}", row=1)
+    @discord.ui.button(emoji=str(EMOJIS["f_arrow"]), row=1)
     async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
         self.state_index += 1
         await self.update_to_state(itx)
@@ -619,6 +619,7 @@ def vanir_group(
 
 def uses_sys_assets(cls: VanirCog):
     cls.uses_sys_assets = True
+    return cls
 
 
 BotObjectT = TypeVar("BotObjectT", VanirHybridCommand, VanirHybridGroup, VanirCog)

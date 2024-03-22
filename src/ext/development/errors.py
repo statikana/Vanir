@@ -22,49 +22,57 @@ class Errors(VanirCog):
     async def on_command_error(
         self, source: VanirContext | discord.Interaction, error: commands.CommandError
     ):
+        try:
+            raise error
+        except Exception:
+            tb = traceback.format_exc()
+            
         book.info(f"Handling error in command {source.command}", exc_info=error)
         if self.bot.debug and not isinstance(error, commands.CommandNotFound):
             name = source.command.qualified_name if source.command else "<NONE>"
-            try:
-                raise error
-            except Exception as e:
-                tb = traceback.format_exc()
-                book.error(
-                    f"Error in {name} command: {e}",
-                    exc_info=tb,
+            book.error(
+                f"Error in {name} command: {error}",
+                exc_info=tb,
+            )
+            if isinstance(source, VanirContext):
+                await source.reply(
+                    embed=discord.Embed(
+                        title="An error occurred while processing this command",
+                        description=f"```{tb}```",
+                        color=discord.Color.red(),
+                    ),
                 )
-                if isinstance(source, VanirContext):
-                    await source.reply(
-                        embed=discord.Embed(
-                            title="An error occurred while processing this command",
-                            description=f"```{tb}```",
-                            color=discord.Color.red(),
-                        ),
-                    )
-                else:
-                    await source.response.send_message(
-                        embed=discord.Embed(
-                            title="An error occurred while processing this command",
-                            description=f"```{tb}```",
-                            color=discord.Color.red(),
-                        ),
-                    )
+            else:
+                await source.response.send_message(
+                    embed=discord.Embed(
+                        title="An error occurred while processing this command",
+                        description=f"```{tb}```",
+                        color=discord.Color.red(),
+                    ),
+                )
             return
 
         user = source.author if isinstance(source, VanirContext) else source.user
-        view: discord.ui.View | None = None
+        view = ErrorView(source, self.bot, source.command)
+        
+        view.add_item(GetTBButton(tb))
 
         if isinstance(error, commands.CommandNotFound):
             return await self.on_command_not_found(source, error)
 
         if isinstance(error, commands.MissingRequiredArgument):
-            instance = self.bot.get_cog("Help")
-            view = GetHelpView(self.bot, instance, source.command, user)
+            view.add_item(GetHelpButton())
+        
+        if isinstance(error, commands.NSFWChannelRequired):
+            button = SetNSFWButton()
+            if not (source.channel.permissions_for(source.guild.me).manage_channels and source.channel.permissions_for(user).manage_channels):
+                button.disabled = True
+            view.add_item(SetNSFWButton())
 
-        title = f"Error - `{type(error).__name__}`: {error}"
+        title = f"Error - `{type(error).__name__}`"
         color = discord.Color.red()
 
-        embed = VanirContext.syn_embed(title=title, color=color, user=source.author)
+        embed = VanirContext.syn_embed(title=title, description=str(error), color=color, user=source.author)
         await source.reply(embed=embed, view=view, ephemeral=True)
 
     async def on_command_not_found(
@@ -118,7 +126,7 @@ class CommandNotFoundHelper(VanirView):
 
     @discord.ui.button(
         label="Run",
-        emoji=discord.PartialEmoji(name="execute", id=EMOJIS["execute"]),
+        emoji=str(EMOJIS["execute"]),
         style=discord.ButtonStyle.success,
     )
     async def run_command(self, itx: discord.Interaction, button: discord.ui.Button):
@@ -141,35 +149,71 @@ class CommandNotFoundHelper(VanirView):
 
     @discord.ui.button(
         label="Help",
-        emoji=discord.PartialEmoji(name="info", id=EMOJIS["info"]),
+        emoji=str(EMOJIS["info"]),
         style=discord.ButtonStyle.blurple,
     )
     async def get_help(self, itx: discord.Interaction, button: discord.ui.Button):
         instance: Help = self.ctx.bot.get_cog("Help")
         await self.ctx.invoke(instance.help, thing=self.command)
+        await itx.response.defer()
 
 
-class GetHelpView(VanirView):
+class ErrorView(VanirView):
     def __init__(
         self,
+        source: VanirContext | discord.Interaction,
         bot: Vanir,
-        instance: VanirCog,
         command: commands.Command,
-        user: discord.User,
     ):
         super().__init__(bot=bot)
-        self.instance = instance
+        self.source = source
+        self.user = source.author if isinstance(source, VanirContext) else source.user
         self.command = command
-        self.user = user
 
-    @discord.ui.button(
-        label="Get Help",
-        style=discord.ButtonStyle.primary,
-        emoji="\N{WHITE QUESTION MARK ORNAMENT}",
-    )
-    async def get_help(self, itx: discord.Interaction, button: discord.ui.Button):
+class GetHelpButton(discord.ui.Button[ErrorView]):
+    def __init__(self):
+        super().__init__(
+            label="Get Help",
+            style=discord.ButtonStyle.primary,
+            emoji="\N{WHITE QUESTION MARK ORNAMENT}",
+        )
+        self.instance: Help = self.view.bot.get_cog("Help")
+    
+    async def callback(self, itx: discord.Interaction):
         embed = await self.instance.command_details_embed(self.command, self.user)
         await itx.response.edit_message(embed=embed, view=None)
+
+
+class SetNSFWButton(discord.ui.Button[ErrorView]):
+    def __init__(self):
+        super().__init__(
+            label="Set NSFW",
+            style=discord.ButtonStyle.danger,
+            emoji="\N{No One Under Eighteen Symbol}",
+        )
+    
+    async def callback(self, itx: discord.Interaction):
+        await self.view.source.channel.edit(nsfw=True)
+        await itx.response.send_message("Channel set to NSFW", ephemeral=True)
+    
+
+class GetTBButton(discord.ui.Button[ErrorView]):
+    def __init__(self, tb: str):
+        super().__init__(
+            label="Get Traceback",
+            style=discord.ButtonStyle.secondary,
+            emoji="\N{Scroll}",
+        )
+        self.tb = tb
+    
+    async def callback(self, itx: discord.Interaction):
+        embed = VanirContext.syn_embed(
+            title="Traceback",
+            description=f"```{self.tb}```",
+            user=self.view.user,
+            color=discord.Color.red(),
+        )
+        await itx.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot: Vanir):

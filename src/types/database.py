@@ -196,6 +196,18 @@ class Todo(DBBase):
             return vals[0]
         return vals
 
+    async def uncomplete_by_id(self, *todo_ids: int) -> TASK | list[TASK] | None:
+        vals = await self.pool.fetch(
+            "UPDATE todo_data "
+            "SET completed = False "
+            "WHERE todo_id = ANY($1)"
+            "RETURNING *",
+            todo_ids,
+        )
+        if len(todo_ids) == 1:
+            return vals[0]
+        return vals
+
     async def complete_by_name(self, user_id: int, todo_title: str) -> TASK | None:
         return await self.pool.fetchrow(
             "UPDATE todo_data "
