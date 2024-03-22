@@ -40,7 +40,6 @@ class VanirCog(commands.Cog):
         self.hidden: bool = False
         self.uses_sys_assets: bool = False
 
-
     async def cog_load(self):
         book.info(f"{self.__class__.__name__} loaded")
 

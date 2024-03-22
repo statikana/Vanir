@@ -73,7 +73,7 @@ class Vanir(commands.Bot):
         asyncio.gather(*(self.load_extension(ext) for ext in MODULE_PATHS))
 
         await self.load_extension("jishaku")
-    
+
     async def add_cog(self, cog: commands.Cog):
         if config.use_system_assets or not getattr(cog, "uses_sys_assets", False):
             await super().add_cog(cog)
