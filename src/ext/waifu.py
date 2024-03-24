@@ -36,7 +36,7 @@ class Waifu(VanirCog):
         ),
         excluded_tags: str = commands.param(
             description="Comma-separated list of tags to exclude from the search [see `\\wf tags`]",
-            default="ero,ecchi",
+            default="",
         ),
         gif: bool = commands.param(
             description="Whether to get a gif instead of an image", default=False
@@ -333,8 +333,7 @@ class WaifuDataView(VanirView):
         self.gif = gif
         self.only_nsfw = only_nsfw
 
-        if data.artist is None:
-            self.artist.disabled = True
+        self.artist.disabled = data.artist is None
 
         self.add_item(
             discord.ui.Button(

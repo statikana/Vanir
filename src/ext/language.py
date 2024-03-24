@@ -145,7 +145,7 @@ class Language(VanirCog):
         source = LANGUAGE_NAMES[tsl["detected_source_language"]]
         target = LANGUAGE_NAMES[target_lang]
 
-        embed = ctx.embed(title=f"{source} -> {target}")
+        embed = ctx.embed()
         embed.add_field(name=f"{source} - Original", value=text, inline=False)
         embed.add_field(name=f"{target} - Translated", value=tsl["text"], inline=False)
         await ctx.reply(embed=embed)

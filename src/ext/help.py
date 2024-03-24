@@ -28,6 +28,7 @@ class Help(VanirCog):
     async def help(
         self,
         ctx: VanirContext,
+        *,
         thing: BotObjectT | None = commands.param(
             description="The thing to get help on",
             converter=BotObjectConverter(),

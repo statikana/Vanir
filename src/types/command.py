@@ -91,6 +91,11 @@ class VanirView(discord.ui.View):
             return False
         return True
 
+    async def on_error(
+        self, itx: Interaction, error: Exception, item: discord.ui.Item
+    ) -> None:
+        await self.bot.dispatch("command_error", itx, error)
+
 
 class GitHubView(VanirView):
     def __init__(self, bot: Vanir, path: str = ""):
@@ -219,7 +224,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         self.items = items
         self.items_per_page = items_per_page
 
-        self.cur_page = start_page
+        self.page = start_page
         if items_per_page <= 0:
             raise ValueError("items_per_page must be greater than 0")
         if len(items) <= 0:
@@ -233,7 +238,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         disabled=True,
     )
     async def first(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.cur_page = 0
+        self.page = 0
         await self.update(itx, button)
 
     @discord.ui.button(
@@ -241,7 +246,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         disabled=True,
     )
     async def back(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.cur_page -= 1
+        self.page -= 1
         await self.update(itx, button)
 
     @discord.ui.button(
@@ -262,7 +267,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         disabled=True,
     )
     async def next(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.cur_page += 1
+        self.page += 1
         await self.update(itx, button)
 
     @discord.ui.button(
@@ -270,13 +275,13 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         disabled=True,
     )
     async def last(self, itx: discord.Interaction, button: discord.ui.Button):
-        self.cur_page = self.n_pages - 1
+        self.page = self.n_pages - 1
         await self.update(itx, button)
 
     @discord.ui.button(
         label="GO TO",
         emoji="\N{DIRECT HIT}",
-        custom_id="constant-style:custom",
+        custom_id="constant-style:goto",
         style=discord.ButtonStyle.blurple,
     )
     async def go_to_page(self, itx: discord.Interaction, button: discord.Button):
@@ -297,55 +302,41 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         if self.close.disabled:
             await itx.response.edit_message(view=self)
             return
-        if self.cur_page == 0:
+        if self.page == 0:
             VanirPager.disable(self.first, self.back)
         else:
             VanirPager.enable(self.first, self.back)
 
-        if self.cur_page == self.n_pages - 1:
+        if self.page == self.n_pages - 1:
             VanirPager.disable(self.next, self.last)
         else:
             VanirPager.enable(self.next, self.last)
 
-        self.close.label = f"Page {self.cur_page+1}/{self.n_pages} [{len(self.items)}]"
+        self.close.label = f"Page {self.page+1}/{self.n_pages} [{len(self.items)}]"
 
         if source_button is not None:
-            for i in self.children:
-                if isinstance(i, discord.ui.Button):
-                    if i == source_button:
-                        i.style = discord.ButtonStyle.success
-                    else:
-                        if not (i.custom_id or "").startswith("constant-style"):
-                            i.style = discord.ButtonStyle.grey
+            source_button.style = discord.ButtonStyle.success
+            for btn in {self.first, self.back, self.next, self.last} - {source_button}:
+                btn.style = discord.ButtonStyle.grey
 
         if update_content:
             if self.message is not None:
                 embed = await self.update_embed()
 
-                if isinstance(embed, tuple):
-                    embed, file = embed
-                else:
-                    embed, file = embed, None
                 if itx is not None:
                     try:
-                        await itx.response.edit_message(
-                            embed=embed, view=self, attachments=[file] if file else []
-                        )
+                        await itx.response.edit_message(embed=embed, view=self)
                     except discord.InteractionResponded:
-                        await itx.edit_original_response(
-                            embed=embed, view=self, attachments=[file] if file else []
-                        )
+                        await itx.edit_original_response(embed=embed, view=self)
                 else:
-                    await self.message.edit(
-                        embed=embed, view=self, attachments=[file] if file else []
-                    )
+                    await self.message.edit(embed=embed, view=self)
             else:
                 book.warning(
                     f"Pager has no message attached "
                     f"(VanirPagerT: {VanirPagerT}), cannot update message"
                 )
 
-    async def update_embed(self) -> discord.Embed | tuple[discord.Embed, discord.File]:
+    async def update_embed(self) -> discord.Embed:
         """To be implemented by children classes"""
         raise NotImplementedError
 
@@ -366,31 +357,35 @@ class AutoTablePager(VanirPager):
         bot: Vanir,
         user: discord.User,
         *,
-        as_image: bool = True,
         headers: list[str],
         rows: list[VanirPagerT],
         rows_per_page: int,
         dtypes: list[str] = None,
         data_name: str = None,
         include_hline: bool = False,
+        row_key: Callable[[VanirPagerT], list] = None,
+        start_page: int = 0,
     ):
-        super().__init__(bot, user, rows, rows_per_page)
-        self.as_image = as_image
+        super().__init__(bot, user, rows, rows_per_page, start_page=start_page)
         self.headers = headers
         self.rows = self.items
         self.data_name = data_name
         self.dtypes = dtypes
         self.include_hline = include_hline
+        self.row_key = row_key or (lambda x: x)
+
+    @property
+    def current(self):
+        return self.rows[
+            self.page * self.items_per_page : (self.page + 1) * self.items_per_page
+        ]
 
     async def update_embed(self):
         table = texttable.Texttable(61)
         table.header(self.headers)
 
         table.add_rows(
-            self.rows[
-                self.cur_page * self.items_per_page : (self.cur_page + 1)
-                * self.items_per_page
-            ],
+            (self.row_key(r) for r in self.current),
             header=False,
         )
         deco = (
@@ -410,20 +405,13 @@ class AutoTablePager(VanirPager):
 
         text = table.draw()
 
-        if self.as_image:
-            embed, file_ = await asyncio.to_thread(self.draw_image, text, title)
-        else:
-            text = text.replace("True", fmt_bool(True) + " ").replace(
-                "False", fmt_bool(False) + "   "
-            )
-            embed, file_ = (
-                VanirContext.syn_embed(
-                    title=title, description=f"```ansi\n{text}\n```", user=self.user
-                ),
-                None,
-            )
-
-        return embed, file_
+        text = text.replace("True", fmt_bool(True) + " ").replace(
+            "False", fmt_bool(False) + "   "
+        )
+        embed = VanirContext.syn_embed(
+            title=title, description=f"```ansi\n{text}\n```", user=self.user
+        )
+        return embed
 
     def draw_image(self, text: str) -> tuple[discord.Embed, discord.File]:
         font_size = 50
@@ -498,7 +486,7 @@ class CustomPageModal(VanirModal, title="Select Page"):
             raise ValueError(
                 f"Please enter a page number between 1 and {self.view.n_pages}"
             )
-        self.view.cur_page = value - 1
+        self.view.page = value - 1
         await self.view.update(itx=itx, source_button=VanirPager.go_to_page)
 
 
@@ -512,16 +500,6 @@ class CloseButton(discord.ui.Button):
 
     async def callback(self, itx: discord.Interaction):
         await itx.message.delete()
-
-
-@dataclass
-class ModalField:
-    label: str
-    style: discord.TextStyle = discord.TextStyle.short
-    default: str | None = None
-    placeholder: str | None = None
-    value: str | None = None
-    required: bool = True
 
 
 class VanirHybridCommand(commands.Command):

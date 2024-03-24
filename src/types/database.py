@@ -231,10 +231,10 @@ class Todo(DBBase):
             title,
         )
 
-    async def remove(self, todo_id: int) -> TASK | None:
-        return await self.pool.fetchrow(
-            "DELETE FROM todo_data " "WHERE todo_id = $1 " "RETURNING *",
-            todo_id,
+    async def remove(self, *todo_ids: int) -> list[TASK]:
+        return await self.pool.fetch(
+            "DELETE FROM todo_data WHERE todo_id = ANY($1) RETURNING *",
+            todo_ids,
         )
 
     async def clear(self, user_id: int) -> list[TASK] | None:
