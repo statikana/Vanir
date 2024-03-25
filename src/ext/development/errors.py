@@ -76,7 +76,10 @@ class Errors(VanirCog):
         color = discord.Color.red()
 
         embed = VanirContext.syn_embed(
-            title=title, description=str(error), color=color, user=source.author
+            title=title,
+            description=discord.utils.escape_markdown(str(error)),
+            color=color,
+            user=source.author,
         )
         await source.reply(embed=embed, view=view, ephemeral=True)
 

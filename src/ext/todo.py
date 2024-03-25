@@ -423,7 +423,9 @@ class AfterEdit(VanirView):
         style=discord.ButtonStyle.primary,
     )
     async def see_tasks(self, itx: discord.Interaction, button: discord.ui.Button):
-        user_tasks = await self.bot.db_todo.get_by_user(self.ctx.author.id)
+        user_tasks = await self.bot.db_todo.get_by_user(
+            self.ctx.author.id, include_completed=True
+        )
         embed, view = await create_task_gui(
             ctx=self.ctx, tasks=user_tasks, autosort=True
         )

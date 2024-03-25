@@ -1,17 +1,28 @@
-import re
+import time
+import traceback
 import unicodedata
 from asyncio import iscoroutinefunction
 from typing import Any, Callable
 
 import discord
+import regex as re
+import RestrictedPython as repy
 import texttable
 from discord.ext import commands
+from RestrictedPython.Eval import default_guarded_getiter as _getiter_
+from RestrictedPython.Guards import (
+    guarded_iter_unpack_sequence as _iter_unpack_sequence_,
+    full_write_guard as _write_,
+)
+from RestrictedPython.PrintCollector import PrintCollector as _print_
 
 from src.constants import (
     ALL_PERMISSIONS,
     GLOBAL_CHANNEL_PERMISSIONS,
+    MATH_GLOBALS_MAP,
     STRONG_CHANNEL_PERMISSIONS,
     TEXT_CHANNEL_PERMISSIONS,
+    TIMESTAMP_STYLES,
     VALID_IMAGE_FORMATS,
     VOICE_CHANNEL_PERMISSIONS,
 )
@@ -19,7 +30,16 @@ from src.types.command import VanirCog, vanir_command
 from src.types.core import Vanir, VanirContext
 from src.util.fmt import ctext, fmt_bool, fmt_dict
 from src.util.parse import closest_color_name, find_ext, find_filename
-from src.util.regex import EMOJI_REGEX, SNOWFLAKE_REGEX
+from src.util.regex import (
+    CONNECTOR_REGEX,
+    DISCORD_TIMESTAMP_REGEX,
+    EMOJI_REGEX,
+    SNOWFLAKE_REGEX,
+    SPACE_FORMAT_REGEX,
+    SPACE_SUB_REGEX,
+    TIMESTAMP_REGEX_REGEX,
+)
+from src.util.time import ShortTime, regress_time
 
 
 class Info(VanirCog):
@@ -112,6 +132,92 @@ class Info(VanirCog):
             )
 
         await ctx.send(embed=embed)
+
+    @vanir_command(aliases=["timestamp", "ts"])
+    async def time(
+        self,
+        ctx: VanirContext,
+        *,
+        string: str = commands.param(
+            description="The time string to convert into a timestamp",
+            default="0s",
+            displayed_default="now",
+        ),
+    ):
+        """
+        Analyzes a time. Can be relative [1 day -5 seconds] or a timestamp.
+        Some of the underlying code is from Rapptz.
+        """
+        string = re.sub(CONNECTOR_REGEX, "", string.lower())
+        if TIMESTAMP_REGEX_REGEX.fullmatch(string):
+            ts = float(string)
+        elif (match := DISCORD_TIMESTAMP_REGEX.fullmatch(string)) is not None:
+            ts = int(float(match.group("ts")))
+        else:
+            # remove superfluous spaces (ie 4 minutes 5 hours -> 4minutes 5hours)
+            string: str = re.sub(SPACE_FORMAT_REGEX, SPACE_SUB_REGEX, string)
+
+            diff = sum(
+                ShortTime(part).dt.timestamp() - time.time() for part in string.split()
+            )
+            ts = diff + time.time()
+
+        embed = ctx.embed()
+        for style, desc in TIMESTAMP_STYLES.items():
+            fmt = f"<t:{int(ts)}{f":{style}" if style else ""}>"
+            embed.add_field(name=f"{desc}", value=f"{fmt}\n`{fmt}`", inline=True)
+        embed.add_field(
+            name="DT Delta",
+            value=f"{int(ts - time.time())} seconds",
+        )
+        embed.add_field(name="UNIX Timestamp", value=f"`{ts}`", inline=True)
+        embed.add_field(
+            name="Human Readable",
+            value=f"{"in " if ts > time.time() else ""}{regress_time(ts)}{" ago" if ts < time.time() else ""}",
+            inline=False,
+        )
+        await ctx.reply(embed=embed)
+
+    @vanir_command(aliases=["py", "math"])
+    async def eval(self, ctx: VanirContext, *, expression: str):
+        """Python evaluator."""
+
+        try:
+            compilation_result = repy.compile_restricted_eval(
+                expression, filename="<string>"
+            )
+            if compilation_result.errors:
+                raise SyntaxError(compilation_result.errors)
+            bytecode = compilation_result.code
+
+        except SyntaxError as e:
+            result = traceback.format_exception(type(e), e, e.__traceback__)[-1]
+            success = False
+        else:
+            try:
+                namespace = MATH_GLOBALS_MAP.copy()
+                namespace.update(repy.safe_globals)
+
+                namespace["_getiter_"] = _getiter_
+                namespace["_getattr_"] = getattr
+                namespace["_iter_unpack_sequence_"] = _iter_unpack_sequence_
+                namespace["_print"] = _print_
+                namespace["_write_"] = _write_
+
+                result = eval(bytecode, namespace, {})
+                success = True
+
+            except Exception as exec_error:
+                result = "\n".join(
+                    traceback.format_exception(type(exec_error), exec_error, exec_error.__traceback__)[-2:]
+                )
+                success = False
+
+        embed1 = ctx.embed(description=f"```py\n{expression}```")
+        embed2 = ctx.embed(
+            description=f"```bash\n{result}```", color=0x00FF00 if success else 0xFF0000
+        )
+        await ctx.reply(embeds=[embed1, embed2])
 
     async def scan_methods(
         self, ctx: VanirContext, method: str, attr: str, snowflake: int

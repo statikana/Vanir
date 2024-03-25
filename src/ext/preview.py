@@ -4,7 +4,8 @@ import io
 import discord
 from discord.ext import commands
 
-from src.constants import ANSI, ANSI_EMOJIS, COLOR_INDEX
+from assets.color_db import COLOR_INDEX
+from src.constants import ANSI, ANSI_EMOJIS
 from src.types.command import VanirCog, VanirModal, VanirView, vanir_command
 from src.types.core import Vanir, VanirContext
 from src.util.ux import generate_modal

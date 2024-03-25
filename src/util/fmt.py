@@ -89,3 +89,25 @@ def natural_join(it: Iterable[str]) -> str:
             return f"{it[0]} and {it[1]}"
         case _:
             return f"{', '.join(it[:-1])}, and {it[-1]}"
+
+
+class plural:
+    def __init__(self, value: int):
+        self.value: int = value
+
+    def __format__(self, format_spec: str) -> str:
+        v = self.value
+        skip_value = format_spec.endswith("!")
+        if skip_value:
+            format_spec = format_spec[:-1]
+
+        singular, _, plural = format_spec.partition("|")
+        plural = plural or f"{singular}s"
+        if skip_value:
+            if abs(v) != 1:
+                return plural
+            return singular
+
+        if abs(v) != 1:
+            return f"{v} {plural}"
+        return f"{v} {singular}"

@@ -1,8 +1,9 @@
 import discord
 from discord.ext import commands
 
-from src.types.command import AutoTablePager, VanirCog, vanir_command
+from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command
 from src.types.core import Vanir, VanirContext
+from src.util.ux import generate_modal
 
 
 class Server(VanirCog):
@@ -13,7 +14,9 @@ class Server(VanirCog):
     @vanir_command()
     async def new(self, ctx: VanirContext):
         """Shows the list of all new members in the server"""
-        members = sorted(ctx.guild.members, key=lambda m: m.joined_at, reverse=True)
+        members: list[discord.Member] = sorted(
+            ctx.guild.members, key=lambda m: m.joined_at, reverse=True
+        )
         headers = ["name", "joined at"]
         dtypes = ["t", "t"]
 
@@ -21,13 +24,15 @@ class Server(VanirCog):
             ctx.bot,
             ctx.author,
             headers=headers,
-            rows=[[m.name, m.joined_at.strftime("%Y/%m/%d %H:%M:%S")] for m in members],
+            rows=members,
+            row_key=lambda m: [m.name, m.joined_at.strftime("%Y/%m/%d %H:%M:%S")],
             dtypes=dtypes,
             rows_per_page=10,
-            as_image=False,
         )
-
-        embed, _ = await view.update_embed()
+        view.add_item(TimeoutButton(ctx, members, view.current))
+        view.add_item(KickButton(ctx, members, view.current))
+        view.add_item(BanButton(ctx, members, view.current))
+        embed = await view.update_embed()
         await view.update(update_content=False)
         view.message = await ctx.reply(embed=embed, view=view)
 
@@ -105,6 +110,94 @@ class Server(VanirCog):
             or "No messages found",
         )
         await ctx.send(embed=embed)
+
+
+class NewUsersPager(AutoTablePager):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        rows: list[discord.Member],
+    ):
+        super().__init__(
+            ctx.bot,
+            ctx.author,
+            headers=["name", "joined at"],
+            rows=rows,
+            row_key=lambda m: [m.name, m.joined_at.strftime("%Y/%m/%d %H:%M:%S")],
+            dtypes=["t", "t"],
+            rows_per_page=10,
+        )
+        self.ctx = ctx
+
+    @discord.ui.button(
+        label="Timeout...",
+        style=discord.ButtonStyle.grey,
+    )
+    async def timeout(self, itx: discord.Interaction, button: discord.ui.Button):
+        view = VanirView(self.bot, user=itx.user)
+        view.add_item(TimeoutDetachmentSelect(self.ctx, self.rows, self.current))
+        embed = self.ctx.embed("Timeout Users")
+        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @discord.ui.button(
+        label="Kick...",
+        style=discord.ButtonStyle.red,
+    )
+    async def kick(self, itx: discord.Interaction, button: discord.ui.Button):
+        view = VanirView(self.bot, user=itx.user)
+        view.add_item(KickDetachmentSelect(self.ctx, self.rows, self.current))
+        embed = self.ctx.embed("Kick Users")
+        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @discord.ui.button(
+        label="Ban...",
+        style=discord.ButtonStyle.red,
+    )
+    async def ban(self, itx: discord.Interaction, button: discord.ui.Button):
+        view = VanirView(self.bot, user=itx.user)
+        view.add_item(BanDetachmentSelect(self.ctx, self.rows, self.current))
+        embed = self.ctx.embed("Ban Users")
+        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class TimeoutDetachmentSelect(discord.ui.Select[NewUsersPager]):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        all_members: list[discord.Member],
+        current: list[discord.Member],
+    ):
+        super().__init__(
+            placeholder="Select members to timeout...",
+            min_values=1,
+            max_values=len(current),
+            options=[
+                discord.SelectOption(
+                    label=f"{m.name[:80]} [{m.id}]",
+                    value=str(m.id),
+                )
+                for m in current
+            ],
+        )
+        self.ctx = ctx
+        self.all_members = all_members
+
+    async def callback(self, itx: discord.Interaction):
+        time = await generate_modal(
+            itx,
+            "Timeout Duration",
+            fields=[
+                discord.TextInput(
+                    label="Duration [ie. '15s', '2 hours', '1d', 'one week']",
+                    placeholder="Enter a duration...",
+                    required=True,
+                )
+            ],
+        )
+        member_ids = [int(v) for v in self.values]
+        for member_id in member_ids:
+            member = discord.utils.get(self.all_members, id=member_id)
+            await member.edit()
 
 
 async def setup(bot: Vanir):

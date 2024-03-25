@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from fuzzywuzzy import fuzz
 
-from assets.color_db import COLORS
+from assets.color_db import COLOR_INDEX
 from src.util.regex import SLUG_REGEX
 
 FuzzyT = typing.TypeVar("FuzzyT")
@@ -28,7 +28,7 @@ def find_ext(url: str):
 def closest_color_name(start_hex: str) -> tuple[str, int]:
     start = int(start_hex, 16)
     best: tuple[str, int] | None = None
-    for col, (check_hex, _) in COLORS.items():
+    for col, (check_hex, _) in COLOR_INDEX.items():
         if best is None:
             best = col, abs(int(check_hex[1:], 16) - start)
 
