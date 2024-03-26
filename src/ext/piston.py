@@ -42,7 +42,6 @@ class Piston(VanirCog):
                 ],
             )
         code = trim_codeblock(code)
-        
 
         valid_runtimes = list(
             filter(
@@ -51,7 +50,7 @@ class Piston(VanirCog):
                 await self.bot.piston.runtimes(),
             )
         )
-        
+
         if not valid_runtimes:
             return await ctx.reply(f"No runtimes available for {package}")
 
@@ -59,7 +58,7 @@ class Piston(VanirCog):
             valid_runtimes,
             key=lambda rt: rt.version.split("."),
         )
-        
+
         start_time = time.perf_counter()
         response = await self.bot.piston.execute(
             package=PistonPackage(
@@ -74,12 +73,12 @@ class Piston(VanirCog):
             ],
         )
         exec_diff = time.perf_counter() - start_time
-        
+
         result = response.run
         embeds = []
         files = []
         out = result.stdout or "<<No output>>"
-        
+
         input_embed = ctx.embed(
             title="Input",
             description=f"```{runtime.language}\n{code}```",
@@ -89,7 +88,7 @@ class Piston(VanirCog):
         )
 
         embeds.append(input_embed)
-        
+
         if len(out) > 2000:
             files.append(
                 discord.File(
@@ -115,7 +114,7 @@ class Piston(VanirCog):
             )
 
         await ctx.reply(embeds=embeds, files=files)
-    
+
     @vanir_command()
     async def py(self, ctx: VanirContext, *, code: str):
         """Execute python code"""

@@ -108,8 +108,17 @@ class Dev(VanirCog):
         to_install_ver: str | None = None,
     ):
         if to_install is None:
-            installed = sorted(await self.bot.piston.runtimes(), key=lambda x: (x.language, tuple(int(v) for v in x.version.split("."))))
-            reg = sorted(await self.bot.piston.packages(), key=lambda x: (x.language, tuple(int(v) for v in x.language_version.split("."))))
+            installed = sorted(
+                await self.bot.piston.runtimes(),
+                key=lambda x: (x.language, tuple(int(v) for v in x.version.split("."))),
+            )
+            reg = sorted(
+                await self.bot.piston.packages(),
+                key=lambda x: (
+                    x.language,
+                    tuple(int(v) for v in x.language_version.split(".")),
+                ),
+            )
             embeds = [
                 ctx.embed(
                     "Available",
@@ -140,6 +149,23 @@ class Dev(VanirCog):
             pkg = PistonPackage(language=to_install, language_version=ver)
             await self.bot.piston.install_package(pkg)
             await ctx.reply(f"Installed {to_install} {ver}")
+
+    @dev.command()
+    async def fmt(self, ctx: VanirContext):
+        # run ./fmt.bat
+        proc = await asyncio.create_subprocess_exec(
+            "cmd",
+            "/c",
+            "fmt.bat",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await proc.communicate()
+        embed = ctx.embed("fmt")
+        embed.add_field(name="Output", value=out.decode())
+        embed.add_field(name="Error", value=err.decode(), inline=False)
+
+        await ctx.reply(embed=embed)
 
 
 async def setup(bot: Vanir):
