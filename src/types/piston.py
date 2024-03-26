@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pprint import pprint
 
 import aiohttp
 
@@ -61,7 +62,8 @@ class PistonORM:
         response = await self.session.get(piston_api_url + "/runtimes")
         response.raise_for_status()
         json = await response.json()
-        print(json)
+        print("installed runtimes:")
+        pprint(json)
         return [PistonRuntime(**runtime) for runtime in json]
 
     async def execute(
@@ -106,10 +108,11 @@ class PistonORM:
         response = await self.session.get(piston_api_url + "/packages")
         response.raise_for_status()
         json = await response.json()
-        print(json)
+        print(f"get pkgs, #: {len(json)}")
         return [PistonPackage(**package) for package in json]
 
     async def install_package(self, package: PistonPackage) -> PistonPackage:
+        print(f"installing package: {package.language} {package.language_version}")
         response = await self.session.post(
             piston_api_url + "/packages",
             json={"language": package.language, "version": package.language_version},
@@ -117,7 +120,8 @@ class PistonORM:
         )
         response.raise_for_status()
         json = await response.json()
-        print(json)
+        print("Installed package:")
+        pprint(json)
         return PistonPackage(
             language=json["language"], language_version=json["version"], installed=True
         )

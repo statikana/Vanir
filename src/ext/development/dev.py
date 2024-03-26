@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import aiohttp
 import discord
@@ -138,17 +139,48 @@ class Dev(VanirCog):
             await ctx.reply(embeds=embeds)
 
         else:
-            if to_install_ver is None:
-                ver = max(
-                    await self.bot.piston.packages(),
-                    key=lambda x: tuple(x.language_version),
-                ).language_version
+            pkgs = await self.bot.piston.packages()
+
+            relevant = list(filter(
+                lambda x: x.language.lower() == to_install.lower(),
+                pkgs,
+            ))
+            print(relevant)
+
+            if not relevant:
+                return await ctx.reply(f"`No packages found for {to_install}`")
+
+            if to_install_ver in (None, "latest"):
+                vers = [
+                    max(
+                        relevant,
+                        key=lambda x: tuple(
+                            int(v) for v in x.language_version.split(".")
+                        ),
+                    ).language_version
+                ]
+            elif to_install_ver in (pkg.language_version for pkg in relevant):
+                vers = [to_install]
+            elif to_install_ver in ("all", "*"):
+                vers = [pkg.language_version for pkg in relevant]
             else:
-                ver = to_install_ver
-            await ctx.reply(f"Installing {to_install} {ver}")
-            pkg = PistonPackage(language=to_install, language_version=ver)
-            await self.bot.piston.install_package(pkg)
-            await ctx.reply(f"Installed {to_install} {ver}")
+                return await ctx.reply(f"`invalid version spec: {to_install_ver} [latest, all, or specific version]`")
+            for ver in vers:
+                pkg = PistonPackage(language=to_install, language_version=ver)
+                msg = await ctx.send(f"`...installing {pkg.language} {pkg.language_version}`")
+                start = time.perf_counter()
+                try:
+                    await self.bot.piston.install_package(pkg)
+                except aiohttp.ClientResponseError as e:
+                    await msg.edit(content=f"`Failed to install {pkg.language} {pkg.language_version}: {e}`")
+                else:
+                    end = time.perf_counter()
+                    await msg.edit(
+                        content=f"`Installed {pkg.language} {pkg.language_version} in {end - start:.2f}s`"
+                    )
+                finally:
+                    await asyncio.sleep(1)
+                
 
     @dev.command()
     async def fmt(self, ctx: VanirContext):
