@@ -11,7 +11,7 @@ class BasicInput(discord.ui.Modal):
 
 async def generate_modal(
     itx: discord.Interaction, title: str, *, fields: list[discord.TextInput]
-) -> list[str]:
+) -> list[str | None]:
     modal = BasicInput(title=title)
 
     for field in fields:

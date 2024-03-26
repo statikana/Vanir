@@ -16,6 +16,7 @@ from discord.ext import commands
 from src.constants import TIME_UNITS
 from src.types.core import VanirContext
 from src.util.format import natural_join
+from src.util.regex import SPACE_FORMAT_REGEX, SPACE_SUB_REGEX
 
 
 class ShortTime:
@@ -67,7 +68,7 @@ class ShortTime:
         return cls(argument, now=ctx.message.created_at)
 
 
-def regress_time(ts: float):
+def regress_time(ts: float) -> str:
     ts = int(ts) - int(time.time())
     desc: dict[str, int] = {}
     print(ts)
@@ -82,3 +83,11 @@ def regress_time(ts: float):
         )
         or "0 seconds"
     )
+
+
+def parse_time(expr: str) -> datetime.datetime:
+    string = re.sub(SPACE_FORMAT_REGEX, SPACE_SUB_REGEX, expr)
+
+    diff = sum(ShortTime(part).dt.timestamp() - time.time() for part in string.split())
+    ts = diff + time.time()
+    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
