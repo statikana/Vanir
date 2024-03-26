@@ -7,3 +7,7 @@ opencv-python~=4.9.0.80
 texttable~=1.7.0
 fuzzywuzzy~=0.18.0
 pillow~=10.2.0
+
+jishaku~=2.5.2x
+LogBook~=1.7.0
+python-dateutil~=2.9.0

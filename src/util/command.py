@@ -1,6 +1,6 @@
 import functools
 import inspect
-from typing import Any
+from typing import Any, Optional, Union, get_args, get_origin
 
 import discord
 from discord.app_commands import Choice
@@ -13,7 +13,7 @@ from src.types.command import (
 )
 from src.types.core import Vanir, VanirContext
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
-from src.util import fmt
+from src.util import format
 from src.util.parse import find_ext
 
 if config.use_system_assets:
@@ -53,9 +53,9 @@ def get_display_cogs(bot: commands.Bot) -> list[commands.Cog]:
 
 def get_param_annotation(param: inspect.Parameter) -> str:
     ptype = param.annotation
-
-    if str(ptype).endswith(">"):
-        return ptype.__name__
+    print(get_origin(ptype))
+    if get_origin(ptype) is Union:
+        ptype = get_args(ptype)[0]
 
     if hasattr(ptype, "min"):  # this is a .Range
         rtype_name = getattr(ptype, "annotation").__name__  # eg <class 'int'> -> int
@@ -72,6 +72,15 @@ def get_param_annotation(param: inspect.Parameter) -> str:
         if range_max is None:
             return f"{rtype_name} >= {range_min}"
         return f"{range_min} <= {rtype_name} <= {range_max}"
+
+    if ptype is int:
+        return "integer"
+    if ptype is float:
+        return "decimal"
+    if ptype is str:
+        return "string"
+    if ptype is bool:
+        return "boolean"
     return str(ptype)
 
 
@@ -100,8 +109,8 @@ async def send_file(
     )
     embed.add_field(
         name="File Size [Output]",
-        value=f"`{fmt.fmt_size(new_info.size, fmt.Convention.BINARY)}` **|** "
-        f"`{fmt.fmt_size(new_info.size, fmt.Convention.DECIMAL)}`",
+        value=f"`{format.fmt_size(new_info.size, format.Convention.BINARY)}` **|** "
+        f"`{format.fmt_size(new_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
 
@@ -119,8 +128,8 @@ async def assure_working(ctx: VanirContext, media: MediaInterface):
     )
     embed.add_field(
         name="File Size [Input]",
-        value=f"`{fmt.fmt_size(media.initial_info.size, fmt.Convention.BINARY)}` **|** "
-        f"`{fmt.fmt_size(media.initial_info.size, fmt.Convention.DECIMAL)}`",
+        value=f"`{format.fmt_size(media.initial_info.size, format.Convention.BINARY)}` **|** "
+        f"`{format.fmt_size(media.initial_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
     return await ctx.reply(embed=embed)

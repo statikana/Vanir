@@ -12,7 +12,8 @@ from src import env
 from src.env import DEEPL_API_KEY
 from src.ext import MODULE_PATHS
 from src.logging import book
-from src.types.database import TLINK, Currency, StarBoard, TLink, Todo
+from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
+from src.types.piston import PistonORM, PistonPackage
 
 
 class Vanir(commands.Bot):
@@ -37,6 +38,9 @@ class Vanir(commands.Bot):
 
         self.debug: bool = True
 
+        self.piston: PistonORM | None = None
+        self.installed_piston_packages: list[PistonPackage] | None = None
+
     async def get_context(
         self,
         origin: discord.Message | discord.Interaction,
@@ -54,7 +58,7 @@ class Vanir(commands.Bot):
             if self.pool is None:
                 raise RuntimeError("Could not connect to database")
 
-            databases = [
+            databases: list[DBBase] = [
                 self.db_starboard,
                 self.db_currency,
                 self.db_todo,
@@ -65,6 +69,10 @@ class Vanir(commands.Bot):
 
         else:
             book.info("Not connecting to database")
+
+        if config.use_system_assets:
+            self.piston = PistonORM(self.session)
+            self.installed_piston_packages = await self.piston.runtimes()
 
         await self.cache.init()
         await self.add_cogs()

@@ -1,0 +1,1 @@
+docker run --tmpfs /piston/jobs -dit -p 2000:2000 --name piston_api ghcr.io/engineer-man/piston

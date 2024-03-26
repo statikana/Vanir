@@ -1,8 +1,10 @@
 import math
+import re
 from typing import Any, Generator, Iterable
 
 from src.constants import ANSI
 from src.util.parse import Convention
+from src.util.regex import CODEBLOCK_REGEX
 
 
 def fmt_dict(
@@ -91,23 +93,12 @@ def natural_join(it: Iterable[str]) -> str:
             return f"{', '.join(it[:-1])}, and {it[-1]}"
 
 
-class plural:
-    def __init__(self, value: int):
-        self.value: int = value
-
-    def __format__(self, format_spec: str) -> str:
-        v = self.value
-        skip_value = format_spec.endswith("!")
-        if skip_value:
-            format_spec = format_spec[:-1]
-
-        singular, _, plural = format_spec.partition("|")
-        plural = plural or f"{singular}s"
-        if skip_value:
-            if abs(v) != 1:
-                return plural
-            return singular
-
-        if abs(v) != 1:
-            return f"{v} {plural}"
-        return f"{v} {singular}"
+def trim_codeblock(text: str) -> str:
+    match = CODEBLOCK_REGEX.fullmatch(text)
+    if match is None:
+        return text
+    try:
+        code = match.group("codelong")
+    except IndexError:
+        code = match.group("codeshort")
+    return code.strip()

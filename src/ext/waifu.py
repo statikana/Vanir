@@ -18,7 +18,7 @@ from src.types.command import (
     VanirView,
     vanir_group,
 )
-from src.util.fmt import fmt_dict, fmt_size
+from src.util.format import fmt_dict, fmt_size
 
 
 class Waifu(VanirCog):

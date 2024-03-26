@@ -8,6 +8,8 @@ from assets.color_db import COLOR_INDEX
 from src.util.regex import SLUG_REGEX
 
 FuzzyT = typing.TypeVar("FuzzyT")
+T = typing.TypeVar("T")
+K = typing.TypeVar("K")
 
 
 class Convention(Enum):
@@ -63,4 +65,18 @@ def fuzzysearch(
 
     out = list(output(v[0]) for v in flt)
 
+    return out
+
+
+def unique(
+    iterable: typing.Iterable[T],
+    key: typing.Callable[[T], typing.Any] = lambda x: x,
+) -> list[T]:
+    seen = set()
+    out = []
+    for item in iterable:
+        k = key(item)
+        if k not in seen:
+            seen.add(k)
+            out.append(item)
     return out

@@ -17,7 +17,7 @@ from src.util.command import (
     get_display_cogs,
     get_param_annotation,
 )
-from src.util.fmt import fmt_dict
+from src.util.format import fmt_dict
 from src.util.parse import fuzzysearch
 
 

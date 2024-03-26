@@ -1,11 +1,14 @@
 import asyncio
 
+import aiohttp
 import discord
 from discord.ext import commands
 
 from src.types.command import VanirCog
 from src.types.core import Vanir, VanirContext
+from src.types.piston import PistonPackage
 from src.util.command import cog_hidden
+from src.util.parse import unique
 
 
 @cog_hidden
@@ -96,6 +99,47 @@ class Dev(VanirCog):
             name="Error", value="\n".join(f"**{k}**\n{v}" for k, v in err.items())
         )
         await ctx.reply(embed=embed)
+
+    @dev.command()
+    async def piston(
+        self,
+        ctx: VanirContext,
+        to_install: str | None = None,
+        to_install_ver: str | None = None,
+    ):
+        if to_install is None:
+            installed = sorted(await self.bot.piston.runtimes(), key=lambda x: (x.language, tuple(int(v) for v in x.version.split("."))))
+            reg = sorted(await self.bot.piston.packages(), key=lambda x: (x.language, tuple(int(v) for v in x.language_version.split("."))))
+            embeds = [
+                ctx.embed(
+                    "Available",
+                    description=", ".join(
+                        f"`{p.language} [{p.language_version}]`" for p in reg
+                    ),
+                ),
+                ctx.embed(
+                    "Installed",
+                    description="\n".join(
+                        f"`{p.language} [{p.version}]`" for p in installed
+                    )
+                    or "None",
+                ),
+            ]
+
+            await ctx.reply(embeds=embeds)
+
+        else:
+            if to_install_ver is None:
+                ver = max(
+                    await self.bot.piston.packages(),
+                    key=lambda x: tuple(x.language_version),
+                ).language_version
+            else:
+                ver = to_install_ver
+            await ctx.reply(f"Installing {to_install} {ver}")
+            pkg = PistonPackage(language=to_install, language_version=ver)
+            await self.bot.piston.install_package(pkg)
+            await ctx.reply(f"Installed {to_install} {ver}")
 
 
 async def setup(bot: Vanir):

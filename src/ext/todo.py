@@ -11,8 +11,8 @@ from src.types.command import (
     vanir_group,
 )
 from src.types.core import Vanir, VanirContext
-from src.types.database import TASK
 from src.types.interface import TaskIDConverter
+from src.types.orm import TASK
 from src.util.command import safe_default
 from src.util.parse import fuzzysearch
 from src.util.ux import generate_modal

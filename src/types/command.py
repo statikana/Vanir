@@ -18,7 +18,7 @@ from src.constants import EMOJIS, GITHUB_ROOT
 from src.logging import book
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
-from src.util.fmt import fmt_bool
+from src.util.format import fmt_bool
 
 VanirPagerT = TypeVar("VanirPagerT")
 CommandT = TypeVar("CommandT", bound=commands.Command)

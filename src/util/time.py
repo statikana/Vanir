@@ -15,7 +15,7 @@ from discord.ext import commands
 
 from src.constants import TIME_UNITS
 from src.types.core import VanirContext
-from src.util.fmt import natural_join
+from src.util.format import natural_join
 
 
 class ShortTime:

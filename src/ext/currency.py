@@ -3,8 +3,8 @@ from discord.ext import commands
 
 from src.types.command import VanirCog, VanirModal, VanirView, vanir_group
 from src.types.core import Vanir, VanirContext
-from src.types.database import Currency as DBCurrency
-from src.util.fmt import fmt_dict
+from src.types.orm import Currency as DBCurrency
+from src.util.format import fmt_dict
 
 
 class Currency(VanirCog):

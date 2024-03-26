@@ -1,4 +1,4 @@
-import regex as re
+import re
 
 # from src.constants import MATH_GLOBALS_MAP
 
@@ -26,4 +26,8 @@ MATH_EXPRESSION_REGEX = re.compile(
 )
 OPERATOR_EXPRESSION_REGEX = re.compile(
     r"(?P<lhs>[0-9]+)(?P<operator>[+\-*/(**)])(?P<rhs>[0-9]+)"
+)
+
+CODEBLOCK_REGEX = re.compile(
+    r"(`{3}(?P<lang>[a-zA-z]*)\n?(?P<codelong>[^`]*)\n?`{3}|`(?P<codeshort>[^`]*)`)"
 )

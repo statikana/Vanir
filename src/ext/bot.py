@@ -11,7 +11,7 @@ from src.constants import ANSI, GITHUB_ROOT
 from src.types.command import GitHubView, VanirCog, vanir_command
 from src.types.core import Vanir, VanirContext
 from src.types.util import timed
-from src.util.fmt import natural_join
+from src.util.format import natural_join
 
 
 class Bot(VanirCog):

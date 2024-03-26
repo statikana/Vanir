@@ -1,2 +1,2 @@
-python -m ruff check --fix --select I .
-python -m ruff format .
+"./.venv/Scripts/python.exe" -m ruff check --fix --select I .
+"./.venv/Scripts/python.exe" -m ruff format .

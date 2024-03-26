@@ -1,20 +1,13 @@
+import re
 import time
-import traceback
 import unicodedata
 from asyncio import iscoroutinefunction
 from typing import Any, Callable
 
 import discord
-import regex as re
-import RestrictedPython as repy
 import texttable
 from discord.ext import commands
-from RestrictedPython.Eval import default_guarded_getiter as _getiter_
-from RestrictedPython.Guards import (
-    guarded_iter_unpack_sequence as _iter_unpack_sequence_,
-    full_write_guard as _write_,
-)
-from RestrictedPython.PrintCollector import PrintCollector as _print_
+from pint import UnitRegistry
 
 from src.constants import (
     ALL_PERMISSIONS,
@@ -28,7 +21,7 @@ from src.constants import (
 )
 from src.types.command import VanirCog, vanir_command
 from src.types.core import Vanir, VanirContext
-from src.util.fmt import ctext, fmt_bool, fmt_dict
+from src.util.format import ctext, fmt_bool, fmt_dict
 from src.util.parse import closest_color_name, find_ext, find_filename
 from src.util.regex import (
     CONNECTOR_REGEX,
@@ -40,6 +33,8 @@ from src.util.regex import (
     TIMESTAMP_REGEX_REGEX,
 )
 from src.util.time import ShortTime, regress_time
+
+ureg = UnitRegistry()
 
 
 class Info(VanirCog):
@@ -178,46 +173,50 @@ class Info(VanirCog):
         )
         await ctx.reply(embed=embed)
 
-    @vanir_command(aliases=["py", "math"])
-    async def eval(self, ctx: VanirContext, *, expression: str):
-        """Python evaluator."""
+    @vanir_command(aliases=["uc", "ucv", "conv", "convert"])
+    async def unit(
+        self,
+        ctx: VanirContext,
+        from_qty: float = commands.param(
+            description="The quantity to convert",
+        ),
+        from_unit: str = commands.param(
+            description="The unit to convert from",
+        ),
+        to_unit: str | None = commands.param(
+            description="The unit to convert to",
+            default=None,
+            displayed_default="base unit of (from_unit)",
+        ),
+    ):
+        """Convert a quantity between compatible units"""
+        from_pint = ureg(f"{from_qty} {from_unit}")
 
-        try:
-            compilation_result = repy.compile_restricted_eval(
-                expression, filename="<string>"
-            )
-            if compilation_result.errors:
-                raise SyntaxError(compilation_result.errors)
-            bytecode = compilation_result.code
-
-        except SyntaxError as e:
-            result = traceback.format_exception(type(e), e, e.__traceback__)[-1]
-            success = False
+        if to_unit is None:
+            _, to_unit_pint = ureg.get_base_units(from_pint.units)
+            to_unit = str(to_unit_pint)
+            to_pint = ureg(to_unit)
+            assumed = True
         else:
-            try:
-                namespace = MATH_GLOBALS_MAP.copy()
-                namespace.update(repy.safe_globals)
+            to_pint = ureg(to_unit)
+            assumed = False
 
-                namespace["_getiter_"] = _getiter_
-                namespace["_getattr_"] = getattr
-                namespace["_iter_unpack_sequence_"] = _iter_unpack_sequence_
-                namespace["_print"] = _print_
-                namespace["_write_"] = _write_
+        if not from_pint.is_compatible_with(to_pint):
+            from_fmt = from_pint.dimensionality.format_babel("P")
+            to_fmt = to_pint.dimensionality.format_babel("P")
+            raise TypeError(
+                f"Units `{from_unit}` and `{to_unit}` are not compatible [`{from_fmt}` vs `{to_fmt}`]"
+            )
 
-                result = eval(bytecode, namespace, {})
-                success = True
+        dest = ureg(f"{from_qty} {from_unit}").to(to_unit)
 
-            except Exception as exec_error:
-                result = "\n".join(
-                    traceback.format_exception(type(exec_error), exec_error, exec_error.__traceback__)[-2:]
-                )
-                success = False
-
-        embed1 = ctx.embed(description=f"```py\n{expression}```")
-        embed2 = ctx.embed(
-            description=f"```bash\n{result}```", color=0x00FF00 if success else 0xFF0000
+        embed = ctx.embed(
+            title=f"{dest.units.default_format} {dest.magnitude}",
         )
-        await ctx.reply(embeds=[embed1, embed2])
+        embed.set_footer(
+            text=f"{from_qty} {from_unit} -> {dest.units}{f" [Assumed Unit]" if assumed else ""}"
+        )
+        await ctx.reply(embed=embed)
 
     async def scan_methods(
         self, ctx: VanirContext, method: str, attr: str, snowflake: int

@@ -52,6 +52,9 @@ class Errors(VanirCog):
                 )
             return
 
+        if isinstance(error, commands.CommandInvokeError):
+            error = error.original
+
         user = source.author if isinstance(source, VanirContext) else source.user
         view = ErrorView(source, self.bot, source.command)
 
@@ -77,7 +80,7 @@ class Errors(VanirCog):
 
         embed = VanirContext.syn_embed(
             title=title,
-            description=discord.utils.escape_markdown(str(error)),
+            description=str(error),
             color=color,
             user=source.author,
         )
