@@ -71,7 +71,7 @@ class Todo(VanirCog):
 
         results: list[TASK] = await self.bot.db_todo.get_by_user(
             ctx.author.id,
-            include_completed,
+            include_completed=include_completed,
         )
 
         if not results:

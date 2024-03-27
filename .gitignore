@@ -1,4 +1,5 @@
 .idea
+.venv
 .vscode
 .ruff_cache
 .github
@@ -7,8 +8,6 @@
 __pycache__
 
 CACHEDIR.TAG
-Scripts/
-Lib/
 
 env.py
 test.py
