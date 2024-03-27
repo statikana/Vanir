@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import discord  # noqa: TCH002
 from discord.ext import commands
+from discord.ext.commands import Range  # noqa: TCH002
 
 from src.types.command import VanirCog, vanir_group
 
 if TYPE_CHECKING:
-    import discord
-    from discord.ext.commands import Range
-
     from src.types.core import Vanir, VanirContext
 
 

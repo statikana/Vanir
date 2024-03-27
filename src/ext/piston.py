@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import time
 from typing import TYPE_CHECKING
@@ -34,18 +35,34 @@ class Piston(VanirCog):
         """Execute code."""
         await ctx.defer()
 
-        if code is None and ctx.interaction is not None:
-            code, *_ = await generate_modal(
-                ctx.interaction,
-                "Enter code to execute",
-                fields=[
-                    discord.ui.TextInput(
-                        placeholder="Enter code here",
-                        min_length=1,
-                        max_length=2000,
-                    ),
-                ],
-            )
+        if code is None:
+            if ctx.interaction is not None:
+                code, *_ = await generate_modal(
+                    ctx.interaction,
+                    "Enter code to execute",
+                    fields=[
+                        discord.ui.TextInput(
+                            placeholder="Enter code here",
+                            min_length=1,
+                            max_length=2000,
+                        ),
+                    ],
+                )
+            else:
+                try:
+                    msg = await ctx.send("Send code...")
+                    res: discord.Message = await ctx.bot.wait_for(
+                        "message",
+                        check=lambda m: m.author == ctx.author
+                        and m.channel == ctx.channel,
+                        timeout=300,
+                    )
+                    await msg.delete()
+                    code = res.content
+
+                except asyncio.TimeoutError as err:
+                    msg = "Timed out waiting for code"
+                    raise commands.CommandError(msg) from err
         code = trim_codeblock(code)
 
         valid_runtimes = list(
@@ -122,7 +139,15 @@ class Piston(VanirCog):
         return None
 
     @vanir_command()
-    async def py(self, ctx: VanirContext, *, code: str) -> None:
+    async def py(
+        self,
+        ctx: VanirContext,
+        *,
+        code: str | None = commands.param(
+            description="The code to execute",
+            default=None,
+        ),
+    ) -> None:
         """Execute python code."""
         await self.exec(ctx, package="python", code=code)
 

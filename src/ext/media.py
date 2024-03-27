@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import discord  # noqa: TCH002
 from discord.ext import commands
 
 from src.types.command import VanirCog, uses_sys_assets, vanir_command
@@ -9,8 +10,6 @@ from src.types.media import MediaConverter
 from src.util.command import assure_working, send_file
 
 if TYPE_CHECKING:
-    import discord
-
     from src.types.core import Vanir, VanirContext
 
 

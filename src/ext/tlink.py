@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from typing import TYPE_CHECKING
 
+import discord  # noqa: TCH002
 from discord.ext import commands
 
 from src.constants import LANGUAGE_CODES, LANGUAGE_NAMES
@@ -10,8 +11,6 @@ from src.types.command import VanirCog, vanir_group
 from src.util.command import safe_default
 
 if TYPE_CHECKING:
-    import discord
-
     from src.types.core import Vanir, VanirContext
 
 
