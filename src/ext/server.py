@@ -1,25 +1,34 @@
+from __future__ import annotations
+
 import datetime
-import time
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 
+from src.constants import EMOJIS
 from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command
-from src.types.core import Vanir, VanirContext
+from src.util.regex import EMOJI_REGEX
 from src.util.time import parse_time, regress_time
 from src.util.ux import generate_modal
 
+if TYPE_CHECKING:
+    from src.types.core import Vanir, VanirContext
+
 
 class Server(VanirCog):
-    """Information about this server"""
+    """Information about this server."""
 
     emoji = "\N{HUT}"
 
     @vanir_command()
-    async def new(self, ctx: VanirContext):
-        """Shows the list of all new members in the server"""
+    @commands.guild_only()
+    async def new(self, ctx: VanirContext) -> None:
+        """Shows the list of all new members in the server."""
         members: list[discord.Member] = sorted(
-            ctx.guild.members, key=lambda m: m.joined_at, reverse=True
+            ctx.guild.members,
+            key=lambda m: m.joined_at,
+            reverse=True,
         )
         headers = ["name", "joined at"]
         dtypes = ["t", "t"]
@@ -33,23 +42,38 @@ class Server(VanirCog):
             dtypes=dtypes,
             rows_per_page=10,
         )
-        view.add_item(TimeoutButton(ctx, members, view.current))
-        view.add_item(KickButton(ctx, members, view.current))
-        view.add_item(BanButton(ctx, members, view.current))
+        permissions = ctx.channel.permissions_for(
+            ctx.author,
+        ) & ctx.channel.permissions_for(ctx.guild.me)
+
+        timeout = TimeoutButton(ctx, members, view.current)
+        timeout.disabled = not permissions.manage_messages
+        view.add_item(timeout)
+
+        kick = KickButton(ctx, members, view.current)
+        kick.disabled = not permissions.kick_members
+        view.add_item(kick)
+
+        ban = BanButton(ctx, members, view.current)
+        ban.disabled = not permissions.ban_members
+        view.add_item(ban)
+
         embed = await view.update_embed()
         await view.update(update_content=False)
         view.message = await ctx.reply(embed=embed, view=view)
 
     @vanir_command(aliases=["clean"])
+    @commands.guild_only()
     @commands.has_permissions(manage_messages=True)
     async def cleanup(
         self,
         ctx: VanirContext,
         n_messages: commands.Range[int, 1, 100] = commands.param(
-            description="How many messages to delete.", default=3
+            description="How many messages to delete.",
+            default=3,
         ),
-    ):
-        """Purges a channel of bot messages or commands which prompted Vanir to respond"""
+    ) -> None:
+        """Purges a channel of bot messages or commands which prompted Vanir to respond."""
         await ctx.defer()
         messages = await ctx.channel.purge(
             limit=n_messages + 1,
@@ -58,18 +82,19 @@ class Server(VanirCog):
                 m.content.startswith(p)
                 for p in ctx.bot.command_prefix(ctx.bot, ctx.message)
             ),
-            reason=f"`\cleanup` by {ctx.author.name}",
+            reason=f"`\\cleanup` by {ctx.author.name}",
         )
 
         embed = ctx.embed(f"Deleted {len(messages)} Messages")
         await ctx.send(embed=embed, delete_after=3)
 
     @vanir_command()
+    @commands.guild_only()
     async def nukeuser(
         self,
         ctx: VanirContext,
         member: discord.Member = commands.param(
-            description="The member to delete messages from"
+            description="The member to delete messages from",
         ),
         max_messages: commands.Range[int, 0, 100] = commands.param(
             description="How far back into the history of a channel to search.",
@@ -79,8 +104,8 @@ class Server(VanirCog):
             description="The channel to delete messages from. If not provided, all channels will be searched.",
             default=None,
         ),
-    ):
-        """Deletes the last `max_messages` messages by a member in every channel"""
+    ) -> None:
+        """Deletes the last `max_messages` messages by a member in every channel."""
         await ctx.defer()
         if channel is None:
             data = {
@@ -104,7 +129,7 @@ class Server(VanirCog):
                     limit=max_messages,
                     check=lambda m: m.author == member,
                     reason=f"`\\nukeuser` by {ctx.author.name}",
-                )
+                ),
             )
         data = list(filter(lambda x: x[1] > 0, data.items()))
 
@@ -115,13 +140,60 @@ class Server(VanirCog):
         )
         await ctx.send(embed=embed)
 
+    @vanir_command(name="emoji", aliases=["steal"])
+    async def emoji_(
+        self,
+        ctx: VanirContext,
+        emoji_name: str = commands.param(
+            description="The name of the added emoji",
+        ),
+        emoji: str | None = commands.param(
+            description="The emojis to display",
+            default=None,
+        ),
+        emoji_image: discord.Attachment | None = commands.param(
+            description="The image to display",
+            default=None,
+        ),
+    ) -> None:
+        if emoji is None and emoji_image is None:
+            msg = "Please either specify some emojis or an image to display"
+            raise ValueError(msg)
+
+        if emoji and emoji_image:
+            msg = "Please specify either emojis or an image, not both"
+            raise ValueError(msg)
+
+        if emoji:
+            if not (match := EMOJI_REGEX.fullmatch(emoji)):
+                msg = "Invalid emoji"
+                raise ValueError(msg)
+            emoji_id = match.group("id")
+            url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png"
+            content = await self.bot.http.get_from_cdn(url)
+        else:
+            content = await emoji_image.read()
+
+        created = await ctx.guild.create_custom_emoji(
+            name=emoji_name,
+            image=content,
+            reason=f"Emoji creation by {ctx.author.name}",
+        )
+
+        embed = ctx.embed(
+            title="Emoji Created",
+            description=f"{created.name} [ID: `{created.id}`]\n`{created!s}`",
+        )
+        embed.set_image(url=created.url)
+        await ctx.send(embed=embed)
+
 
 class NewUsersPager(AutoTablePager):
     def __init__(
         self,
         ctx: VanirContext,
         rows: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             ctx.bot,
             ctx.author,
@@ -147,18 +219,21 @@ class NewUsersPager(AutoTablePager):
         style=discord.ButtonStyle.grey,
         disabled=True,
     )
-    async def timeout(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def timeout(
+        self,
+        itx: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
         view = VanirView(self.bot, user=itx.user)
         view.add_item(TimeoutDetachmentSelect(self.ctx, self.rows, self.current))
-        embed = self.ctx.embed("Timeout Users")
-        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+        await itx.response.send_message(view=view, ephemeral=True)
 
     @discord.ui.button(
         label="Kick...",
         style=discord.ButtonStyle.red,
         disabled=True,
     )
-    async def kick(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def kick(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         view = VanirView(self.bot, user=itx.user)
         view.add_item(KickDetachmentSelect(self.ctx, self.rows, self.current))
         embed = self.ctx.embed("Kick Users")
@@ -169,7 +244,7 @@ class NewUsersPager(AutoTablePager):
         style=discord.ButtonStyle.red,
         disabled=True,
     )
-    async def ban(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def ban(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         view = VanirView(self.bot, user=itx.user)
         view.add_item(BanDetachmentSelect(self.ctx, self.rows, self.current))
         embed = self.ctx.embed("Ban Users")
@@ -182,20 +257,20 @@ class TimeoutButton(discord.ui.Button[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             label="Timeout",
             style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["timeout"]),
         )
         self.ctx = ctx
         self.all_members = all_members
         self.current = current
 
-    async def callback(self, itx: discord.Interaction):
-        view = VanirView(self.bot, user=itx.user)
+    async def callback(self, itx: discord.Interaction) -> None:
+        view = VanirView(self.ctx.bot, user=itx.user)
         view.add_item(TimeoutDetachmentSelect(self.ctx, self.all_members, self.current))
-        embed = self.ctx.embed("Timeout Users")
-        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+        await itx.response.send_message(view=view, ephemeral=True)
 
 
 class KickButton(discord.ui.Button[NewUsersPager]):
@@ -204,20 +279,20 @@ class KickButton(discord.ui.Button[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             label="Kick",
-            style=discord.ButtonStyle.red,
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["kick"]),
         )
         self.ctx = ctx
         self.all_members = all_members
         self.current = current
 
-    async def callback(self, itx: discord.Interaction):
-        view = VanirView(self.bot, user=itx.user)
+    async def callback(self, itx: discord.Interaction) -> None:
+        view = VanirView(self.ctx.bot, user=itx.user)
         view.add_item(KickDetachmentSelect(self.ctx, self.all_members, self.current))
-        embed = self.ctx.embed("Kick Users")
-        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+        await itx.response.send_message(view=view, ephemeral=True)
 
 
 class BanButton(discord.ui.Button[NewUsersPager]):
@@ -226,20 +301,20 @@ class BanButton(discord.ui.Button[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             label="Ban",
-            style=discord.ButtonStyle.red,
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["ban"]),
         )
         self.ctx = ctx
         self.all_members = all_members
         self.current = current
 
-    async def callback(self, itx: discord.Interaction):
-        view = VanirView(self.bot, user=itx.user)
+    async def callback(self, itx: discord.Interaction) -> None:
+        view = VanirView(self.ctx.bot, user=itx.user)
         view.add_item(BanDetachmentSelect(self.ctx, self.all_members, self.current))
-        embed = self.ctx.embed("Ban Users")
-        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+        await itx.response.send_message(view=view, ephemeral=True)
 
 
 class TimeoutDetachmentSelect(discord.ui.Select[NewUsersPager]):
@@ -248,7 +323,7 @@ class TimeoutDetachmentSelect(discord.ui.Select[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             placeholder="Select members to timeout...",
             min_values=1,
@@ -264,41 +339,42 @@ class TimeoutDetachmentSelect(discord.ui.Select[NewUsersPager]):
         self.ctx = ctx
         self.all_members = all_members
 
-    async def callback(self, itx: discord.Interaction):
-        time, *_ = await generate_modal(
+    async def callback(self, itx: discord.Interaction) -> None:
+        input_time, *_ = await generate_modal(
             itx,
             "Timeout Duration",
             fields=[
-                discord.TextInput(
-                    label="Duration [ie. '15s', '2 hours 45 minutes', '1d', 'one week']",
+                discord.ui.TextInput(
+                    label="Duration [ie. '2 days', '2 hours 45 minutes']",
                     placeholder="Enter a duration...",
                     required=True,
-                )
+                ),
             ],
         )
-        until: datetime.datetime = parse_time(time)
-        if until < datetime.datetime.now() + datetime.timedelta(seconds=5):
-            await itx.response.send_message(
-                "Timeout duration must be at least 5 seconds", ephemeral=True
-            )
-            return
+        until: datetime.datetime = parse_time(input_time)
+        if until < datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=1):
+            msg = "Duration cannot be negative"
+            raise ValueError(msg)
 
-        member_ids = [int(v) for v in self.values]
+        if until > datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=28):
+            msg = "Duration cannot be longer than 28 days [discord limit]"
+            raise ValueError(msg)
+
         members = [
-            discord.utils.get(self.all_members, id=member_id)
-            for member_id in member_ids
+            discord.utils.get(self.all_members, id=int(member_id))
+            for member_id in self.values
         ]
         for member in members:
-            await member.edit(
-                timed_out_until=until,
+            await member.timeout(
+                until,
                 reason=f"Timed out by {itx.user.name}",
             )
 
         embed = self.ctx.embed(
-            title=f"Timed Out {len(member_ids)} Members until {until:%Y/%m/%d %H:%M:%S}",
-            description="\n".join(f"{m.mention} [{m.id}]" for m in members),
+            title=f"Timed Out {len(members)} Member{'s' if len(members) > 1 else ''}",
+            description=f"Will be unmuted... <t:{round(until.timestamp())}:R> [<t:{round(until.timestamp())}:F>]\n{"\n".join(f"- {m.mention} [`{m.id}`]" for m in members)}",
         )
-        await itx.followup.send(embed=embed, ephemeral=True)
+        await itx.edit_original_response(embed=embed)
 
 
 class KickDetachmentSelect(discord.ui.Select[NewUsersPager]):
@@ -307,7 +383,7 @@ class KickDetachmentSelect(discord.ui.Select[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             placeholder="Select members to kick...",
             min_values=1,
@@ -323,7 +399,7 @@ class KickDetachmentSelect(discord.ui.Select[NewUsersPager]):
         self.ctx = ctx
         self.all_members = all_members
 
-    async def callback(self, itx: discord.Interaction):
+    async def callback(self, itx: discord.Interaction) -> None:
         member_ids = [int(v) for v in self.values]
         members = [
             discord.utils.get(self.all_members, id=member_id)
@@ -345,7 +421,7 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
         ctx: VanirContext,
         all_members: list[discord.Member],
         current: list[discord.Member],
-    ):
+    ) -> None:
         super().__init__(
             placeholder="Select members to ban...",
             min_values=1,
@@ -361,7 +437,7 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
         self.ctx = ctx
         self.all_members = all_members
 
-    async def callback(self, itx: discord.Interaction):
+    async def callback(self, itx: discord.Interaction) -> None:
         dur, *_ = await generate_modal(
             itx,
             "Delete messages in the last...",
@@ -370,18 +446,19 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
                     label="Duration [ie. '15s', '2 hours 5 minutes', '1d', 'one week']",
                     placeholder="Enter a duration, or leave blank to not delete messages.",
                     required=False,
-                )
+                ),
             ],
         )
         delete_after: datetime.datetime = parse_time(dur) if dur else None
-        if delete_after and delete_after < datetime.datetime.now():
+        if delete_after and delete_after < datetime.datetime.now(tz=datetime.UTC):
             await itx.response.send_message(
-                "Duration cannot be negative", ephemeral=True
+                "Duration cannot be negative",
+                ephemeral=True,
             )
             return
 
         delete_secs = (
-            (delete_after - datetime.datetime.now()).total_seconds()
+            (delete_after - datetime.datetime.now(tz=datetime.UTC)).total_seconds()
             if delete_after
             else discord.utils.MISSING
         )
@@ -408,5 +485,5 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
         await itx.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Server(bot))

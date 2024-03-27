@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import datetime
 from dataclasses import dataclass
 from enum import Enum
-from pprint import pprint
 from typing import Generator
 
 import discord
@@ -22,7 +23,7 @@ from src.util.format import fmt_dict, fmt_size
 
 
 class Waifu(VanirCog):
-    """Prety self-explanatory"""
+    """Prety self-explanatory."""
 
     emoji = str(EMOJIS["waifuim"])
 
@@ -39,13 +40,15 @@ class Waifu(VanirCog):
             default="",
         ),
         gif: bool = commands.param(
-            description="Whether to get a gif instead of an image", default=False
+            description="Whether to get a gif instead of an image",
+            default=False,
         ),
         only_nsfw: bool = commands.param(
-            description="Whether to get a NSFW image", default=False
+            description="Whether to get a NSFW image",
+            default=False,
         ),
-    ):
-        """Prety self-explanatory [default: `\\wf get ...`]"""
+    ) -> None:
+        r"""Prety self-explanatory [default: `\\wf get ...`]."""
         await ctx.invoke(
             self.get,
             included_tags=included_tags,
@@ -55,15 +58,15 @@ class Waifu(VanirCog):
         )
 
     @waifu.command()
-    async def tags(self, ctx: VanirContext):
-        """Get a list of all available tags on waifu.im"""
+    async def tags(self, ctx: VanirContext) -> None:
+        """Get a list of all available tags on waifu.im."""
         response = await self.bot.session.get("https://api.waifu.im/tags?full=1")
         response.raise_for_status()
 
         data = await response.json()
 
-        tags = [FullTag._from_dict(tag) for tag in data["versatile"]]
-        tags.extend([FullTag._from_dict(tag) for tag in data["nsfw"]])
+        tags = [FullTag.from_dict(tag) for tag in data["versatile"]]
+        tags.extend([FullTag.from_dict(tag) for tag in data["nsfw"]])
 
         embed = ctx.embed(
             title="Waifu.im Tags",
@@ -90,15 +93,21 @@ class Waifu(VanirCog):
             default="",
         ),
         gif: bool = commands.param(
-            description="Whether to get a gif instead of an image", default=False
+            description="Whether to get a gif instead of an image",
+            default=False,
         ),
         only_nsfw: bool = commands.param(
-            description="Whether to get a NSFW image", default=False
+            description="Whether to get a NSFW image",
+            default=False,
         ),
-    ):
-        """Gets you a waifu image from waifu.im. See `\\wf tags` for a list of available tags."""
+    ) -> None:
+        r"""Gets you a waifu image from waifu.im. See `\\wf tags` for a list of available tags."""
         embed, view = await get_results(
-            ctx, included_tags, excluded_tags, gif, only_nsfw
+            ctx,
+            included_tags,
+            excluded_tags,
+            gif,
+            only_nsfw,
         )
         await ctx.reply(embed=embed, view=view)
 
@@ -109,7 +118,7 @@ async def get_results(
     excluded_tags: str,
     gif: bool,
     only_nsfw: bool,
-):
+) -> tuple[discord.Embed, WaifuDataView]:
     inc, exc = (
         list(extract_tags(included_tags or "")),
         list(extract_tags(excluded_tags or "")),
@@ -132,7 +141,7 @@ async def get_results(
     if "detail" in json:
         raise ValueError(json["detail"] + f"\nuri: {response.url}")
     image_json = json["images"][0]
-    image = WaifuData._from_dict(image_json)
+    image = WaifuData.from_dict(image_json)
 
     embed = ctx.embed()
     embed.set_image(url=image.url)
@@ -143,9 +152,8 @@ async def get_results(
         footer_text += f" | artist: {image.artist.name}"
     if only_nsfw:
         footer_text += " | NSFW Only"
-    else:
-        if any(tag.is_nsfw for tag in inc):
-            footer_text += " | NSFW Permitted"
+    elif any(tag.is_nsfw for tag in inc):
+        footer_text += " | NSFW Permitted"
     embed.set_footer(text=footer_text, icon_url="https://www.waifu.im/favicon.ico")
 
     view = WaifuDataView(ctx, image, inc, exc, gif, only_nsfw)
@@ -179,7 +187,7 @@ class FullTag:
     is_nsfw: bool
 
     @classmethod
-    def _from_dict(cls, data: dict):
+    def from_dict(cls, data: dict):
         return FullTag(
             tag_id=data["tag_id"],
             name=data["name"],
@@ -193,56 +201,67 @@ class TagData:
         "13",
         "maid",
         "Cute womans or girl employed to do domestic work in their working uniform.",
-        False,
+        is_nsfw=False,
     )
-    waifu = FullTag("12", "waifu", "A female anime/manga character.", False)
+    waifu = FullTag("12", "waifu", "A female anime/manga character.", is_nsfw=False)
     marin_kitagawa = FullTag(
         "5",
         "marin-kitagawa",
         "One of two main protagonists (alongside Wakana Gojo) in the anime and manga series My Dress-Up Darling.",
-        False,
+        is_nsfw=False,
     )
     mori_calliope = FullTag(
         "14",
         "mori-calliope",
         "Mori Calliope is an English Virtual YouTuber (VTuber) associated with hololive as part of its first-generation English branch of Vtubers.",
-        False,
+        is_nsfw=False,
     )
     raiden_shogun = FullTag(
         "15",
         "raiden-shogun",
         "Genshin Impact's Raiden Shogun is a fierce lady in the Genshin ranks.",
-        False,
+        is_nsfw=False,
     )
-    oppai = FullTag("7", "oppai", "Girls with large breasts", False)
-    selfies = FullTag("10", "selfies", "A photo-like image of a waifu.", False)
+    oppai = FullTag("7", "oppai", "Girls with large breasts", is_nsfw=False)
+    selfies = FullTag("10", "selfies", "A photo-like image of a waifu.", is_nsfw=False)
     uniform = FullTag(
-        "11", "uniform", "Girls wearing any kind of uniform, cosplay etc... ", False
+        "11",
+        "uniform",
+        "Girls wearing any kind of uniform, cosplay etc... ",
+        is_nsfw=False,
     )
     kamisato_ayaka = FullTag(
         "17",
         "kamisato-ayaka",
         "Kamisato Ayaka is a playable Cryo character in Genshin Impact.",
-        False,
+        is_nsfw=False,
     )
-    ass = FullTag("1", "ass", "Girls with a large butt. ", True)
-    hentai = FullTag("4", "hentai", "Explicit sexual content.", True)
-    milf = FullTag("6", "milf", "A sexually attractive middle-aged woman.", True)
-    oral = FullTag("8", "oral", "Oral sex content.", True)
+    ass = FullTag("1", "ass", "Girls with a large butt. ", is_nsfw=True)
+    hentai = FullTag("4", "hentai", "Explicit sexual content.", is_nsfw=True)
+    milf = FullTag(
+        "6",
+        "milf",
+        "A sexually attractive middle-aged woman.",
+        is_nsfw=True,
+    )
+    oral = FullTag("8", "oral", "Oral sex content.", is_nsfw=True)
     paizuri = FullTag(
         "9",
         "paizuri",
         "A subcategory of hentai that involves breast sex, also known as titty fucking.",
-        True,
+        is_nsfw=True,
     )
     ecchi = FullTag(
         "2",
         "ecchi",
         "Slightly explicit sexual content. Show full to partial nudity. Doesn't show any genital.",
-        True,
+        is_nsfw=True,
     )
     ero = FullTag(
-        "3", "ero", "Any kind of erotic content, basically any nsfw image.", True
+        "3",
+        "ero",
+        "Any kind of erotic content, basically any nsfw image.",
+        is_nsfw=True,
     )
 
 
@@ -275,7 +294,7 @@ class WaifuData:
     tags: list[FullTag]
 
     @classmethod
-    def _from_dict(cls, data: dict[str, int | str | bool]) -> "WaifuData":
+    def from_dict(cls, data: dict[str, int | str | bool]) -> WaifuData:
         kwargs = {
             "signature": data["signature"],
             "extension": data["extension"],
@@ -324,7 +343,7 @@ class WaifuDataView(VanirView):
         exc: list[FullTag],
         gif: bool,
         only_nsfw: bool,
-    ):
+    ) -> None:
         super().__init__(ctx.bot, accept_itx=AcceptItx.ANY)
         self.ctx = ctx
         self.data = data
@@ -341,7 +360,7 @@ class WaifuDataView(VanirView):
                 url=data.preview_url,
                 label="Preview",
                 emoji="\N{FRAME WITH PICTURE}",
-            )
+            ),
         )
 
         close_button = CloseButton()
@@ -353,7 +372,7 @@ class WaifuDataView(VanirView):
         emoji="\N{CLOCKWISE RIGHTWARDS AND LEFTWARDS OPEN CIRCLE ARROWS}",
         style=discord.ButtonStyle.success,
     )
-    async def new(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def new(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         embed, view = await get_results(
             self.ctx,
             ",".join(t.name for t in self.inc),
@@ -364,9 +383,11 @@ class WaifuDataView(VanirView):
         await itx.response.edit_message(embed=embed, view=view)
 
     @discord.ui.button(
-        label="Artist", emoji="\N{ARTIST PALETTE}", style=discord.ButtonStyle.blurple
+        label="Artist",
+        emoji="\N{ARTIST PALETTE}",
+        style=discord.ButtonStyle.blurple,
     )
-    async def artist(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def artist(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         embed = self.ctx.embed(
             title=f"Artist: {self.data.artist.name}",
             description=f"[Waifu.im Artist ID: {self.data.artist.artist_id}]",
@@ -396,7 +417,11 @@ class WaifuDataView(VanirView):
         emoji="\N{CARD INDEX}",
         style=discord.ButtonStyle.grey,
     )
-    async def image_data(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def image_data(
+        self,
+        itx: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
         data = {
             "Image ID": f"`{self.data.image_id}`",
             "\\# Favorites": f"{self.data.favorites:,}",
@@ -423,9 +448,9 @@ def extract_tags(tag_string: str) -> Generator[FullTag, None, None]:
             full_tag = getattr(TagData, obj.name)
             yield full_tag
     except (TypeError, ValueError, AttributeError) as e:
-        print(e)
-        raise ValueError(f"Invalid tag: {tag}") from e
+        msg = f"Invalid tag: {tag}"
+        raise ValueError(msg) from e
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Waifu(bot))

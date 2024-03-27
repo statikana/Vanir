@@ -5,7 +5,7 @@ from src.env import DISCORD_TOKEN
 from src.types.core import Vanir
 
 
-async def main():
+async def main() -> None:
     bot = Vanir()
     await bot.start(token=DISCORD_TOKEN)
 

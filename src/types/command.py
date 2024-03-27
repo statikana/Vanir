@@ -1,11 +1,12 @@
-import asyncio
+from __future__ import annotations
+
+import contextlib
 import enum
 import inspect
 import io
 import math
 import re
 from asyncio import iscoroutinefunction
-from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 import discord
@@ -33,14 +34,14 @@ class AcceptItx(enum.Enum):
 class VanirCog(commands.Cog):
     emoji = "\N{BLACK QUESTION MARK ORNAMENT}"
 
-    def __init__(self, bot: Vanir):
+    def __init__(self, bot: Vanir) -> None:
         self.bot = bot
 
         # gets set by @cog_hidden and @uses_sys_assets
         self.hidden: bool = False
         self.uses_sys_assets: bool = False
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         book.info(f"{self.__class__.__name__} loaded")
 
 
@@ -54,7 +55,7 @@ class VanirView(discord.ui.View):
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
-    ):
+    ) -> None:
         super().__init__(timeout=timeout)
         self.bot = bot
         self.accept_itx = accept_itx
@@ -66,9 +67,12 @@ class VanirView(discord.ui.View):
                 if self.accept_itx == AcceptItx.ANY:
                     return True
                 if self.user is None:
-                    raise ValueError(
+                    msg = (
                         "If view does not accept every interaction "
                         "and uses AcceptItx, .user must be set."
+                    )
+                    raise ValueError(
+                        msg,
                     )
                 if self.accept_itx == AcceptItx.AUTHOR_ONLY:
                     return itx.user.id == self.user.id
@@ -84,7 +88,8 @@ class VanirView(discord.ui.View):
         if result is False:
             try:
                 await itx.response.send_message(
-                    "You can't interact with this", ephemeral=True
+                    "You can't interact with this",
+                    ephemeral=True,
                 )
             except discord.InteractionResponded:
                 await itx.followup.send("You can't interact with this", ephemeral=True)
@@ -92,13 +97,16 @@ class VanirView(discord.ui.View):
         return True
 
     async def on_error(
-        self, itx: Interaction, error: Exception, item: discord.ui.Item
+        self,
+        itx: Interaction,
+        error: Exception,
+        item: discord.ui.Item,
     ) -> None:
-        await self.bot.dispatch("command_error", itx, error)
+        self.bot.dispatch("command_error", itx, error)
 
 
 class GitHubView(VanirView):
-    def __init__(self, bot: Vanir, path: str = ""):
+    def __init__(self, bot: Vanir, path: str = "") -> None:
         super().__init__(bot=bot)
 
         button = discord.ui.Button(
@@ -119,8 +127,8 @@ class AutoCachedView(VanirView):
             AcceptItx | Callable[[discord.Interaction], bool | Awaitable[bool]]
         ) = AcceptItx.AUTHOR_ONLY,
         timeout: float = 300,
-        items: list[discord.ui.Item] = None,
-    ):
+        items: list[discord.ui.Item] | None = None,
+    ) -> None:
         super().__init__(bot, user=user, accept_itx=accept_itx, timeout=timeout)
 
         if items is None:
@@ -136,7 +144,11 @@ class AutoCachedView(VanirView):
         self.next_state.disabled = True
 
     @discord.ui.button(emoji=str(EMOJIS["b_arrow"]), row=1)
-    async def previous_state(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def previous_state(
+        self,
+        itx: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
         if self.state_index is None:
             await self.collect(itx)
             self.state_index = len(self.states) - 2  # jump back behind the new cached
@@ -145,11 +157,15 @@ class AutoCachedView(VanirView):
         await self.update_to_state(itx)
 
     @discord.ui.button(emoji=str(EMOJIS["f_arrow"]), row=1)
-    async def next_state(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def next_state(
+        self,
+        itx: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
         self.state_index += 1
         await self.update_to_state(itx)
 
-    async def update_to_state(self, itx: discord.Interaction):
+    async def update_to_state(self, itx: discord.Interaction) -> None:
         await itx.response.defer()
         state = self.states[self.state_index]
 
@@ -166,7 +182,7 @@ class AutoCachedView(VanirView):
 
         await itx.message.edit(content=state.content, embeds=state.embeds, view=self)
 
-    async def collect(self, itx: discord.Interaction):
+    async def collect(self, itx: discord.Interaction) -> None:
         msg = itx.message
         self.states.append(MessageState(msg.content, msg.embeds, self.children))
         if self.state_index is not None:
@@ -177,7 +193,7 @@ class AutoCachedView(VanirView):
         self.state_index = None
         await self.check_buttons()
 
-    async def check_buttons(self):
+    async def check_buttons(self) -> None:
         # at the back of the cache or there is no cache
         # (it is redundant to check for cache count here but meh)
         self.previous_state.disabled = self.state_index == 0 or len(self.states) == 0
@@ -185,15 +201,16 @@ class AutoCachedView(VanirView):
             self.state_index is None or self.state_index == len(self.states) - 1
         )
 
-    def auto_add_item(self, item: discord.ui.Item):
+    def auto_add_item(self, item: discord.ui.Item) -> None:
         back, fwd = self.previous_state, self.next_state
         self.remove_item(back)
         self.remove_item(fwd)
         next_row = (
-            max(item.row for item in self.children + [item]) if self.children else 0
+            max(item.row for item in [*self.children, item]) if self.children else 0
         ) + 1
         if next_row >= 5:
-            raise ValueError("Too many rows - max 4 with AutoCachedView")
+            msg = "Too many rows - max 4 with AutoCachedView"
+            raise ValueError(msg)
         back.row = next_row
         fwd.row = next_row
         super().add_item(item)
@@ -202,11 +219,11 @@ class AutoCachedView(VanirView):
 
 
 class VanirModal(discord.ui.Modal):
-    def __init__(self, bot: Vanir):
+    def __init__(self, bot: Vanir) -> None:
         super().__init__()
         self.bot = bot
 
-    async def on_error(self, itx: discord.Interaction, error: Exception):
+    async def on_error(self, itx: discord.Interaction, error: Exception) -> None:
         self.bot.dispatch("command_error", itx, error)
 
 
@@ -219,16 +236,18 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         items_per_page: int,
         *,
         start_page: int = 0,
-    ):
+    ) -> None:
         super().__init__(bot, user=user)
         self.items = items
         self.items_per_page = items_per_page
 
         self.page = start_page
         if items_per_page <= 0:
-            raise ValueError("items_per_page must be greater than 0")
+            msg = "items_per_page must be greater than 0"
+            raise ValueError(msg)
         if len(items) <= 0:
-            raise ValueError("items must not be empty")
+            msg = "items must not be empty"
+            raise ValueError(msg)
         self.n_pages = math.ceil(len(items) / items_per_page)
 
         self.message: discord.Message | None = None
@@ -237,7 +256,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         emoji=str(EMOJIS["bb_arrow"]),
         disabled=True,
     )
-    async def first(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def first(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         self.page = 0
         await self.update(itx, button)
 
@@ -245,7 +264,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         emoji=str(EMOJIS["b_arrow"]),
         disabled=True,
     )
-    async def back(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def back(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         self.page -= 1
         await self.update(itx, button)
 
@@ -254,7 +273,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         style=discord.ButtonStyle.danger,
         custom_id="constant-style:finish",
     )
-    async def close(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def close(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         for item in self.children:
             if isinstance(item, (discord.ui.Button, discord.ui.Select)):
                 item.disabled = True
@@ -266,7 +285,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         emoji=str(EMOJIS["f_arrow"]),
         disabled=True,
     )
-    async def next(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def next(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         self.page += 1
         await self.update(itx, button)
 
@@ -274,7 +293,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         emoji=str(EMOJIS["ff_arrow"]),
         disabled=True,
     )
-    async def last(self, itx: discord.Interaction, button: discord.ui.Button):
+    async def last(self, itx: discord.Interaction, button: discord.ui.Button) -> None:
         self.page = self.n_pages - 1
         await self.update(itx, button)
 
@@ -284,7 +303,11 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         custom_id="constant-style:goto",
         style=discord.ButtonStyle.blurple,
     )
-    async def go_to_page(self, itx: discord.Interaction, button: discord.Button):
+    async def go_to_page(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         modal = CustomPageModal(self.bot, itx, self)
         await itx.response.send_modal(modal)
 
@@ -293,10 +316,13 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         itx: discord.Interaction = None,
         source_button: discord.ui.Button = None,
         update_content: bool = True,
-    ):
-        """Called after every button press - enables and disables the
-        appropriate buttons, and changes colors. Also fetches the
-        new embed and edits the message and view to the new content."""
+    ) -> None:
+        """
+        Called after every button press - enables and disables the
+        appropriate buttons, and changes colors.
+
+        Also fetches the new embed and edits the message and view to the new content.
+        """
         if itx is not None:
             self.message = itx.message
         if self.close.disabled:
@@ -333,20 +359,20 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
             else:
                 book.warning(
                     f"Pager has no message attached "
-                    f"(VanirPagerT: {VanirPagerT}), cannot update message"
+                    f"(VanirPagerT: {VanirPagerT}), cannot update message",
                 )
 
     async def update_embed(self) -> discord.Embed:
-        """To be implemented by children classes"""
+        """To be implemented by children classes."""
         raise NotImplementedError
 
     @staticmethod
-    def enable(*buttons: discord.ui.Button):
+    def enable(*buttons: discord.ui.Button) -> None:
         for button in buttons:
             button.disabled = False
 
     @staticmethod
-    def disable(*buttons: discord.ui.Button):
+    def disable(*buttons: discord.ui.Button) -> None:
         for button in buttons:
             button.disabled = True
 
@@ -360,12 +386,12 @@ class AutoTablePager(VanirPager):
         headers: list[str],
         rows: list[VanirPagerT],
         rows_per_page: int,
-        dtypes: list[str] = None,
-        data_name: str = None,
+        dtypes: list[str] | None = None,
+        data_name: str | None = None,
         include_hline: bool = False,
-        row_key: Callable[[VanirPagerT], list] = None,
+        row_key: Callable[[VanirPagerT], list] | None = None,
         start_page: int = 0,
-    ):
+    ) -> None:
         super().__init__(bot, user, rows, rows_per_page, start_page=start_page)
         self.headers = headers
         self.rows = self.items
@@ -375,12 +401,12 @@ class AutoTablePager(VanirPager):
         self.row_key = row_key or (lambda x: x)
 
     @property
-    def current(self):
+    def current(self) -> list[VanirPagerT]:
         return self.rows[
             self.page * self.items_per_page : (self.page + 1) * self.items_per_page
         ]
 
-    async def update_embed(self):
+    async def update_embed(self) -> discord.Embed:
         table = texttable.Texttable(61)
         table.header(self.headers)
 
@@ -406,12 +432,14 @@ class AutoTablePager(VanirPager):
         text = table.draw()
 
         text = text.replace("True", fmt_bool(True) + " ").replace(
-            "False", fmt_bool(False) + "   "
+            "False",
+            fmt_bool(False) + "   ",
         )
-        embed = VanirContext.syn_embed(
-            title=title, description=f"```ansi\n{text}\n```", user=self.user
+        return VanirContext.syn_embed(
+            title=title,
+            description=f"```ansi\n{text}\n```",
+            user=self.user,
         )
-        return embed
 
     def draw_image(self, text: str) -> tuple[discord.Embed, discord.File]:
         font_size = 50
@@ -425,8 +453,6 @@ class AutoTablePager(VanirPager):
 
         false = [m.start() for m in re.finditer(r"False", text)]
         true = [m.start() for m in re.finditer(r"True", text)]
-
-        # changes = set(true)
 
         pos = [0, 0]
 
@@ -467,38 +493,40 @@ class AutoTablePager(VanirPager):
 
 
 class CustomPageModal(VanirModal, title="Select Page"):
-    def __init__(self, bot: Vanir, itx: discord.Interaction, view: VanirPager):
+    def __init__(self, bot: Vanir, itx: discord.Interaction, view: VanirPager) -> None:
         super().__init__(bot)
         self.view = view
         self.page_input = discord.ui.TextInput(
-            label=f"Please enter a page number between 1 and {view.n_pages}"
+            label=f"Please enter a page number between 1 and {view.n_pages}",
         )
         self.page_input.required = True
         self.add_item(self.page_input)
 
-    async def on_submit(self, itx: discord.Interaction):
+    async def on_submit(self, itx: discord.Interaction) -> None:
         value = self.page_input.value
         try:
             value = int(value)
         except TypeError as exc:
-            raise ValueError("Please enter a number") from exc
+            msg = "Please enter a number"
+            raise ValueError(msg) from exc
         if not 1 <= value <= self.view.n_pages:
+            msg = f"Please enter a page number between 1 and {self.view.n_pages}"
             raise ValueError(
-                f"Please enter a page number between 1 and {self.view.n_pages}"
+                msg,
             )
         self.view.page = value - 1
         await self.view.update(itx=itx, source_button=VanirPager.go_to_page)
 
 
 class CloseButton(discord.ui.Button):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             style=discord.ButtonStyle.danger,
             label="Close",
             emoji=str(EMOJIS["close"]),
         )
 
-    async def callback(self, itx: discord.Interaction):
+    async def callback(self, itx: discord.Interaction) -> None:
         await itx.message.delete()
 
 
@@ -507,31 +535,31 @@ class VanirHybridCommand(commands.Command):
 
 
 class VanirHybridGroup(commands.HybridGroup):
-    def command(self, *, name: str = None, aliases: list[str] = None):
+    def command(
+        self,
+        *,
+        name: str | None = None,
+        aliases: list[str] | None = None,
+    ) -> Callable[[Any], VanirHybridCommand]:
         if aliases is None:
             aliases = []
 
-        def inner(func):
+        def inner(func: Callable):
             func = autopopulate_descriptions(func)
             command = commands.HybridGroup.command(self, name=name, aliases=aliases)(
-                func
+                func,
             )
-            command = inherit(command)
-            return command
+            return inherit(command)
 
         return inner
 
 
-def autopopulate_descriptions(func):
+def autopopulate_descriptions(func: Callable) -> Callable:
     params = inspect.signature(func).parameters.copy()
-    try:
+    with contextlib.suppress(KeyError):
         del params["self"]
-    except KeyError:
-        pass
-    try:
+    with contextlib.suppress(KeyError):
         del params["ctx"]
-    except KeyError:
-        pass
 
     descriptions = {
         name: getattr(param.default, "description", None) or "no description"
@@ -546,9 +574,9 @@ def autopopulate_descriptions(func):
     return func
 
 
-def inherit(cmd: commands.HybridCommand):
+def inherit(cmd: commands.HybridCommand) -> commands.HybridCommand:
     if cmd.parent is not None:
-        parent: commands.HybridGroup = cmd.parent  # type: ignore
+        parent: commands.HybridGroup = cmd.parent
         cmd.hidden = parent.hidden
         cmd.extras = parent.extras
         cmd.checks = parent.checks
@@ -557,32 +585,37 @@ def inherit(cmd: commands.HybridCommand):
 
 
 def vanir_command(
-    hidden: bool = False, aliases: list[str] = None
+    *,
+    name: str | None = None,
+    hidden: bool = False,
+    aliases: list[str] | None = None,
 ) -> Callable[[Any], commands.HybridCommand]:
     if aliases is None:
         aliases = []
 
     def inner(func: Any):
         func = autopopulate_descriptions(func)
-        cmd = commands.HybridCommand(func, aliases=aliases)
+        cmd = commands.HybridCommand(
+            func,
+            aliases=aliases,
+            name=name or discord.utils.MISSING,
+        )
         cmd.hidden = hidden
-        cmd = inherit(cmd)
-
-        return cmd
+        return inherit(cmd)
 
     return inner
 
 
 def vanir_group(
     hidden: bool = False,
-    aliases: list[str] = None,
+    aliases: list[str] | None = None,
     invoke_without_subcommand: bool = True,
 ) -> Callable[[Any], VanirHybridGroup]:
     if aliases is None:
         aliases = []
 
     def inner(func: Any):
-        cmd = VanirHybridGroup(
+        return VanirHybridGroup(
             func,
             aliases=aliases,
             with_app_command=not hidden,
@@ -590,12 +623,10 @@ def vanir_group(
             invoke_without_subcommand=invoke_without_subcommand,
         )
 
-        return cmd
-
     return inner
 
 
-def uses_sys_assets(cls: VanirCog):
+def uses_sys_assets(cls: VanirCog) -> VanirCog:
     cls.uses_sys_assets = True
     return cls
 

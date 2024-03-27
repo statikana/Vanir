@@ -1,2 +1,3 @@
-"./.venv/Scripts/python.exe" -m ruff check --fix --select I .
+"./.venv/Scripts/python.exe" -m ruff check --fix --select ALL --ignore PLR0915,INP001,B008,C901,D100,D101,D102,D103,D104,D105,D107,D203,D205,D212,D401,E501,ANN101,ANN102,ANN202,ANN206,ANN401,RET505,PLR0911,PLR0913,PLR0912,ARG002,ARG003,SIM102,FBT001,FBT002,FBT003,TRY301,FIX002,TD003,PERF203,PERF401,PLR2004 --unsafe-fixes .
+"./.venv/Scripts/python.exe" -m ruff check --fix .
 "./.venv/Scripts/python.exe" -m ruff format .

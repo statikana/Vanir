@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import sys
 from logging import LogRecord as BaseLogRecord
@@ -12,7 +14,7 @@ book = Logger("vanir")
 
 
 class VanirFormatter(logbook.StreamHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(sys.stdout, level=logbook.INFO)
 
     def format(self, record: LogbookLogRecord | BaseLogRecord) -> str:
@@ -30,7 +32,9 @@ class VanirFormatter(logbook.StreamHandler):
             message = record.message
             return f"{ANSI['grey']}{time} {ANSI['reset']}[{level_color}{level}{ANSI['reset']}] {ANSI['white']}{message}"
         elif isinstance(record, BaseLogRecord):
-            time = f"{datetime.datetime.fromtimestamp(record.created):%X}"
+            time = (
+                f"{datetime.datetime.fromtimestamp(record.created, tz=datetime.UTC):%X}"
+            )
             level = f"{record.levelname:7}".lower()
             level_color = {
                 "debug": ANSI["grey"],
@@ -44,6 +48,7 @@ class VanirFormatter(logbook.StreamHandler):
                 message += f": {record.exc_info[1]}"
 
             return f"{ANSI['grey']}{time} {ANSI['reset']}[{level_color}{level}{ANSI['reset']}] {ANSI['red']}[stdlogger] {ANSI['white']}{message}"
+        return None
 
 
 book.handlers.append(VanirFormatter())

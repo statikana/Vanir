@@ -130,7 +130,7 @@ class VanirEmoji(NamedTuple):
     id: int
     animated: bool
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"<{"a" if self.animated else ""}:{self.name}:{self.id}>"
 
     __repr__ = __str__
@@ -148,9 +148,14 @@ EMOJIS = {
     "pixiv": VanirEmoji(name="pixiv", id=1220769964030431243, animated=False),
     "x": VanirEmoji(name="x", id=1220770263566778529, animated=False),
     "deviant_art": VanirEmoji(
-        name="deviant_art", id=1220770290670244042, animated=False
+        name="deviant_art",
+        id=1220770290670244042,
+        animated=False,
     ),
     "waifuim": VanirEmoji(name="waifuim", id=1220801796977725531, animated=False),
+    "timeout": VanirEmoji(name="timeout", id=1222339703613816842, animated=False),
+    "kick": VanirEmoji(name="kick", id=1222340933119512736, animated=False),
+    "ban": VanirEmoji(name="ban", id=1222341200397205655, animated=False),
 }
 
 TIMESTAMP_STYLES = {

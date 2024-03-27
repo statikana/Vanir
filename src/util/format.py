@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import math
-import re
 from typing import Any, Generator, Iterable
 
 from src.constants import ANSI
@@ -8,7 +9,9 @@ from src.util.regex import CODEBLOCK_REGEX
 
 
 def fmt_dict(
-    data: dict[Any, Any], miss_keys: list[Any] = None, linesplit: bool = False
+    data: dict[Any, Any],
+    miss_keys: list[Any] | None = None,
+    linesplit: bool = False,
 ) -> str:
     if miss_keys is None:
         miss_keys = []
@@ -23,7 +26,7 @@ def fmt_dict(
     return "\n".join(lines)
 
 
-def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY):
+def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY) -> str:
     if cvtn == Convention.BINARY:
         size_factor = math.log(n_bytes, 2) // 10
     else:
@@ -66,16 +69,12 @@ def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY):
     return f"{nb_fmt} {ext}"
 
 
-def ctext(text: str, color: str):
+def ctext(text: str, color: str) -> str:
     return f"{ANSI[color]}{text}{ANSI['reset']}"
 
 
-def fmt_bool(b: bool):
-    if b:
-        text = ctext("Yes", color="green")  # green for True
-    else:
-        text = ctext("No", color="red")  # Red for False
-    return text
+def fmt_bool(b: bool) -> str:  # ignore[boolean-type-hint-positional-argument]
+    return ctext("Yes", color="green") if b else ctext("No", color="red")
 
 
 def natural_join(it: Iterable[str]) -> str:

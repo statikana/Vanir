@@ -1,15 +1,22 @@
-import discord
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
 
 from src.types.command import VanirCog, uses_sys_assets, vanir_command
-from src.types.core import Vanir, VanirContext
 from src.types.media import MediaConverter
 from src.util.command import assure_working, send_file
+
+if TYPE_CHECKING:
+    import discord
+
+    from src.types.core import Vanir, VanirContext
 
 
 @uses_sys_assets
 class Media(VanirCog):
-    """Manipulate images and videos"""
+    """Manipulate images and videos."""
 
     emoji = "\N{FRAME WITH PICTURE}"
 
@@ -26,9 +33,8 @@ class Media(VanirCog):
             description="How far to rotate (CW). Videos only support multiples of 90",
             default=90,
         ),
-    ):
-        """Rotate media"""
-
+    ) -> None:
+        """Rotate media."""
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.rotate(degrees)
@@ -43,9 +49,8 @@ class Media(VanirCog):
             default=None,
             displayed_default="Recently sent media",
         ),
-    ):
-        """Flip media [vertical reflection]"""
-
+    ) -> None:
+        """Flip media [vertical reflection]."""
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.flip()
@@ -60,9 +65,8 @@ class Media(VanirCog):
             default=None,
             displayed_default="Recently sent media",
         ),
-    ):
-        """Flop media [horizontal reflection]"""
-
+    ) -> None:
+        """Flop media [horizontal reflection]."""
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.flop()
@@ -79,14 +83,13 @@ class Media(VanirCog):
             default=None,
             displayed_default="Recently sent media",
         ),
-    ):
-        """Add a caption to media"""
-
+    ) -> None:
+        """Add a caption to media."""
         media = await MediaConverter().convert(ctx, media_atch)
         msg = await assure_working(ctx, media)
         await media.caption(text)
         await send_file(self.caption, msg, media)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Media(bot))

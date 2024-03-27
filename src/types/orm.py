@@ -1,44 +1,40 @@
-from typing import TypedDict
+from __future__ import annotations
 
-import asyncpg
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    import asyncpg
 
 
 class DBBase:
-    def __init__(self):
-        self.pool: asyncpg.Pool = None  # type: ignore
+    def __init__(self) -> None:
+        self.pool: asyncpg.Pool | None = None
 
     def start(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
 
-TASK = TypedDict(
-    "Task",
-    {
-        "todo_id": int,
-        "user_id": int,
-        "title": str,
-        "completed": bool,
-        "timestamp_created": str,
-    },
-)
+class TASK(TypedDict):
+    todo_id: int
+    user_id: int
+    title: str
+    completed: bool
+    timestamp_created: str
 
 
-TLINK = TypedDict(
-    "Link",
-    {
-        "guild_id": int,
-        "from_channel_id": int,
-        "to_channel_id": int,
-        "from_lang_code": str,
-        "to_lang_code": str,
-    },
-)
+class TLINK(TypedDict):
+    guild_id: int
+    from_channel_id: int
+    to_channel_id: int
+    from_lang_code: str
+    to_lang_code: str
 
 
 class StarBoard(DBBase):
-    async def get_config(self, guild_id: int):
+    async def get_config(self, guild_id: int) -> dict[str, int] | None:
         return await self.pool.fetchrow(
-            "SELECT * FROM starboard_data WHERE guild_id = $1", guild_id
+            "SELECT * FROM starboard_data WHERE guild_id = $1",
+            guild_id,
         )
 
     async def set_config(self, guild_id: int, channel_id: int, threshold: int) -> None:
@@ -96,12 +92,14 @@ class StarBoard(DBBase):
 
     async def remove_config(self, guild_id: int) -> None:
         await self.pool.execute(
-            "DELETE FROM starboard_data WHERE guild_id = $1", guild_id
+            "DELETE FROM starboard_data WHERE guild_id = $1",
+            guild_id,
         )
 
     async def get_post_data(self, original_id: int) -> int:
         return await self.pool.fetchrow(
-            "SELECT * FROM starboard_posts WHERE original_id = $1", original_id
+            "SELECT * FROM starboard_posts WHERE original_id = $1",
+            original_id,
         )
 
     async def set_starboard_post(
@@ -131,7 +129,8 @@ class Currency(DBBase):
 
     async def balance(self, user_id: int) -> int:
         bal = await self.pool.fetchval(
-            "SELECT balance FROM currency_data WHERE user_id = $1", user_id
+            "SELECT balance FROM currency_data WHERE user_id = $1",
+            user_id,
         )
         if bal is None:
             await self.pool.execute(
@@ -177,7 +176,7 @@ class Todo(DBBase):
             title,
         )
 
-    async def get_by_user(self, user_id: int, include_completed: bool) -> list[TASK]:
+    async def get_by_user(self, user_id: int, *, include_completed: bool) -> list[TASK]:
         return await self.pool.fetch(
             "SELECT * FROM todo_data WHERE user_id = $1 AND completed = True OR $2",
             user_id,
@@ -239,7 +238,8 @@ class Todo(DBBase):
 
     async def clear(self, user_id: int) -> list[TASK] | None:
         return await self.pool.fetch(
-            "DELETE FROM todo_data WHERE user_id = $1 RETURNING *", user_id
+            "DELETE FROM todo_data WHERE user_id = $1 RETURNING *",
+            user_id,
         )
 
 
@@ -270,7 +270,10 @@ class TLink(DBBase):
         )
 
     async def remove(
-        self, guild_id: int, from_channel_id: int, to_channel_id: int
+        self,
+        guild_id: int,
+        from_channel_id: int,
+        to_channel_id: int,
     ) -> TLINK | None:
         return await self.pool.fetchrow(
             "DELETE FROM tlinks "
@@ -283,7 +286,7 @@ class TLink(DBBase):
 
     async def get_channel_links(self, channel_id: int) -> list[TLINK]:
         return await self.pool.fetch(
-            "SELECT * FROM tlinks " "WHERE from_channel_id = $1 OR to_channel_id = $1",
+            "SELECT * FROM tlinks WHERE from_channel_id = $1 OR to_channel_id = $1",
             channel_id,
         )
 

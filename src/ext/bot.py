@@ -15,20 +15,22 @@ from src.util.format import natural_join
 
 
 class Bot(VanirCog):
-    """Commands that deal with the bot itself"""
+    """Commands that deal with the bot itself."""
 
     emoji = "\N{ROBOT FACE}"
 
     @vanir_command()
-    async def ping(self, ctx: VanirContext):
-        """Check if the bot is down or having excessive delays"""
+    async def ping(self, ctx: VanirContext) -> None:
+        """Check if the bot is down or having excessive delays."""
         delays = {
             "\N{SHINTO SHRINE} Discord Gateway": self.bot.latency,
             "\N{EARTH GLOBE AMERICAS} Web Requests": await timed(
-                self.bot.session.get, "https://example.com"
+                self.bot.session.get,
+                "https://example.com",
             ),
             "\N{ELEPHANT} PGSQL DB": await timed(
-                self.bot.db_currency.pool.fetchval, "SELECT 0"
+                self.bot.db_currency.pool.fetchval,
+                "SELECT 0",
             ),
         }
         embed = ctx.embed("\N{TABLE TENNIS PADDLE AND BALL} Pong!")
@@ -46,8 +48,8 @@ class Bot(VanirCog):
             description="The item to view. This can be a command or Module",
             default=None,
         ),
-    ):
-        """Retrieves a command's full source code (from github.com/StatHusky13/Vanir)"""
+    ) -> None:
+        """Retrieve a command's full source code (from github.com/StatHusky13/Vanir)."""
         root = GITHUB_ROOT + "/tree/main"
         line_preview_limit = 30
 
@@ -60,7 +62,8 @@ class Bot(VanirCog):
             else:
                 cog = self.bot.get_cog(item)
                 if cog is None:
-                    raise ValueError("Please enter a valid command, group, or module")
+                    msg = "Please enter a valid command, group, or module"
+                    raise ValueError(msg)
                 path = inspect.getsourcefile(cog.__class__)
                 lines, first_line_num = inspect.getsourcelines(cog.__class__)
 
@@ -71,7 +74,7 @@ class Bot(VanirCog):
             embed = ctx.embed(title=f"Source: {item}", url=f"{GITHUB_ROOT}/{url_path}")
             embed.add_field(
                 name="\N{FLOPPY DISK} File",
-                value=f"`{pathlib.Path(path).relative_to(pathlib.Path('.').absolute())}`",
+                value=f"`{pathlib.Path(path).relative_to(pathlib.Path().absolute())}`",
                 inline=False,
             )
             embed.add_field(
@@ -96,8 +99,8 @@ class Bot(VanirCog):
         await ctx.reply(embed=embed, view=view)
 
     @vanir_command(aliases=["bot", "vanir"])
-    async def info(self, ctx: VanirContext):
-        """Who is this guy?"""
+    async def info(self, ctx: VanirContext) -> None:
+        """Who is this guy?."""
         if ctx.bot.application.team:
             dev = natural_join(m.name for m in ctx.bot.application.team.members)
         else:
@@ -113,18 +116,18 @@ class Bot(VanirCog):
             inline=False,
         )
         n_user_commands = len(
-            list(
+            [
                 v
                 for v in self.bot.walk_commands()
                 if isinstance(v, commands.HybridCommand) and not v.hidden
-            )
+            ],
         )
         n_user_cogs = len(
-            list(
+            [
                 c
                 for c in self.bot.cogs.values()
                 if not getattr(c, "hidden", False) and c.qualified_name != "Jishaku"
-            )
+            ],
         )
         embed.add_field(
             name="Commands",
@@ -136,7 +139,7 @@ class Bot(VanirCog):
             # fmt: off
             # author [hash - relative time]
             # commit message
-            cmd=f"git log -n 5 --pretty=format:\""
+            cmd=f'git log -n 5 --pretty=format:"'
             f"{ANSI['white']}%an [{ANSI['cyan']}%h{ANSI['white']} - "
             f"{ANSI['red']}%ar{ANSI['white']}]%n"
             f"{ANSI['grey']}➥%s\"",
@@ -156,11 +159,11 @@ class Bot(VanirCog):
         await ctx.send(embed=embed, view=view)
 
     @vanir_command(aliases=["up", "ut"])
-    async def uptime(self, ctx: VanirContext):
-        """Check how long I've been running"""
+    async def uptime(self, ctx: VanirContext) -> None:
+        """Check how long I've been running."""
         uptime = int(
             time.time()
-            - (discord.utils.utcnow() - self.bot.launch_time).total_seconds()
+            - (discord.utils.utcnow() - self.bot.launch_time).total_seconds(),
         )
         rem, tot = (f"<t:{uptime}:{s}>" for s in ("R", "F"))
         embed = ctx.embed()
@@ -171,5 +174,5 @@ class Bot(VanirCog):
         await ctx.reply(embed=embed)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Bot(bot))

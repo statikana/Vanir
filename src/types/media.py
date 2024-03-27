@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import io
-import logging
 import math
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 from urllib.parse import urlparse
 
 import cv2
@@ -13,8 +14,10 @@ from wand.image import Image
 
 from src.constants import MONOSPACE_FONT_HEIGHT_RATIO
 from src.logging import book
-from src.types.core import VanirContext
 from src.util.regex import URL_REGEX
+
+if TYPE_CHECKING:
+    from src.types.core import VanirContext
 
 MediaSource = TypeVar("MediaSource", cv2.Mat, Image)
 
@@ -33,16 +36,16 @@ class MediaInterface(Generic[MediaSource]):
     initial_info: MediaInfo
 
     @classmethod
-    async def create(cls, source: bytes) -> "MediaInterface": ...
+    async def create(cls, source: bytes) -> MediaInterface: ...
 
     @classmethod
-    async def from_blob(cls, url: str, blob: bytes): ...
+    async def from_blob(cls, url: str, blob: bytes) -> None: ...
 
-    async def rotate(self, degrees: int): ...
+    async def rotate(self, degrees: int) -> None: ...
 
-    async def flip(self): ...
+    async def flip(self) -> None: ...
 
-    async def flop(self): ...
+    async def flop(self) -> None: ...
 
     async def read(self) -> bytes: ...
 
@@ -52,20 +55,27 @@ class MediaInterface(Generic[MediaSource]):
 
 
 class ImageInterface(MediaInterface[Image]):
-    def __init__(self, image: Image, initial_info: MediaInfo):
+    def __init__(self, image: Image, initial_info: MediaInfo) -> None:
         self.image = image
         self.initial_info = initial_info
         self.loop = asyncio.get_running_loop()
 
     @classmethod
     async def create(
-        cls, source: discord.Attachment, initial_info: MediaInfo
-    ) -> "ImageInterface":
+        cls,
+        source: discord.Attachment,
+        initial_info: MediaInfo,
+    ) -> ImageInterface:
         check_media_size(source)
         return cls(Image(blob=await source.read()), initial_info)
 
     @classmethod
-    async def from_blob(cls, url: str, blob: bytes, initial_info: MediaInfo):
+    async def from_blob(
+        cls,
+        url: str,
+        blob: bytes,
+        initial_info: MediaInfo,
+    ) -> ImageInterface:
         return cls(Image(blob=blob), initial_info)
 
     async def rotate(self, degrees: int) -> bytes:
@@ -88,7 +98,7 @@ class ImageInterface(MediaInterface[Image]):
 
 
 class VideoInterface(MediaInterface[cv2.Mat]):
-    def __init__(self, url: str, blob: bytes, initial_info: MediaInfo):
+    def __init__(self, url: str, blob: bytes, initial_info: MediaInfo) -> None:
         self.url = urlparse(url)
         self.blob = blob
         self.initial_info = initial_info
@@ -96,18 +106,21 @@ class VideoInterface(MediaInterface[cv2.Mat]):
 
     @classmethod
     async def create(
-        cls, source: discord.Attachment, initial_info: MediaInfo
-    ) -> "VideoInterface":
+        cls,
+        source: discord.Attachment,
+        initial_info: MediaInfo,
+    ) -> VideoInterface:
         check_media_size(source)
         return cls(source.url, await source.read(), initial_info)
 
     @classmethod
-    async def from_blob(cls, url: str, blob: bytes, info: MediaInfo):
+    async def from_blob(cls, url: str, blob: bytes, info: MediaInfo) -> VideoInterface:
         return cls(url, blob, info)
 
     async def rotate(self, degrees: int) -> bytes:
         if degrees % 90 != 0:
-            raise ValueError("Degrees must be a multiple of 90")
+            msg = "Degrees must be a multiple of 90"
+            raise ValueError(msg)
         n_rots = degrees // 90 % 4
 
         match n_rots:
@@ -136,14 +149,12 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         font_height = MONOSPACE_FONT_HEIGHT_RATIO * font_width
 
         pix_buff = math.ceil(n_lines * font_height)
-        print(font_height, pix_buff, n_lines, text)
 
         # create a buffer of white pixels to extend the video
         extend_padding_params = (
             f'-filter_complex "[0]pad=h={pix_buff}+ih:color=white:x=0:y=0"'
         )
         self.blob = await self.send_proc_pipe(extend_padding_params)
-        print(self.blob)
 
         text_dict = {
             "text": f"'{text}'",
@@ -153,7 +164,6 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         }
         text_params = f"-vf {':'.join(f'{k}={v}' for k, v in text_dict.items())}"
         self.blob = await self.send_proc_pipe(text_params)
-        print(self.blob)
         return self.blob
 
     async def to_file(self) -> discord.File:
@@ -163,27 +173,26 @@ class VideoInterface(MediaInterface[cv2.Mat]):
         return self.blob
 
     async def send_proc_pipe(self, params: str) -> bytes:
+        # TODO(statikana): Semaphore for controlling max number of processes open at any one time
+        # TODO(statikana): Share processes?
         # https://stackoverflow.com/questions/3937387/rotating-videos-with-ffmpeg
-        # TODO: Semaphore for controlling max number of processes open at any one time
-        # TODO: Share processes?
+
         command = (
             f'ffmpeg -hide_banner -loglevel error -i "{self.url.geturl()}" {params} -f '
             f"matroska pipe:1"
         )
-        print(command)
         proc = await asyncio.create_subprocess_shell(
             cmd=command,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        print("CREATED")
         rt_code = await proc.wait()
-        print("RETURNED", rt_code)
         if rt_code != 0:
             err_msg = (await proc.stderr.read()).decode("utf-8")
             book.warning(err_msg, params=params)
-            raise ValueError(f"ffmpeg returned non-zero status code. {err_msg}")
+            msg = f"ffmpeg returned non-zero status code. {err_msg}"
+            raise ValueError(msg)
 
         return await proc.stdout.read()
 
@@ -196,7 +205,9 @@ class MediaConverter:
     image_formats = ("jpeg", "jpg", "png", "gif")
 
     async def convert(
-        self, ctx: VanirContext, atch: discord.Attachment | None
+        self,
+        ctx: VanirContext,
+        atch: discord.Attachment | None,
     ) -> MediaInterface:
         data = await find_content(ctx, ctx.message)
         if data is not None:
@@ -204,17 +215,17 @@ class MediaConverter:
 
         if ctx.message.reference is not None:
             reference = await ctx.channel.fetch_message(
-                ctx.message.reference.message_id
+                ctx.message.reference.message_id,
             )
-            ref_data = await find_content(ctx, reference)
-            return ref_data
+            return await find_content(ctx, reference)
 
         async for h_msg in ctx.channel.history(limit=8):
             data = await find_content(ctx, h_msg)
             if data is not None:
                 return data
 
-        raise ValueError("Could not locate any image information")
+        msg = "Could not locate any image information"
+        raise ValueError(msg)
 
 
 def check_media_size(obj: discord.Attachment | bytes | None) -> None:
@@ -223,12 +234,13 @@ def check_media_size(obj: discord.Attachment | bytes | None) -> None:
             isinstance(obj, bytes) and len(obj) > (10**7)
         ):
             raise commands.CommandInvokeError(
-                ValueError("Attachment size cannot be more than 10 mB")
+                ValueError("Attachment size cannot be more than 10 mB"),
             )
 
 
 async def find_content(
-    ctx: VanirContext, msg: discord.Message
+    ctx: VanirContext,
+    msg: discord.Message,
 ) -> MediaInterface | None:
     for atch in msg.attachments:
         mime = atch.content_type
@@ -239,8 +251,6 @@ async def find_content(
 
         elif mime.startswith("image/"):
             return await ImageInterface.create(atch, info)
-        # else:
-        #     raise ValueError(f"Unsupported media type: {mime}")
 
     urls = URL_REGEX.findall(msg.content)
     if urls:
@@ -253,7 +263,8 @@ async def find_content(
                 extension
                 not in MediaConverter.image_formats + MediaConverter.video_formats
             ):
-                raise ValueError
+                msg = "Invalid extension"
+                raise ValueError(msg)
 
             response = await ctx.bot.session.get(url, allow_redirects=False)
             blob = await response.read()

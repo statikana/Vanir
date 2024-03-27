@@ -1,16 +1,22 @@
-import inspect
+from __future__ import annotations
 
-import discord
+import inspect
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
 
 from src.constants import LANGUAGE_CODES, LANGUAGE_NAMES
 from src.types.command import VanirCog, vanir_group
-from src.types.core import VanirContext
 from src.util.command import safe_default
+
+if TYPE_CHECKING:
+    import discord
+
+    from src.types.core import Vanir, VanirContext
 
 
 class TLink(VanirCog):
-    """Translation Links"""
+    """Translation Links."""
 
     emoji = "\N{LINK SYMBOL}"
 
@@ -21,10 +27,12 @@ class TLink(VanirCog):
         self,
         ctx: VanirContext,
         from_channel: discord.TextChannel | None = commands.param(
-            description="The channel to translate from", default=None
+            description="The channel to translate from",
+            default=None,
         ),
         to_channel: discord.TextChannel | None = commands.param(
-            description="The channel to translate to", default=None
+            description="The channel to translate to",
+            default=None,
         ),
         from_lang: str = commands.param(
             description="The language to translate from",
@@ -34,16 +42,14 @@ class TLink(VanirCog):
             description="The language to translate to",
             default="EN",
         ),
-    ):
-        """
-        Links channels together for translation [default: `\\tlink list` or `\\tlink create ...`]
-        """
+    ) -> None:
+        r"""Links channels together for translation [default: `\\tlink list` or `\\tlink create ...`]."""
         from_channel = safe_default(from_channel)
         if from_channel is not None:
             if to_channel is None:
                 ctx.command = self.create
                 raise commands.MissingRequiredArgument(
-                    commands.Parameter("to_channel", inspect.Parameter.POSITIONAL_ONLY)
+                    commands.Parameter("to_channel", inspect.Parameter.POSITIONAL_ONLY),
                 )
             await ctx.invoke(
                 self.create,
@@ -60,7 +66,7 @@ class TLink(VanirCog):
         self,
         ctx: VanirContext,
         from_channel: discord.TextChannel = commands.param(
-            description="The channel to translate from"
+            description="The channel to translate from",
         ),
         to_channel: discord.TextChannel = commands.param(
             description="The channel to translate to",
@@ -73,19 +79,20 @@ class TLink(VanirCog):
             description="The language to translate to",
             default="EN",
         ),
-    ):
-        """
-        Adds a translation link between two channels."""
+    ) -> None:
+        """Adds a translation link between two channels."""
         existing = await self.bot.db_link.get_guild_links(ctx.guild.id)
         if len(existing) >= 10:
-            raise ValueError("You can only have 10 translation links per server")
+            msg = "You can only have 10 translation links per server"
+            raise ValueError(msg)
 
         for link in existing:
             if (
                 link["from_channel_id"] == from_channel.id
                 and link["to_channel_id"] == to_channel.id
             ):
-                raise ValueError("There is already a link between these channels")
+                msg = "There is already a link between these channels"
+                raise ValueError(msg)
 
         if from_lang != "AUTO":
             from_lang = LANGUAGE_NAMES.get(from_lang.upper(), from_lang.title())
@@ -94,7 +101,8 @@ class TLink(VanirCog):
             if (
                 from_lang_code is None
             ):  # here, it *should* be "AUTO" or a valid lang code
-                raise ValueError("Invalid from_lang")
+                msg = "Invalid from_lang"
+                raise ValueError(msg)
         else:
             from_lang_code = "__"  # auto (see events ext)
 
@@ -102,7 +110,8 @@ class TLink(VanirCog):
         to_lang_code = LANGUAGE_CODES.get(to_lang)
 
         if to_lang_code is None:
-            raise ValueError("Invalid to_lang")
+            msg = "Invalid to_lang"
+            raise ValueError(msg)
 
         tlink = await self.bot.db_link.create(
             guild_id=ctx.guild.id,
@@ -127,12 +136,13 @@ class TLink(VanirCog):
         self,
         ctx: VanirContext,
         from_channel: discord.TextChannel = commands.param(
-            description="The source channel to remove from"
+            description="The source channel to remove from",
         ),
         to_channel: discord.TextChannel | None = commands.param(
-            description="The destination channel to remove from", default=None
+            description="The destination channel to remove from",
+            default=None,
         ),
-    ):
+    ) -> None:
         """Removes a translation link between two channels."""
         if isinstance(to_channel, commands.Parameter):
             to_channel = None
@@ -143,16 +153,19 @@ class TLink(VanirCog):
                 lambda link: link["from_channel_id"] == from_channel.id
                 and (link["to_channel_id"] == to_channel.id if to_channel else True),
                 links,
-            )
+            ),
         )
         if not filtered:
+            msg = f"No links found from {from_channel.mention} {('to ' + to_channel.mention) if to_channel else ''}"
             raise ValueError(
-                f"No links found from {from_channel.mention} {('to ' + to_channel.mention) if to_channel else ''}"
+                msg,
             )
 
         for link in filtered:
             await self.bot.db_link.remove(
-                ctx.guild.id, link["from_channel_id"], link["to_channel_id"]
+                ctx.guild.id,
+                link["from_channel_id"],
+                link["to_channel_id"],
             )
             self.bot.cache.tlinks.remove(link)
 
@@ -169,15 +182,18 @@ class TLink(VanirCog):
         await ctx.reply(embed=embed)
 
     @tlink.command()
-    async def clear(self, ctx: VanirContext):
+    async def clear(self, ctx: VanirContext) -> None:
         """Removes all translation links from the server."""
         links = await self.bot.db_link.get_guild_links(ctx.guild.id)
         if not links:
-            raise ValueError("No translation links to remove")
+            msg = "No translation links to remove"
+            raise ValueError(msg)
 
         for link in links:
             await self.bot.db_link.remove(
-                ctx.guild.id, link["from_channel_id"], link["to_channel_id"]
+                ctx.guild.id,
+                link["from_channel_id"],
+                link["to_channel_id"],
             )
             self.bot.cache.tlinks.remove(link)
 
@@ -194,7 +210,7 @@ class TLink(VanirCog):
         await ctx.reply(embed=embed)
 
     @tlink.command(name="list", aliases=["ls", "all"])
-    async def list_(self, ctx: VanirContext):
+    async def list_(self, ctx: VanirContext) -> None:
         """Lists all translation links on the server."""
         links = await self.bot.db_link.get_guild_links(ctx.guild.id)
         if not links:
@@ -215,7 +231,8 @@ class TLink(VanirCog):
             )
 
         await ctx.reply(embed=embed)
+        return None
 
 
-async def setup(bot):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(TLink(bot))

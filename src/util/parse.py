@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from enum import Enum
 from urllib.parse import urlparse
@@ -17,12 +19,12 @@ class Convention(Enum):
     BINARY = 1
 
 
-def find_filename(url: str):
+def find_filename(url: str) -> str:
     path = urlparse(url).path.rstrip("/")
     return path[path.rfind("/") + 1 :]
 
 
-def find_ext(url: str):
+def find_ext(url: str) -> str:
     filename = find_filename(url)
     return filename[filename.rfind(".") + 1 :]
 
@@ -63,9 +65,7 @@ def fuzzysearch(
 
     flt = filter(lambda t: t[1] >= threshold, std)
 
-    out = list(output(v[0]) for v in flt)
-
-    return out
+    return [output(v[0]) for v in flt]
 
 
 def unique(

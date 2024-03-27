@@ -12,7 +12,7 @@ from src.util.ux import generate_modal
 
 
 class Preview(VanirCog):
-    """Formatting stuffs"""
+    """Formatting stuffs."""
 
     emoji = "\N{LEFT-POINTING MAGNIFYING GLASS}"
 
@@ -21,12 +21,13 @@ class Preview(VanirCog):
         self,
         ctx: VanirContext,
         start_text: str = commands.param(description="Starting text", default=""),
-    ):
-        """ANSI Color codes creating and preview"""
+    ) -> None:
+        """ANSI Color codes creating and preview."""
         default = start_text or "<press [Add] to get started>\n<or select a color>"
         embed = ctx.embed(description=f"```ansi\n{default}\n```")
         embed.add_field(
-            name="\N{WARNING SIGN} Discord does not support ANSI on mobile.", value=""
+            name="\N{WARNING SIGN} Discord does not support ANSI on mobile.",
+            value="",
         )
         view = ANSIView(ctx, embed, start_text)
         await ctx.reply(embed=embed, view=view)
@@ -35,15 +36,20 @@ class Preview(VanirCog):
     async def embed(
         self,
         ctx: VanirContext,
-    ):
-        """A simple embed builder"""
+    ) -> None:
+        """A simple embed builder."""
         embed = discord.Embed(title="Example Title")
         view = EmbedView(ctx, embed)
         await ctx.reply(embed=embed, view=view)
 
 
 class ANSIView(VanirView):
-    def __init__(self, ctx: VanirContext, embed: discord.Embed, start: str = ""):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        embed: discord.Embed,
+        start: str = "",
+    ) -> None:
         color_select = ColorSelect(ctx)
         super().__init__(ctx.bot, user=ctx.author)
         self.add_item(color_select)
@@ -54,14 +60,14 @@ class ANSIView(VanirView):
                 emoji="\N{WHITE QUESTION MARK ORNAMENT}",
                 row=1,
                 url="https://gist.github.com/kkrypt0nn/a02506f3712ff2d1c8ca7c9e0aed7c06",
-            )
+            ),
         )
 
         self.ctx = ctx
         self._embed = embed
         self.internal_text = start
 
-    def make_embed(self):
+    def make_embed(self) -> discord.Embed:
         embed = self._embed
         embed.description = f"```ansi\n{self.internal_text}\n```"
         return self._embed
@@ -72,7 +78,7 @@ class ANSIView(VanirView):
         style=discord.ButtonStyle.success,
         row=1,
     )
-    async def add_text(self, itx: discord.Interaction, button: discord.Button):
+    async def add_text(self, itx: discord.Interaction, button: discord.Button) -> None:
         modal = AddTextModal(self.ctx.bot)
         await itx.response.send_modal(modal)
 
@@ -83,9 +89,12 @@ class ANSIView(VanirView):
         await itx.message.edit(embed=self.make_embed(), view=self)
 
     @discord.ui.button(
-        label="Edit", emoji="\N{PENCIL}", style=discord.ButtonStyle.blurple, row=1
+        label="Edit",
+        emoji="\N{PENCIL}",
+        style=discord.ButtonStyle.blurple,
+        row=1,
     )
-    async def edit_text(self, itx: discord.Interaction, button: discord.Button):
+    async def edit_text(self, itx: discord.Interaction, button: discord.Button) -> None:
         modal = EditTextModal(self.ctx.bot, self.internal_text)
         await itx.response.send_modal(modal)
 
@@ -96,20 +105,28 @@ class ANSIView(VanirView):
         await itx.message.edit(embed=self.make_embed(), view=self)
 
     @discord.ui.button(
-        label="Raw", emoji="\N{ELECTRIC PLUG}", style=discord.ButtonStyle.gray, row=1
+        label="Raw",
+        emoji="\N{ELECTRIC PLUG}",
+        style=discord.ButtonStyle.gray,
+        row=1,
     )
-    async def get_raw(self, itx: discord.Interaction, button: discord.Button):
+    async def get_raw(self, itx: discord.Interaction, button: discord.Button) -> None:
         file = discord.File(io.BytesIO(self.internal_text.encode()))
         await itx.response.send_message(
-            f"```\n{self.internal_text}\n```", file=file, ephemeral=True
+            f"```\n{self.internal_text}\n```",
+            file=file,
+            ephemeral=True,
         )
 
 
 class ColorSelect(discord.ui.Select[ANSIView]):
-    def __init__(self, ctx: VanirContext):
+    def __init__(self, ctx: VanirContext) -> None:
         colors = [
             discord.SelectOption(
-                label=name, value=seq, default=name == "white", emoji=ANSI_EMOJIS[name]
+                label=name,
+                value=seq,
+                default=name == "white",
+                emoji=ANSI_EMOJIS[name],
             )
             for name, seq in ANSI.items()
             if name != "reset"
@@ -117,7 +134,7 @@ class ColorSelect(discord.ui.Select[ANSIView]):
         super().__init__(placeholder="Please choose a color", options=colors, row=0)
         self.ctx = ctx
 
-    async def callback(self, itx: discord.Interaction):
+    async def callback(self, itx: discord.Interaction) -> None:
         self.view.internal_text += self.values[0]
         embed = self.view.make_embed()
 
@@ -125,7 +142,8 @@ class ColorSelect(discord.ui.Select[ANSIView]):
             o.default = False
 
         new_default: discord.SelectOption = discord.utils.get(
-            self.options, value=self.values[0]
+            self.options,
+            value=self.values[0],
         )
         new_default.default = True
 
@@ -143,12 +161,13 @@ class AddTextModal(VanirModal, title="Add Text"):
 
 
 class EditTextModal(VanirModal, title="Edit Text"):
-    def __init__(self, bot: Vanir, current: str):
+    def __init__(self, bot: Vanir, current: str) -> None:
         self.text_input.default = current
         super().__init__(bot)
 
     text_input = discord.ui.TextInput(
-        label="Edit Text", style=discord.TextStyle.paragraph
+        label="Edit Text",
+        style=discord.TextStyle.paragraph,
     )
 
     async def on_submit(self, itx: discord.Interaction) -> None:
@@ -156,7 +175,7 @@ class EditTextModal(VanirModal, title="Edit Text"):
 
 
 class EmbedView(VanirView):
-    def __init__(self, ctx: VanirContext, embed: discord.Embed):
+    def __init__(self, ctx: VanirContext, embed: discord.Embed) -> None:
         super().__init__(ctx.bot, user=ctx.author)
         self.embed = embed
         self.ctx = ctx
@@ -167,19 +186,28 @@ class EmbedView(VanirView):
         self.remove_field.disabled = True
 
     @discord.ui.button(
-        label="Edit:", style=discord.ButtonStyle.grey, disabled=True, row=0
+        label="Edit:",
+        style=discord.ButtonStyle.grey,
+        disabled=True,
+        row=0,
     )
-    async def _header_edit(self, itx: discord.Interaction, button: discord.Button):
+    async def _header_edit(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         return
 
     @discord.ui.button(label="Content", style=discord.ButtonStyle.blurple, row=0)
-    async def set_title(self, itx: discord.Interaction, button: discord.Button):
+    async def set_title(self, itx: discord.Interaction, button: discord.Button) -> None:
         values = await generate_modal(
             itx,
             "Set Content",
             fields=[
                 discord.ui.TextInput(
-                    label="Title Text", required=False, default=self.embed.title
+                    label="Title Text",
+                    required=False,
+                    default=self.embed.title,
                 ),
                 discord.ui.TextInput(
                     label="Description Text",
@@ -210,7 +238,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=0,
     )
-    async def set_footer(self, itx: discord.Interaction, button: discord.Button):
+    async def set_footer(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             title="Set Footer",
@@ -238,7 +270,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=0,
     )
-    async def set_author(self, itx: discord.Interaction, button: discord.Button):
+    async def set_author(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             "Set Author",
@@ -256,23 +292,31 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=0,
     )
-    async def set_url(self, itx: discord.Interaction, button: discord.Button):
+    async def set_url(self, itx: discord.Interaction, button: discord.Button) -> None:
         values = await generate_modal(
             itx,
             "Set URL",
             fields=[
                 discord.ui.TextInput(
-                    label="Enter Embed URL", style=discord.TextStyle.long
-                )
+                    label="Enter Embed URL",
+                    style=discord.TextStyle.long,
+                ),
             ],
         )
         self.embed.url = values[0]
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
-        label="Fields:", style=discord.ButtonStyle.grey, disabled=True, row=1
+        label="Fields:",
+        style=discord.ButtonStyle.grey,
+        disabled=True,
+        row=1,
     )
-    async def _header_fields(self, itx: discord.Interaction, button: discord.Button):
+    async def _header_fields(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         return
 
     @discord.ui.button(
@@ -280,7 +324,7 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.success,
         row=1,
     )
-    async def add_field(self, itx: discord.Interaction, button: discord.Button):
+    async def add_field(self, itx: discord.Interaction, button: discord.Button) -> None:
         values = await generate_modal(
             itx,
             "Add Field",
@@ -305,7 +349,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.danger,
         row=1,
     )
-    async def remove_field(self, itx: discord.Interaction, button: discord.Button):
+    async def remove_field(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             "Remove Field",
@@ -313,7 +361,7 @@ class EmbedView(VanirView):
                 discord.ui.TextInput(
                     label="Field Name to Remove",
                     placeholder=f"Choose from: {', '.join(f.name for f in self.embed.fields)}",
-                )
+                ),
             ],
         )
         before = self.embed.fields.copy()
@@ -321,7 +369,9 @@ class EmbedView(VanirView):
         for field in before:
             if field.name != values[0]:
                 self.embed.add_field(
-                    name=field.name, value=field.value, inline=field.inline
+                    name=field.name,
+                    value=field.value,
+                    inline=field.inline,
                 )
 
         self.remove_field.disabled = len(self.embed.fields) == 0
@@ -329,9 +379,16 @@ class EmbedView(VanirView):
         await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
 
     @discord.ui.button(
-        label="Style:", style=discord.ButtonStyle.grey, disabled=True, row=2
+        label="Style:",
+        style=discord.ButtonStyle.grey,
+        disabled=True,
+        row=2,
     )
-    async def _header_style(self, itx: discord.Interaction, button: discord.Button):
+    async def _header_style(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         return
 
     @discord.ui.button(
@@ -339,12 +396,12 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=2,
     )
-    async def set_color(self, itx: discord.Interaction, button: discord.Button):
+    async def set_color(self, itx: discord.Interaction, button: discord.Button) -> None:
         values = await generate_modal(
             itx,
             "Set Embed Color",
             fields=[
-                discord.ui.TextInput(label="Enter Color as `#HEXDEC` or `rgb(r, g, b)")
+                discord.ui.TextInput(label="Enter Color as `#HEXDEC` or `rgb(r, g, b)"),
             ],
         )
         try:
@@ -352,7 +409,7 @@ class EmbedView(VanirView):
         except ValueError:
             try:
                 self.embed.color = discord.Color.from_str(
-                    COLOR_INDEX[values[0].lower().strip()][0]
+                    COLOR_INDEX[values[0].lower().strip()][0],
                 )
             except KeyError:
                 await itx.followup.send(
@@ -370,9 +427,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=2,
     )
-    async def set_image(self, itx: discord.Interaction, button: discord.Button):
+    async def set_image(self, itx: discord.Interaction, button: discord.Button) -> None:
         values = await generate_modal(
-            itx, "Set Image", fields=[discord.ui.TextInput(label="Enter Image URL")]
+            itx,
+            "Set Image",
+            fields=[discord.ui.TextInput(label="Enter Image URL")],
         )
         self.embed.set_image(url=values[0])
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
@@ -382,7 +441,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=2,
     )
-    async def set_thumbnail(self, itx: discord.Interaction, button: discord.Button):
+    async def set_thumbnail(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             "Set Thumbnail",
@@ -397,13 +460,18 @@ class EmbedView(VanirView):
         disabled=True,
         row=3,
     )
-    async def _header_data(self, itx: discord.Interaction, button: discord.Button):
+    async def _header_data(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         return
 
     @discord.ui.button(label="Export", style=discord.ButtonStyle.success, row=3)
-    async def export(self, itx: discord.Interaction, button: discord.Button):
+    async def export(self, itx: discord.Interaction, button: discord.Button) -> None:
         file = discord.File(
-            io.BytesIO(str(self.embed.to_dict()).encode()), filename="embed.json"
+            io.BytesIO(str(self.embed.to_dict()).encode()),
+            filename="embed.json",
         )
         await itx.response.send_message(
             file=file,
@@ -411,7 +479,11 @@ class EmbedView(VanirView):
         )
 
     @discord.ui.button(label="Import", style=discord.ButtonStyle.blurple, row=3)
-    async def import_embed(self, itx: discord.Interaction, button: discord.Button):
+    async def import_embed(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             "Import Embed",
@@ -420,16 +492,16 @@ class EmbedView(VanirView):
                     label="Enter JSON Embed Data",
                     style=discord.TextStyle.long,
                     default=str(self.embed.to_dict()),
-                )
+                ),
             ],
         )
         try:
             self.embed = discord.Embed.from_dict(values[0])
-        except Exception as e:
+        except Exception as err:  # noqa: BLE001
             await itx.followup.send(
                 embed=discord.Embed(
                     color=discord.Color.red(),
-                    description=f"An error occurred while importing the embed: {e}",
+                    description=f"An error occurred while importing the embed: {err}",
                 ),
                 ephemeral=True,
             )
@@ -442,7 +514,11 @@ class EmbedView(VanirView):
         row=4,
         disabled=True,
     )
-    async def _header_send(self, itx: discord.Interaction, button: discord.Button):
+    async def _header_send(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         return
 
     @discord.ui.button(
@@ -450,7 +526,7 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=4,
     )
-    async def preview(self, itx: discord.Interaction, button: discord.Button):
+    async def preview(self, itx: discord.Interaction, button: discord.Button) -> None:
         await itx.response.send_message(embed=self.embed, ephemeral=True)
 
     @discord.ui.button(
@@ -458,7 +534,7 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.success,
         row=4,
     )
-    async def send(self, itx: discord.Interaction, button: discord.Button):
+    async def send(self, itx: discord.Interaction, button: discord.Button) -> None:
         if itx.message is not None:  # not ephemeral
             await itx.message.delete()
         await itx.response.defer()
@@ -469,7 +545,11 @@ class EmbedView(VanirView):
         style=discord.ButtonStyle.blurple,
         row=4,
     )
-    async def send_other(self, itx: discord.Interaction, button: discord.Button):
+    async def send_other(
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
+    ) -> None:
         values = await generate_modal(
             itx,
             "Send to Channel",
@@ -492,5 +572,5 @@ class EmbedView(VanirView):
         await itx.followup.send(msg.jump_url, ephemeral=True)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Preview(bot))

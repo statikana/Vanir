@@ -1,13 +1,20 @@
-import discord
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from discord.ext import commands
-from discord.ext.commands import Range
 
 from src.types.command import VanirCog, vanir_group
-from src.types.core import Vanir, VanirContext
+
+if TYPE_CHECKING:
+    import discord
+    from discord.ext.commands import Range
+
+    from src.types.core import Vanir, VanirContext
 
 
 class StarBoard(VanirCog):
-    """Automate a StarBoard channel, featuring popular posts in any channel"""
+    """Automate a StarBoard channel, featuring popular posts in any channel."""
 
     emoji = "\N{WHITE MEDIUM STAR}"
 
@@ -23,8 +30,8 @@ class StarBoard(VanirCog):
             description="The amount of :star: reactions a message needs to have before being sent to the channel",
             default=1,
         ),
-    ):
-        """Feature hot posts! [default: `\\starboard get` or `\\starboard setup ...`]"""
+    ) -> None:
+        r"""Feature hot posts! [default: `\\starboard get` or `\\starboard setup ...`]."""
         if channel is not None:
             await ctx.invoke(self.setup, channel=channel, threshold=threshold)
         else:
@@ -35,19 +42,20 @@ class StarBoard(VanirCog):
         self,
         ctx: VanirContext,
         channel: discord.TextChannel = commands.param(
-            description="The channel to send starboard posts to"
+            description="The channel to send starboard posts to",
         ),
         threshold: Range[int, 1] = commands.param(
             description="The amount of :star: reactions a message needs to have before being sent to the channel",
             default=1,
         ),
-    ):
-        """Sets up the starboard for your server"""
+    ) -> None:
+        """Sets up the starboard for your server."""
         if (
             channel.permissions_for(ctx.me).send_messages
             and not ctx.me.guild_permissions.administrator
         ):
-            raise ValueError("I'm not allowed to send messages there!")
+            msg = "I'm not allowed to send messages there!"
+            raise ValueError(msg)
 
         await self.bot.db_starboard.set_config(ctx.guild.id, channel.id, threshold)
         embed = ctx.embed(
@@ -58,17 +66,18 @@ class StarBoard(VanirCog):
         await ctx.reply(embed=embed)
 
     @starboard.command()
-    async def remove(self, ctx: VanirContext):
-        """Removes the starboard configuration for your server"""
+    async def remove(self, ctx: VanirContext) -> None:
+        """Removes the starboard configuration for your server."""
         await self.bot.db_starboard.remove_config(ctx.guild.id)
         embed = ctx.embed(
-            title="Starboard Removed", description="Starboard successfully removed."
+            title="Starboard Removed",
+            description="Starboard successfully removed.",
         )
         await ctx.reply(embed=embed)
 
     @starboard.command()
-    async def get(self, ctx: VanirContext):
-        """Gets the starboard configuration for your server"""
+    async def get(self, ctx: VanirContext) -> None:
+        """Gets the starboard configuration for your server."""
         config = await self.bot.db_starboard.get_config(ctx.guild.id)
         if config is None:
             embed = ctx.embed(
@@ -87,5 +96,5 @@ class StarBoard(VanirCog):
         await ctx.reply(embed=embed)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(StarBoard(bot))

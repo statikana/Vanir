@@ -1,10 +1,16 @@
-import re
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 
 from src.types.command import BotObjectT
-from src.types.core import VanirContext
+
+if TYPE_CHECKING:
+    import re
+
+    from src.types.core import VanirContext
 
 
 class MessageSearchConverter(commands.Converter[str]):
@@ -15,15 +21,17 @@ class MessageSearchConverter(commands.Converter[str]):
         n_lim: int = -1,
         use_reference: bool = True,
         history_lim: int = 10,
-    ):
+    ) -> None:
         """
-        A converter that searches for a regex pattern in messages.
+        Convert regex pattern in messages.
 
         Args:
+        ----
             regex (re.Pattern): The regex pattern to search for.
             n_lim (int, optional): The maximum number of results to find. Defaults to -1, meaning no limit.
             use_reference (bool, optional): Whether to search the message that was replied to. Defaults to True.
             history_lim (int, optional): The maximum number of messages to search in the channel history. Defaults to 10.
+
         """
         self.regex = regex
         self.n_to_find = n_lim
@@ -68,10 +76,11 @@ class BotObjectConverter(commands.Converter[BotObjectT]):
         )
         if cog is not None:
             return cog
+        return None
 
 
 class TaskIDConverter(commands.Converter[int]):
-    def __init__(self, required: bool = True):
+    def __init__(self, required: bool = True) -> None:
         self.required = required
 
     async def convert(self, ctx: VanirContext, argument: str) -> int:
@@ -89,5 +98,5 @@ class TaskIDConverter(commands.Converter[int]):
             return None
 
         raise commands.CommandInvokeError(
-            ValueError("Could not find task with name or ID " + argument)
+            ValueError("Could not find task with name or ID " + argument),
         )

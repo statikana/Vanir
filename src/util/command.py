@@ -1,20 +1,26 @@
-import functools
-import inspect
-from typing import Any, Optional, Union, get_args, get_origin
+from __future__ import annotations
 
-import discord
+import functools
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
+
 from discord.app_commands import Choice
 from discord.ext import commands
 
 import config
 from src import constants
-from src.types.command import (
-    VanirCog,
-)
-from src.types.core import Vanir, VanirContext
 from src.types.media import ImageInterface, MediaInfo, MediaInterface, VideoInterface
 from src.util import format
 from src.util.parse import find_ext
+
+if TYPE_CHECKING:
+    import inspect
+
+    import discord
+
+    from src.types.command import (
+        VanirCog,
+    )
+    from src.types.core import Vanir, VanirContext
 
 if config.use_system_assets:
     from wand.image import Image
@@ -53,14 +59,13 @@ def get_display_cogs(bot: commands.Bot) -> list[commands.Cog]:
 
 def get_param_annotation(param: inspect.Parameter) -> str:
     ptype = param.annotation
-    print(get_origin(ptype))
     if get_origin(ptype) is Union:
         ptype = get_args(ptype)[0]
 
     if hasattr(ptype, "min"):  # this is a .Range
-        rtype_name = getattr(ptype, "annotation").__name__  # eg <class 'int'> -> int
-        range_min = getattr(ptype, "min")
-        range_max = getattr(ptype, "max")
+        rtype_name = ptype.annotation.__name__  # eg <class 'int'> -> int
+        range_min = ptype.min
+        range_max = ptype.max
 
         if rtype_name == "int":
             rtype_name = "integer"
@@ -81,10 +86,12 @@ def get_param_annotation(param: inspect.Parameter) -> str:
         return "string"
     if ptype is bool:
         return "boolean"
-    return str(ptype)
+    if not (strrep := str(ptype)).startswith("<class"):
+        return strrep
+    return getattr(ptype, "__name__", strrep)
 
 
-async def get_media_info(media: MediaInterface):
+async def get_media_info(media: MediaInterface) -> MediaInfo | None:
     blob = await media.read()
     if isinstance(media, ImageInterface):
         img = Image(blob=blob)
@@ -92,13 +99,14 @@ async def get_media_info(media: MediaInterface):
     if isinstance(media, VideoInterface):
         ext = find_ext(media.url)
         return MediaInfo(f"image/{ext}", len(blob))
+    return None
 
 
 async def send_file(
     source_cmd: commands.HybridCommand,
     msg: discord.Message,
     media: MediaInterface,
-):
+) -> None:
     embed = msg.embeds[0]
     embed.title = f"{source_cmd.qualified_name.title()} Completed"
     new_info = await get_media_info(media)
@@ -117,7 +125,7 @@ async def send_file(
     await msg.edit(embed=embed, attachments=[await media.to_file()])
 
 
-async def assure_working(ctx: VanirContext, media: MediaInterface):
+async def assure_working(ctx: VanirContext, media: MediaInterface) -> None:
     embed = ctx.embed(
         title="... working",
     )
@@ -132,11 +140,11 @@ async def assure_working(ctx: VanirContext, media: MediaInterface):
         f"`{format.fmt_size(media.initial_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
-    return await ctx.reply(embed=embed)
+    await ctx.reply(embed=embed)
 
 
-def cog_hidden(cls: type[VanirCog]):
-    """A wrapper which sets the `VanirCog().hidden` flag to True when this class initializes"""
+def cog_hidden(cls: type[VanirCog]) -> type[VanirCog]:
+    """Set the `VanirCog().hidden` flag to True when this class initializes,."""
     original_init = cls.__init__
 
     @functools.wraps(original_init)
@@ -154,7 +162,9 @@ def cog_hidden(cls: type[VanirCog]):
 
 
 def safe_default(
-    arg: Any | commands.Parameter, /, ctx: VanirContext | None = None
+    arg: Any,
+    /,
+    ctx: VanirContext | None = None,
 ) -> Any:
     if isinstance(arg, commands.Parameter):
         if ctx is not None:
@@ -163,12 +173,14 @@ def safe_default(
     return arg
 
 
-async def langcode_autocomplete(_itx: discord.Interaction, current: str):
+async def langcode_autocomplete(
+    _itx: discord.Interaction,
+    current: str,
+) -> list[Choice]:
     options = [
         Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_NAMES.items()
     ][:25]
-    options = sorted(
+    return sorted(
         filter(lambda c: current.lower() in c.name.lower(), options),
         key=lambda c: c.name,
     )
-    return options

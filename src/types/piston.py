@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from pprint import pprint
 
 import aiohttp
 
@@ -45,7 +46,7 @@ class PistonPackage:
 
 
 class PistonORM:
-    def __init__(self, session: aiohttp.ClientSession):
+    def __init__(self, session: aiohttp.ClientSession) -> None:
         self.session = session
 
     async def check_running(self) -> bool:
@@ -53,17 +54,16 @@ class PistonORM:
         try:
             response = await self.session.get(piston_api_url + "/check")
             response.raise_for_status()
-            return True
         except aiohttp.ClientResponseError:
             return False
+        else:
+            return True
 
     async def runtimes(self) -> list[PistonRuntime]:
-        """Get all available runtimes that are currently installed"""
+        """Get all available runtimes that are currently installed."""
         response = await self.session.get(piston_api_url + "/runtimes")
         response.raise_for_status()
         json = await response.json()
-        print("installed runtimes:")
-        pprint(json)
         return [PistonRuntime(**runtime) for runtime in json]
 
     async def execute(
@@ -72,13 +72,15 @@ class PistonORM:
         package: PistonPackage,
         files: list[PistonExecutable],
         stdin: str = "",
-        args: list[str] = [],
+        args: list[str] | None = None,
         compile_timeout: int = 10000,
         run_timeout: int = 3000,
         compile_memory_limit: int = 200000000,  # 200MB
         run_memory_limit: int = 200000000,  # 200MB
     ) -> PistonExecutionResponse:
-        """Execute code via a"""
+        """Execute code via a."""
+        if args is None:
+            args = []
         json = {
             "language": package.language,
             "version": package.language_version,
@@ -104,15 +106,13 @@ class PistonORM:
         )
 
     async def packages(self) -> list[PistonPackage]:
-        """Get all available packages"""
+        """Get all available packages."""
         response = await self.session.get(piston_api_url + "/packages")
         response.raise_for_status()
         json = await response.json()
-        print(f"get pkgs, #: {len(json)}")
         return [PistonPackage(**package) for package in json]
 
     async def install_package(self, package: PistonPackage) -> PistonPackage:
-        print(f"installing package: {package.language} {package.language_version}")
         response = await self.session.post(
             piston_api_url + "/packages",
             json={"language": package.language, "version": package.language_version},
@@ -120,10 +120,10 @@ class PistonORM:
         )
         response.raise_for_status()
         json = await response.json()
-        print("Installed package:")
-        pprint(json)
         return PistonPackage(
-            language=json["language"], language_version=json["version"], installed=True
+            language=json["language"],
+            language_version=json["version"],
+            installed=True,
         )
 
     async def uninstall_package(self, package: PistonPackage) -> PistonPackage:

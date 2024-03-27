@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import re
 import time
 import unicodedata
 from asyncio import iscoroutinefunction
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import discord
 import texttable
@@ -12,7 +14,6 @@ from pint import UnitRegistry
 from src.constants import (
     ALL_PERMISSIONS,
     GLOBAL_CHANNEL_PERMISSIONS,
-    MATH_GLOBALS_MAP,
     STRONG_CHANNEL_PERMISSIONS,
     TEXT_CHANNEL_PERMISSIONS,
     TIMESTAMP_STYLES,
@@ -20,7 +21,6 @@ from src.constants import (
     VOICE_CHANNEL_PERMISSIONS,
 )
 from src.types.command import VanirCog, vanir_command
-from src.types.core import Vanir, VanirContext
 from src.util.format import ctext, fmt_bool, fmt_dict
 from src.util.parse import closest_color_name, find_ext, find_filename
 from src.util.regex import (
@@ -34,11 +34,14 @@ from src.util.regex import (
 )
 from src.util.time import ShortTime, regress_time
 
+if TYPE_CHECKING:
+    from src.types.core import Vanir, VanirContext
+
 ureg = UnitRegistry()
 
 
 class Info(VanirCog):
-    """What's this?"""
+    """What's this?."""
 
     emoji = "\N{WHITE QUESTION MARK ORNAMENT}"
 
@@ -48,17 +51,17 @@ class Info(VanirCog):
         self,
         ctx: VanirContext,
         snowflake: str = commands.param(
-            description="The snowflake (ID) to get information on"
+            description="The snowflake (ID) to get information on",
         ),
         search: bool = commands.param(
             description="Whether or not to search for the object who owns this ID. If this False, there is no cooldown for this command",
             default=True,
         ),
-    ):
-        """Gets information on a snowflake (ID). You can access these when using Developer mode in Discord"""
-
+    ) -> None:
+        """Gets information on a snowflake (ID). You can access these when using Developer mode in Discord."""
         if not SNOWFLAKE_REGEX.fullmatch(snowflake):
-            raise ValueError("Not a snowflake.")
+            msg = "Not a snowflake."
+            raise ValueError(msg)
             # check cache first
 
         sf = int(snowflake)
@@ -91,17 +94,17 @@ class Info(VanirCog):
         ctx: VanirContext,
         *,
         chars: str = commands.param(
-            description="The characters to evaluate. Gets cut off at 30"
+            description="The characters to evaluate. Gets cut off at 30",
         ),
-    ):
-        """Get detailed information about unicode characters"""
+    ) -> None:
+        """Get detailed information about unicode characters."""
         custom_emojis = EMOJI_REGEX.findall(chars)
         if custom_emojis:
             embed = ctx.embed(
                 description="\n".join(
                     f"Custom Emoji: `{name}` [ID: `{emoji_id}`, Animated: {'Yes' if a else 'No'}]"
                     for a, name, emoji_id in custom_emojis
-                )
+                ),
             )
         else:
             codepoints: list[str] = []
@@ -138,13 +141,14 @@ class Info(VanirCog):
             default="0s",
             displayed_default="now",
         ),
-    ):
+    ) -> None:
         """
         Analyzes a time. Can be relative [1 day -5 seconds] or a timestamp.
+
         Some of the underlying code is from Rapptz.
         """
         string = re.sub(CONNECTOR_REGEX, "", string.lower())
-        if TIMESTAMP_REGEX_REGEX.fullmatch(string):
+        if TIMESTAMP_REGEX_REGEX.fullmatch(string) is not None:
             ts = float(string)
         elif (match := DISCORD_TIMESTAMP_REGEX.fullmatch(string)) is not None:
             ts = int(float(match.group("ts")))
@@ -188,8 +192,8 @@ class Info(VanirCog):
             default=None,
             displayed_default="base unit of (from_unit)",
         ),
-    ):
-        """Convert a quantity between compatible units"""
+    ) -> None:
+        """Convert a quantity between compatible units."""
         from_pint = ureg(f"{from_qty} {from_unit}")
 
         if to_unit is None:
@@ -204,8 +208,9 @@ class Info(VanirCog):
         if not from_pint.is_compatible_with(to_pint):
             from_fmt = from_pint.dimensionality.format_babel("P")
             to_fmt = to_pint.dimensionality.format_babel("P")
+            msg = f"Units `{from_unit}` and `{to_unit}` are not compatible [`{from_fmt}` vs `{to_fmt}`]"
             raise TypeError(
-                f"Units `{from_unit}` and `{to_unit}` are not compatible [`{from_fmt}` vs `{to_fmt}`]"
+                msg,
             )
 
         dest = ureg(f"{from_qty} {from_unit}").to(to_unit)
@@ -214,16 +219,21 @@ class Info(VanirCog):
             title=f"{dest.units.default_format} {dest.magnitude}",
         )
         embed.set_footer(
-            text=f"{from_qty} {from_unit} -> {dest.units}{f" [Assumed Unit]" if assumed else ""}"
+            text=f"{from_qty} {from_unit} -> {dest.units}{" [Assumed Unit]" if assumed else ""}",
         )
         await ctx.reply(embed=embed)
 
     async def scan_methods(
-        self, ctx: VanirContext, method: str, attr: str, snowflake: int
-    ):
+        self,
+        ctx: VanirContext,
+        method: str,
+        attr: str,
+        snowflake: int,
+    ) -> bool:
         if attr == "message":
             received = discord.utils.find(
-                lambda m: m.id == snowflake, ctx.bot.cached_messages
+                lambda m: m.id == snowflake,
+                ctx.bot.cached_messages,
             )
             if received is None:
                 try:
@@ -247,14 +257,18 @@ class Info(VanirCog):
         await ctx.reply(embed=embed)
         return True
 
-    async def maybecoro_get(self, method: Callable[[int], Any], snowflake: int):
+    async def maybecoro_get(self, method: Callable[[int], Any], snowflake: int) -> Any:
         if iscoroutinefunction(method):
             received = await method(snowflake)
         else:
             received = method(snowflake)
         return received
 
-    async def user_info_embed(self, ctx: VanirContext, user: discord.User):
+    async def user_info_embed(
+        self,
+        ctx: VanirContext,
+        user: discord.User,
+    ) -> discord.Embed:
         member = ctx.guild.get_member_named(user.name)
 
         embed = ctx.embed(title=f"User: {user.name}", description=f"ID: `{user.id}`")
@@ -294,8 +308,10 @@ class Info(VanirCog):
         return embed
 
     async def channel_info_embed(
-        self, ctx: VanirContext, channel: discord.abc.GuildChannel
-    ):
+        self,
+        ctx: VanirContext,
+        channel: discord.abc.GuildChannel,
+    ) -> discord.Embed:
         embed = ctx.embed(
             title=f"{str(channel.type).replace('_', ' ').title()} Channel: {channel.name}",
             description=f"ID: `{channel.id}`\nGuild: {channel.guild} [ID: `{channel.guild.id}`]",
@@ -318,7 +334,11 @@ class Info(VanirCog):
         await self.add_sf_data(embed, channel.id)
         return embed
 
-    async def message_info_embed(self, ctx: VanirContext, msg: discord.Message):
+    async def message_info_embed(
+        self,
+        ctx: VanirContext,
+        msg: discord.Message,
+    ) -> discord.Embed:
         embed = ctx.embed(
             title=f"Message in `#{msg.channel.name}` by `{ctx.author.name}`",
             description=f"{msg.content}",
@@ -340,11 +360,11 @@ class Info(VanirCog):
                 mentions.update({"Users": " ".join(o.mention for o in msg.mentions)})
             if msg.role_mentions:
                 mentions.update(
-                    {"Roles": " ".join(o.mention for o in msg.role_mentions)}
+                    {"Roles": " ".join(o.mention for o in msg.role_mentions)},
                 )
             if msg.channel_mentions:
                 mentions.update(
-                    {"Channels": " ".join(o.mention for o in msg.channel_mentions)}  # type: ignore
+                    {"Channels": " ".join(o.mention for o in msg.channel_mentions)},
                 )
 
             if mentions:
@@ -380,7 +400,11 @@ class Info(VanirCog):
         embed.set_footer(text=msg.author.name, icon_url=msg.author.display_avatar.url)
         return embed
 
-    async def guild_info_embed(self, ctx: VanirContext, guild: discord.Guild):
+    async def guild_info_embed(
+        self,
+        ctx: VanirContext,
+        guild: discord.Guild,
+    ) -> discord.Embed:
         embed = ctx.embed(
             title=f"Guild: {guild.name}",
         )
@@ -396,7 +420,8 @@ class Info(VanirCog):
             "Recent Boosters": " ".join(
                 b.name
                 for b in sorted(
-                    guild.premium_subscribers, key=lambda m: m.premium_since
+                    guild.premium_subscribers,
+                    key=lambda m: m.premium_since,
                 )[:5]
             ),
             "Booster Role": (
@@ -410,11 +435,16 @@ class Info(VanirCog):
         await self.add_sf_data(embed, guild.id)
         return embed
 
-    async def role_info_embed(self, ctx: VanirContext, role: discord.Role):
+    async def role_info_embed(
+        self,
+        ctx: VanirContext,
+        role: discord.Role,
+    ) -> discord.Embed:
         embed = ctx.embed(f"Role: {role.name}")
 
         embed.description = await self.get_permission_table(
-            {f"'{role.name[:20]}'": role.permissions}, checked=ALL_PERMISSIONS
+            {f"'{role.name[:20]}'": role.permissions},
+            checked=ALL_PERMISSIONS,
         )
 
         embed.add_field(
@@ -429,7 +459,7 @@ class Info(VanirCog):
                     "\N{TWISTED RIGHTWARDS ARROWS}Position": f"`{role.position}`",
                     "\N{ROBOT FACE}Managed by Bot?": f"`{role.is_bot_managed() or role.is_integration()}`",
                     "\N{HEAVY BLACK HEART}\N{ZERO WIDTH JOINER}\N{FIRE}Nitro Role?": f"`{role.is_premium_subscriber()}`",
-                }
+                },
             ),
         )
         if role.display_icon:
@@ -442,8 +472,10 @@ class Info(VanirCog):
         return embed
 
     async def emoji_info_embed(
-        self, ctx: VanirContext, emoji: discord.Emoji | discord.PartialEmoji
-    ):
+        self,
+        ctx: VanirContext,
+        emoji: discord.Emoji | discord.PartialEmoji,
+    ) -> discord.Embed:
         if isinstance(emoji, discord.PartialEmoji):
             emoji = await ctx.guild.fetch_emoji(emoji.id)
 
@@ -455,11 +487,14 @@ class Info(VanirCog):
         return embed
 
     async def get_permission_table(
-        self, permissions: dict[str, discord.Permissions], *, checked: list[str]
+        self,
+        permissions: dict[str, discord.Permissions],
+        *,
+        checked: list[str],
     ) -> str:
         table = texttable.Texttable(max_width=0)
 
-        table.header(["permission"] + [n for n in permissions.keys()])
+        table.header(["permission", *list(permissions)])
         table.set_header_align(["r"] + (["l"] * (len(permissions))))
         table.set_cols_align(["r"] + (["l"] * (len(permissions))))
         table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
@@ -467,7 +502,7 @@ class Info(VanirCog):
         table.set_deco(
             texttable.Texttable.BORDER
             | texttable.Texttable.HEADER
-            | texttable.Texttable.VLINES
+            | texttable.Texttable.VLINES,
         )
 
         for name in checked:
@@ -475,11 +510,12 @@ class Info(VanirCog):
                 [
                     name.replace("_", " ").title(),
                     *(getattr(p, name) for p in permissions.values()),
-                ]
+                ],
             )
         drawn = table.draw()
         drawn = drawn.replace("True", f"{fmt_bool(True)} ").replace(
-            "False", f"{fmt_bool(False)}   "
+            "False",
+            f"{fmt_bool(False)}   ",
         )
 
         for major in (
@@ -494,8 +530,11 @@ class Info(VanirCog):
         return f"**```ansi\n{drawn}```**"
 
     async def add_permission_data_from_channel(
-        self, ctx: VanirContext, embed: discord.Embed, channel: discord.abc.GuildChannel
-    ):
+        self,
+        ctx: VanirContext,
+        embed: discord.Embed,
+        channel: discord.abc.GuildChannel,
+    ) -> None:
         default = channel.permissions_for(ctx.guild.default_role)
         you = channel.permissions_for(ctx.author)
         me = channel.permissions_for(ctx.me)
@@ -509,16 +548,21 @@ class Info(VanirCog):
         permission_to_check.sort()
 
         data = await self.get_permission_table(
-            {"you": you, "me": me, "default": default}, checked=permission_to_check
+            {"you": you, "me": me, "default": default},
+            checked=permission_to_check,
         )
         embed.description += "\n" + data
 
-    async def snowflake_info_embed(self, ctx: VanirContext, snowflake: int):
+    async def snowflake_info_embed(
+        self,
+        ctx: VanirContext,
+        snowflake: int,
+    ) -> discord.Embed:
         embed = ctx.embed("No Object Found")
         await self.add_sf_data(embed, snowflake)
         return embed
 
-    async def add_sf_data(self, embed: discord.Embed, snowflake: int):
+    async def add_sf_data(self, embed: discord.Embed, snowflake: int) -> None:
         time = int(discord.utils.snowflake_time(snowflake).timestamp())
         as_bin = str(bin(snowflake))
 
@@ -540,5 +584,5 @@ class Info(VanirCog):
         embed.add_field(name="Snowflake Info", value=fmt_dict(data), inline=False)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Info(bot))

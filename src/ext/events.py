@@ -1,4 +1,4 @@
-import logging
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
@@ -6,15 +6,17 @@ from discord.ext import commands
 from src.constants import LANGUAGE_NAMES
 from src.logging import book
 from src.types.command import VanirCog
-from src.types.core import TranslatedMessage, VanirContext
-from src.types.orm import StarBoard as StarBoardDB
+from src.types.core import TranslatedMessage, Vanir, VanirContext
 from src.util.command import cog_hidden
+
+if TYPE_CHECKING:
+    from src.types.orm import StarBoard as StarBoardDB
 
 
 @cog_hidden
 class Events(VanirCog):
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
         if message.channel.id in (
             (tlink := cached_tlink)["from_channel_id"]
             for cached_tlink in self.bot.cache.tlinks
@@ -47,7 +49,7 @@ class Events(VanirCog):
                 )
                 if previous_response_meta is not None:
                     previous_response = await to_channel.fetch_message(
-                        previous_response_meta.translated_message_id
+                        previous_response_meta.translated_message_id,
                     )
                     previous_embed = previous_response.embeds[0]
                     previous_embed.description += f"\n{tsl['text']}"
@@ -73,7 +75,10 @@ class Events(VanirCog):
                 self.bot.cache.tlink_translated_messages[message.channel] = [tmes]
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+    async def on_raw_reaction_add(
+        self,
+        payload: discord.RawReactionActionEvent,
+    ) -> None:
         starboard: StarBoardDB = self.bot.db_starboard
         if payload.emoji.name != "\N{WHITE MEDIUM STAR}":
             return
@@ -99,7 +104,9 @@ class Events(VanirCog):
             return
 
         n_stars: int = await starboard.add_star(
-            payload.guild_id, payload.message_id, payload.user_id
+            payload.guild_id,
+            payload.message_id,
+            payload.user_id,
         )
 
         # starred message channel
@@ -119,24 +126,27 @@ class Events(VanirCog):
                 author = guild.get_member(payload.user_id)
                 if author is None:
                     book.warning(
-                        f"cannot find starboard user in cache",
+                        "cannot find starboard user in cache",
                         user=payload.user_id,
                     )
 
                 # get message content
                 try:
                     message = await original_channel.fetch_message(payload.message_id)
-                except discord.NotFound:
-                    raise RuntimeError("Could not find content of reacted message")
+                except discord.NotFound as e:
+                    msg = "Could not find content of reacted message"
+                    raise RuntimeError(msg) from e
                 real_stars = discord.utils.find(
-                    lambda r: r.emoji == "\N{WHITE MEDIUM STAR}", message.reactions
+                    lambda r: r.emoji == "\N{WHITE MEDIUM STAR}",
+                    message.reactions,
                 )
                 if real_stars is None:
                     return  # what?
                 n_stars = real_stars.count
 
                 embed = discord.Embed(
-                    description=message.content, color=discord.Color.gold()
+                    description=message.content,
+                    color=discord.Color.gold(),
                 )
                 embed.set_author(
                     name=f"{message.author.display_name}",
@@ -148,7 +158,9 @@ class Events(VanirCog):
                 )
                 embed.add_field(name="Message ID", value=f"`{payload.message_id}`")
                 embed.add_field(
-                    name="Channel", value=f"<#{original_channel.id}>", inline=False
+                    name="Channel",
+                    value=f"<#{original_channel.id}>",
+                    inline=False,
                 )
 
                 if message.attachments:
@@ -182,7 +194,10 @@ class Events(VanirCog):
                 # this will create a new one next reaction
 
     @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+    async def on_raw_reaction_remove(
+        self,
+        payload: discord.RawReactionActionEvent,
+    ) -> None:
         starboard: StarBoardDB = self.bot.db_starboard
         if payload.emoji.name is None or payload.emoji.name != "\N{WHITE MEDIUM STAR}":
             return
@@ -198,7 +213,9 @@ class Events(VanirCog):
             return
 
         n_stars = await starboard.remove_star(
-            payload.guild_id, payload.message_id, payload.user_id
+            payload.guild_id,
+            payload.message_id,
+            payload.user_id,
         )
 
         data = await starboard.get_post_data(payload.message_id)
@@ -223,5 +240,5 @@ class Events(VanirCog):
             await existing_post.edit(content=f":star: {n_stars}")
 
 
-async def setup(bot):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Events(bot))

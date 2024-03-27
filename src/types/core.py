@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass
 from typing import Any
@@ -17,7 +19,7 @@ from src.types.piston import PistonORM, PistonPackage
 
 
 class Vanir(commands.Bot):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             command_prefix=commands.when_mentioned_or("\\"),
             tree_cls=VanirTree,
@@ -47,7 +49,7 @@ class Vanir(commands.Bot):
         /,
         *,
         cls: Any = None,
-    ) -> "VanirContext":
+    ) -> VanirContext:
         return await super().get_context(origin, cls=VanirContext)
 
     async def setup_hook(self) -> None:
@@ -56,7 +58,8 @@ class Vanir(commands.Bot):
             self.pool = await asyncpg.create_pool(**env.PSQL_CONNECTION)
 
             if self.pool is None:
-                raise RuntimeError("Could not connect to database")
+                msg = "Could not connect to database"
+                raise RuntimeError(msg)
 
             databases: list[DBBase] = [
                 self.db_starboard,
@@ -77,17 +80,17 @@ class Vanir(commands.Bot):
         await self.cache.init()
         await self.add_cogs()
 
-    async def add_cogs(self):
+    async def add_cogs(self) -> None:
         asyncio.gather(*(self.load_extension(ext) for ext in MODULE_PATHS))
 
         await self.load_extension("jishaku")
 
-    async def add_cog(self, cog: commands.Cog):
+    async def add_cog(self, cog: commands.Cog) -> None:
         if config.use_system_assets or not getattr(cog, "uses_sys_assets", False):
             await super().add_cog(cog)
         else:
             book.info(
-                f"Skipping {cog.qualified_name} because it requires system assets"
+                f"Skipping {cog.qualified_name} because it requires system assets",
             )
 
 
@@ -152,17 +155,20 @@ class VanirContext(commands.Context):
 
 
 class VanirSession(aiohttp.ClientSession):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             raise_for_status=False,
             headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:101.0) Gecko/20100101 Firefox/101.0",
             },
         )
 
     async def deepl(
-        self, path: str, headers: dict | None = None, json: dict | None = None
-    ):
+        self,
+        path: str,
+        headers: dict | None = None,
+        json: dict | None = None,
+    ) -> aiohttp.ClientResponse:
         if headers is None:
             headers = {}
         if json is None:
@@ -174,21 +180,21 @@ class VanirSession(aiohttp.ClientSession):
             {
                 "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
                 "Content-Type": "application/json ",
-            }
+            },
         )
 
         return await self.post(url + path, headers=headers, json=json)
 
 
 class BotCache:
-    def __init__(self, bot: Vanir):
+    def __init__(self, bot: Vanir) -> None:
         self.bot = bot
         self.tlinks: list[TLINK] = []
 
         # channel id: (source_msg_id, translated_msg_id)
         self.tlink_translated_messages: dict[int, list[TranslatedMessage]] = {}
 
-    async def init(self):
+    async def init(self) -> None:
         if self.bot.connect_db_on_init:
             self.tlinks = await self.bot.db_link.get_all_links()
 

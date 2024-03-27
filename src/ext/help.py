@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import discord
 from discord.ext import commands
 
@@ -34,8 +36,8 @@ class Help(VanirCog):
             converter=BotObjectConverter(),
             default=None,
         ),
-    ):
-        """Stop it, get some help"""
+    ) -> None:
+        """Stop it, get some help."""
         # Cogs -> Modules
         if isinstance(thing, commands.Cog):
             embed = await self.cog_details_embed(thing, ctx.author)
@@ -124,7 +126,7 @@ class Help(VanirCog):
         cogs = get_display_cogs(self.bot)
         for c in cogs:
             embed.add_field(
-                name=f"{getattr(c, 'emoji')} {c.qualified_name}",
+                name=f"{c.emoji} {c.qualified_name}",
                 value=f"*{c.description or 'No Description'}*",
                 inline=True,
             )
@@ -132,7 +134,9 @@ class Help(VanirCog):
         return embed
 
     async def cog_details_embed(
-        self, cog: commands.Cog, user: discord.User
+        self,
+        cog: commands.Cog,
+        user: discord.User,
     ) -> discord.Embed:
         embed = VanirContext.syn_embed(
             title=f":information_source: **{cog.qualified_name}**",
@@ -165,7 +169,9 @@ class Help(VanirCog):
         return embed
 
     async def group_details_embed(
-        self, group: VanirHybridGroup, user: discord.User
+        self,
+        group: VanirHybridGroup,
+        user: discord.User,
     ) -> discord.Embed:
         embed = VanirContext.syn_embed(
             title=f":information_source: **{group.qualified_name}**",
@@ -179,7 +185,9 @@ class Help(VanirCog):
         return embed
 
     async def command_details_embed(
-        self, command: commands.Command, user: discord.User
+        self,
+        command: commands.Command,
+        user: discord.User,
     ) -> discord.Embed:
         if command.aliases:
             alias_generator = (
@@ -220,7 +228,7 @@ class Help(VanirCog):
                     (
                         "Command" if not isinstance(cmd, commands.Group) else "Group",
                         cmd.qualified_name,
-                    )
+                    ),
                 )
 
         all_values = fuzzysearch(thing.lower(), all_values, key=lambda t: t[1].lower())[
@@ -234,9 +242,9 @@ class Help(VanirCog):
 
 
 class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
-    """Creates a select which displays all cogs in the bot"""
+    """Creates a select which displays all cogs in the bot."""
 
-    def __init__(self, ctx: VanirContext, instance: Help):
+    def __init__(self, ctx: VanirContext, instance: Help) -> None:
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -244,7 +252,7 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
                 label=c.qualified_name,
                 description=c.description or "No Description",
                 value=c.qualified_name,
-                emoji=getattr(c, "emoji"),
+                emoji=c.emoji,
             )
             for c in get_display_cogs(self.ctx.bot)
         ]
@@ -253,14 +261,15 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
                 label="Main Page",
                 description="Go back to the main page",
                 value="return-to-main",
-                emoji="\N{HOUSE BUILDING}",
+                emoji="🏠",
                 default=True,
-            )
-        ] + options
+            ),
+            *options,
+        ]
         super().__init__(options=options, placeholder="Select a Module", row=0)
 
-    async def callback(self, itx: discord.Interaction):
-        """Goes to `cog info`"""
+    async def callback(self, itx: discord.Interaction) -> None:
+        """Goes to `cog info`."""
         await self.view.collect(itx)
         selected = self.values[0]
         if selected == "return-to-main":
@@ -304,9 +313,9 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
 
 
 class CogDetailSelect(discord.ui.Select[AutoCachedView]):
-    """Creates a select which displays commands in a cog"""
+    """Creates a select which displays commands in a cog."""
 
-    def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog):
+    def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog) -> None:
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -319,8 +328,8 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
         ]
         super().__init__(options=options, placeholder="Select a Command", row=0)
 
-    async def callback(self, itx: discord.Interaction):
-        """Goes to `command info`"""
+    async def callback(self, itx: discord.Interaction) -> None:
+        """Goes to `command info`."""
         await self.view.collect(itx)
         command = self.ctx.bot.get_command(self.values[0])
 
@@ -336,9 +345,14 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
 
 
 class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
-    """Creates a select which displays commands in a group"""
+    """Creates a select which displays commands in a group."""
 
-    def __init__(self, ctx: VanirContext, instance: Help, group: VanirHybridGroup):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        instance: Help,
+        group: VanirHybridGroup,
+    ) -> None:
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -351,8 +365,8 @@ class GroupDetailSelect(discord.ui.Select[AutoCachedView]):
         ]
         super().__init__(options=options, placeholder="Select a Command", row=0)
 
-    async def callback(self, itx: discord.Interaction):
-        """Goes to `command info`"""
+    async def callback(self, itx: discord.Interaction) -> None:
+        """Goes to `command info`."""
         await self.view.collect(itx)
 
         command = self.ctx.bot.get_command(self.values[0])

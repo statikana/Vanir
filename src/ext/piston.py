@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 import io
 import time
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, vanir_command, vanir_group
-from src.types.core import Vanir, VanirContext
+from src.types.command import VanirCog, vanir_command
 from src.types.piston import PistonExecutable, PistonPackage
 from src.util.format import trim_codeblock
 from src.util.ux import generate_modal
+
+if TYPE_CHECKING:
+    from src.types.core import Vanir, VanirContext
 
 
 class Piston(VanirCog):
@@ -25,8 +30,8 @@ class Piston(VanirCog):
             description="The code to execute",
             default=None,
         ),
-    ):
-        """Execute code"""
+    ) -> None:
+        """Execute code."""
         await ctx.defer()
 
         if code is None and ctx.interaction is not None:
@@ -38,7 +43,7 @@ class Piston(VanirCog):
                         placeholder="Enter code here",
                         min_length=1,
                         max_length=2000,
-                    )
+                    ),
                 ],
             )
         code = trim_codeblock(code)
@@ -48,7 +53,7 @@ class Piston(VanirCog):
                 lambda rt: rt.language.lower() == package.lower()
                 or package.lower() in rt.aliases,
                 await self.bot.piston.runtimes(),
-            )
+            ),
         )
 
         if not valid_runtimes:
@@ -69,7 +74,7 @@ class Piston(VanirCog):
                 PistonExecutable(
                     name="main",
                     content=code,
-                )
+                ),
             ],
         )
         exec_diff = time.perf_counter() - start_time
@@ -94,14 +99,14 @@ class Piston(VanirCog):
                 discord.File(
                     io.BytesIO(out.encode()),
                     filename="output.txt",
-                )
+                ),
             )
         else:
             embeds.append(
                 ctx.embed(
                     title="stdout",
                     description=f"executed & compiled in `{exec_diff*1000:.2f}ms`\n```\n{out}```",
-                )
+                ),
             )
 
         if result.stderr:
@@ -110,16 +115,17 @@ class Piston(VanirCog):
                     title="stderr",
                     description=f"```\n{result.stderr}```",
                     color=discord.Color.red(),
-                )
+                ),
             )
 
         await ctx.reply(embeds=embeds, files=files)
+        return None
 
     @vanir_command()
-    async def py(self, ctx: VanirContext, *, code: str):
-        """Execute python code"""
+    async def py(self, ctx: VanirContext, *, code: str) -> None:
+        """Execute python code."""
         await self.exec(ctx, package="python", code=code)
 
 
-async def setup(bot: Vanir):
+async def setup(bot: Vanir) -> None:
     await bot.add_cog(Piston(bot))

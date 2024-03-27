@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 COLOR_INDEX: dict[str, tuple[str, tuple[int, int, int]]] = {
     "aliceblue": ("#f0f8ff", (240, 248, 255)),
     "antiquewhite": ("#faebd7", (250, 235, 215)),
