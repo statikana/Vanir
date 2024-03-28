@@ -125,7 +125,7 @@ async def send_file(
     await msg.edit(embed=embed, attachments=[await media.to_file()])
 
 
-async def assure_working(ctx: VanirContext, media: MediaInterface) -> None:
+async def assure_working(ctx: VanirContext, media: MediaInterface) -> discord.Message:
     embed = ctx.embed(
         title="... working",
     )
@@ -140,7 +140,7 @@ async def assure_working(ctx: VanirContext, media: MediaInterface) -> None:
         f"`{format.fmt_size(media.initial_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
-    await ctx.reply(embed=embed)
+    return await ctx.reply(embed=embed)
 
 
 def cog_hidden(cls: type[VanirCog]) -> type[VanirCog]:

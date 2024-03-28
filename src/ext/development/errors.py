@@ -33,7 +33,10 @@ class Errors(VanirCog):
         try:
             raise error
         except Exception:  # noqa: BLE001
-            tb = traceback.format_exc()
+            # get the second link in the traceback chain
+            traceback_chain = traceback.extract_tb(error.__cause__.__traceback__)
+            tb = "".join(traceback.format_list(traceback_chain[1:]))
+            tb += f"\n{error.__cause__.__class__.__name__}: {error.__cause__}"
 
         book.info(f"Handling error in command {source.command}", exc_info=error)
         if self.bot.debug and not isinstance(error, commands.CommandNotFound):

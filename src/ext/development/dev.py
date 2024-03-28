@@ -213,6 +213,13 @@ class Dev(VanirCog):
 
         await ctx.reply(embed=embed)
 
+    @dev.command(aliases=["r"])
+    async def reload(self, ctx: VanirContext) -> None:
+        """Reload the bot."""
+        for ext in self.bot.extensions:
+            await self.bot.reload_extension(ext)
+        await ctx.reply("Reloaded")
+
 
 async def setup(bot: Vanir) -> None:
     await bot.add_cog(Dev(bot))

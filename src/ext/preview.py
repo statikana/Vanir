@@ -2,7 +2,9 @@ import asyncio
 import io
 
 import discord
+import sympy
 from discord.ext import commands
+from PIL import Image
 
 from assets.color_db import COLOR_INDEX
 from src.constants import ANSI, ANSI_EMOJIS
@@ -41,6 +43,57 @@ class Preview(VanirCog):
         embed = discord.Embed(title="Example Title")
         view = EmbedView(ctx, embed)
         await ctx.reply(embed=embed, view=view)
+
+    @vanir_command(aliases=["ltx", "render", "l"])
+    async def latex(
+        self,
+        ctx: VanirContext,
+        *,
+        latex: str = commands.param(description="LaTeX code to render"),
+        use_math: bool = commands.param(
+            description="Use math mode automatically",
+            default=True,
+        ),
+    ) -> None:
+        """Render LaTeX code."""
+        border_px = 10
+
+        output = io.BytesIO()
+        latex = latex.strip("` ").replace("\\\\", "\\").replace("\\n", "\n").strip()
+        if use_math:
+            latex = "\\begin{math}\n" + latex + "\n\\end{math}"
+        try:
+            sympy.preview(
+                latex.strip(" `"),
+                viewer="BytesIO",
+                outputbuffer=output,
+                fontsize=12,
+                dvioptions=["-D", "400", "-T", "tight", "-z", "0"],
+            )
+        except ValueError as error:
+            breaker = "\\r\\n\\r"
+            index = str(error).rfind(breaker)
+            index_end = str(error).rfind("<to be read again>")
+            message = str(error)[index + len(breaker) : index_end]
+            message = message.replace("\\n", "\n").replace("\\r", "\r")
+            msg = f"Error in parsing LaTeX: {message}"
+            raise ValueError(msg) from error
+        output.seek(0)
+        latex_img = Image.open(output)
+
+        new = Image.new(
+            "RGB",
+            (latex_img.width + border_px * 2, latex_img.height + border_px * 2),
+            (255, 255, 255),
+        )
+        new.paste(latex_img, (border_px, border_px))
+
+        buf = io.BytesIO()
+        new.save(buf, format="PNG")
+        buf.seek(0)
+        file = discord.File(buf, filename="latex.png")
+
+        await ctx.reply(file=file)
 
 
 class ANSIView(VanirView):

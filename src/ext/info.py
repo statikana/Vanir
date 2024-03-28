@@ -7,6 +7,7 @@ from asyncio import iscoroutinefunction
 from typing import TYPE_CHECKING, Any, Callable
 
 import discord
+import pint
 import texttable
 from discord.ext import commands
 from pint import UnitRegistry
@@ -22,7 +23,7 @@ from src.constants import (
 )
 from src.types.command import VanirCog, vanir_command
 from src.util.format import ctext, fmt_bool, fmt_dict
-from src.util.parse import closest_color_name, find_ext, find_filename
+from src.util.parse import closest_color_name, find_ext, find_filename, fuzzysearch
 from src.util.regex import (
     CONNECTOR_REGEX,
     DISCORD_TIMESTAMP_REGEX,
@@ -38,6 +39,18 @@ if TYPE_CHECKING:
     from src.types.core import Vanir, VanirContext
 
 ureg = UnitRegistry()
+units = [
+    unit
+    for unitname in dir(ureg)
+    if isinstance((unit := getattr(ureg, unitname)), pint.Unit)
+]
+unit_choices = [
+    discord.app_commands.Choice(
+        name=f"{unit} [{unit.dimensionality.format_babel('P')}]",
+        value=str(unit),
+    )
+    for unit in units
+]
 
 
 class Info(VanirCog):
@@ -222,6 +235,19 @@ class Info(VanirCog):
             text=f"{from_qty} {from_unit} -> {dest.units}{" [Assumed Unit]" if assumed else ""}",
         )
         await ctx.reply(embed=embed)
+
+    @unit.autocomplete("from_unit")
+    @unit.autocomplete("to_unit")
+    async def unit_autocomplete(
+        self,
+        itx: discord.Interaction,
+        argument: str,
+    ) -> list[discord.app_commands.Choice]:
+        return fuzzysearch(
+            argument,
+            unit_choices,
+            key=lambda x: x.name,
+        )[:25]
 
     async def scan_methods(
         self,

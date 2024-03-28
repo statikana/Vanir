@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from dataclasses import dataclass
 from typing import Any
 
@@ -79,6 +80,7 @@ class Vanir(commands.Bot):
 
         await self.cache.init()
         await self.add_cogs()
+        await self.display_shutil()
 
     async def add_cogs(self) -> None:
         asyncio.gather(*(self.load_extension(ext) for ext in MODULE_PATHS))
@@ -92,6 +94,19 @@ class Vanir(commands.Bot):
             book.info(
                 f"Skipping {cog.qualified_name} because it requires system assets",
             )
+
+    async def display_shutil(self) -> None:
+        resources = [
+            "latex",
+            "ffmpeg",
+            "ffprobe",
+            "imagemagick",
+        ]
+        for resource in resources:
+            if shutil.which(resource) is None:
+                book.warning(f"Could not find {resource} in PATH")
+            else:
+                book.info(f"Found {resource} in PATH")
 
 
 class VanirTree(discord.app_commands.CommandTree):
