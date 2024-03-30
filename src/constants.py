@@ -1,7 +1,7 @@
 import math
 from typing import NamedTuple
 
-LANGUAGE_NAMES = {
+LANGUAGE_CODE_MAP = {
     "AR": "Arabic",
     "BG": "Bulgarian",
     "CS": "Czech",
@@ -34,7 +34,10 @@ LANGUAGE_NAMES = {
     "ZH": "Chinese",
 }
 
-LANGUAGE_CODES = {v: k for k, v in LANGUAGE_NAMES.items()}
+LANGUAGE_NAME_MAP = {v: k for k, v in LANGUAGE_CODE_MAP.items()}
+
+LANGUAGE_CODES = set(LANGUAGE_CODE_MAP.keys())
+LANGUAGE_NAMES = set(LANGUAGE_NAME_MAP.keys())
 
 VALID_VIDEO_FORMATS = ("webm", "mp4")
 

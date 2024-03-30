@@ -315,7 +315,7 @@ class CogDisplaySelect(discord.ui.Select[AutoCachedView]):
 class CogDetailSelect(discord.ui.Select[AutoCachedView]):
     """Creates a select which displays commands in a cog."""
 
-    def __init__(self, ctx: VanirContext, instance: Help, cog: commands.Cog) -> None:
+    def __init__(self, ctx: VanirContext, instance: Help, cog: VanirCog) -> None:
         self.ctx = ctx
         self.instance = instance
         options = [
@@ -326,11 +326,32 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
             )
             for c in discover_cog(cog)
         ]
+        options.insert(
+            0,
+            # back to cog display
+            discord.SelectOption(
+                label=cog.qualified_name,
+                description=f"Go back to the {cog.qualified_name} page",
+                emoji=cog.emoji,
+                value=f"return:{cog.qualified_name}",
+            ),
+        )
         super().__init__(options=options, placeholder="Select a Command", row=0)
 
     async def callback(self, itx: discord.Interaction) -> None:
         """Goes to `command info`."""
         await self.view.collect(itx)
+        if self.values[0].startswith("return:"):
+            cog_name = self.values[0].split(":")[1]
+            cog = self.ctx.bot.get_cog(cog_name)
+            embed = await self.instance.cog_details_embed(cog, itx.user)
+
+            for opt in self.options:
+                opt.default = False
+
+            await itx.response.edit_message(embed=embed, view=self.view)
+            return
+
         command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.command_details_embed(command, itx.user)

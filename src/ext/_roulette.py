@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from math import floor
 from typing import TYPE_CHECKING, Callable
 
 import discord
@@ -119,22 +120,31 @@ class BetInputModal(VanirModal):
 
         self.add_item(
             discord.ui.TextInput(
-                label=f"Wager [You Have: ${self.balance:,}]",
-                placeholder="How much would you like to wager on this bet?",
+                label=f"Wager [Bal: ${self.balance:,}]",
+                placeholder="How much would you like to wager on this bet? [Number or percentage]",
             ),
         )
 
     async def on_submit(self, itx: discord.Interaction) -> None:
+        self.balance = await self.ctx.bot.db_currency.balance(self.ctx.author.id)
         *inputs, wager = (
             item.value
             for item in self.children
             if isinstance(item, discord.ui.TextInput)
         )
+        if wager.endswith("%"):
+            perc = float(wager[:-1]) / 100
+            if not (0 <= perc <= 1):
+                msg = f"Percentage muyst be between 0 and 100, not {perc}"
+                raise ValueError(msg)
+            wager = floor(perc * self.balance)
 
-        if not wager.isdigit():
-            msg = "Wager must be a number"
+        elif wager.isdigit:
+            wager = int(wager)
+        else:
+            msg = f"Invalid wager: '{wager}'"
             raise ValueError(msg)
-        wager = int(wager)
+
         self.wager = wager
 
         function_input: tuple[int]
@@ -479,8 +489,8 @@ class RouletteBetTypes(Enum):
         payout=5,
         input_requirement=InputRequirementType.Double,
         input_names=[
-            "The first row to bet on",
-            "The second row to bet on",
+            "The first row to bet on [1-12]",
+            "The second row to bet on [1-12]",
         ],
         input_checks=[
             RouletteCheck(1, RouletteChecks.street, OutOfBoundsError),
@@ -523,7 +533,7 @@ class RouletteBetTypes(Enum):
         ],
         payout=1,
         input_requirement=InputRequirementType.HighOrLow,
-        input_names=["High or Low"],
+        input_names=["High or Low [High: 19-36, Low: 1-18]"],
         input_checks=[
             RouletteCheck(1, lambda *_: True, RouletteError),
         ],

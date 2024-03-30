@@ -63,7 +63,12 @@ class VanirView(discord.ui.View):
 
     async def interaction_check(self, itx: Interaction, /) -> bool:
         async def inner():
-            if isinstance(self.accept_itx, AcceptItx):
+            # ???
+            if self.accept_itx in (
+                AcceptItx.ANY,
+                AcceptItx.AUTHOR_ONLY,
+                AcceptItx.NOT_AUTHOR,
+            ):
                 if self.accept_itx == AcceptItx.ANY:
                     return True
                 if self.user is None:
@@ -167,7 +172,7 @@ class AutoCachedView(VanirView):
 
     async def update_to_state(self, itx: discord.Interaction) -> None:
         await itx.response.defer()
-        state = self.states[self.state_index]
+        state: MessageState = self.states[self.state_index]
 
         for c in self.children:
             self.remove_item(c)

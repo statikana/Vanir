@@ -1,5 +1,6 @@
-import asyncio
 import io
+import json
+from typing import Any
 
 import discord
 import sympy
@@ -244,6 +245,7 @@ class EmbedView(VanirView):
             self.send_other.disabled = True
 
         self.remove_field.disabled = True
+        self.edit_field.disabled = True
 
     @discord.ui.button(
         label="Edit:",
@@ -258,40 +260,70 @@ class EmbedView(VanirView):
     ) -> None:
         return
 
-    @discord.ui.button(label="Content", style=discord.ButtonStyle.blurple, row=0)
-    async def set_title(self, itx: discord.Interaction, button: discord.Button) -> None:
-        values = await generate_modal(
+    @discord.ui.button(label="Embed", style=discord.ButtonStyle.blurple, row=0)
+    async def edit_embed(
+        self, itx: discord.Interaction, button: discord.Button
+    ) -> None:
+        title, description, url, color = await generate_modal(
             itx,
-            "Set Content",
+            "Embed Content",
             fields=[
+                # title
                 discord.ui.TextInput(
-                    label="Title Text",
+                    label="Title",
+                    placeholder="Up to 256 characters",
                     required=False,
+                    max_length=256,
                     default=self.embed.title,
                 ),
                 discord.ui.TextInput(
-                    label="Description Text",
-                    style=discord.TextStyle.long,
+                    label="Description",
+                    placeholder="Up to 4096 characters",
                     required=False,
+                    style=discord.TextStyle.paragraph,
+                    max_length=4096,
                     default=self.embed.description,
+                ),
+                discord.ui.TextInput(
+                    label="URL",
+                    placeholder="Must be HTTP[S] format",
+                    required=False,
+                    default=self.embed.url,
+                ),
+                discord.ui.TextInput(
+                    label="Color",
+                    placeholder="Hex-code #FFFFFF, rbg(171, 255, 1), or a color name",
+                    required=False,
+                    default=f"rbg{self.embed.color.to_rgb()}"
+                    if self.embed.color
+                    else None,
                 ),
             ],
         )
-        self.embed.title = values[0]
-        self.embed.description = values[1]
+        self.embed.title = title
+        self.embed.description = description
+        self.embed.url = url
         try:
-            await itx.followup.edit_message(itx.message.id, embed=self.embed)
+            color = discord.Color.from_str(color)
+        except ValueError:
+            if (fixed := color.lower().replace(" ", "")) in COLOR_INDEX:
+                color = discord.Color.from_str(COLOR_INDEX[fixed][0])
+            else:
+                await itx.followup.send(
+                    embed=discord.Embed(
+                        color=discord.Color.red(),
+                        description="Invalid color. Please use a valid hex, rbg, or .",
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+        self.embed.color = color
+        try:
+            await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
         except discord.HTTPException:
-            res = await itx.followup.send(
-                embed=discord.Embed(
-                    color=discord.Color.red(),
-                    description="You need some kind of content. Try adding something else.",
-                ),
-                wait=True,
-            )
-            if res is not None:
-                await asyncio.sleep(5)
-                await res.delete()
+            msg = "An embed needs content (title, description, or fields)."
+            raise ValueError(msg)
 
     @discord.ui.button(
         label="Footer",
@@ -299,71 +331,59 @@ class EmbedView(VanirView):
         row=0,
     )
     async def set_footer(
-        self,
-        itx: discord.Interaction,
-        button: discord.Button,
+        self, itx: discord.Interaction, button: discord.Button
     ) -> None:
-        values = await generate_modal(
+        text, icon_url = await generate_modal(
             itx,
-            title="Set Footer",
+            "Set Footer",
             fields=[
                 discord.ui.TextInput(
-                    label="Enter Footer Text",
+                    label="Footer Text",
+                    placeholder="Up to 2048 characters",
+                    required=False,
+                    max_length=2048,
                     default=self.embed.footer.text,
-                    required=False,
                 ),
                 discord.ui.TextInput(
-                    label="Enter Footer Icon URL",
+                    label="Icon URL",
+                    placeholder="Must be HTTP[S] format",
+                    required=False,
                     default=self.embed.footer.icon_url,
-                    required=False,
                 ),
             ],
         )
-        if not any(values):
-            self.embed.remove_footer()
+        if text is None and icon_url is None:
+            await self.embed.remove_footer()
         else:
-            self.embed.set_footer(text=values[0], icon_url=values[1])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
+            self.embed.set_footer(text=text, icon_url=icon_url)
+        await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
 
     @discord.ui.button(
-        label="Author",
+        label="Images",
         style=discord.ButtonStyle.blurple,
         row=0,
     )
-    async def set_author(
-        self,
-        itx: discord.Interaction,
-        button: discord.Button,
-    ) -> None:
-        values = await generate_modal(
+    async def set_image(self, itx: discord.Interaction, button: discord.Button) -> None:
+        image, thumb = await generate_modal(
             itx,
-            "Set Author",
-            fields=[
-                discord.ui.TextInput(label="Enter Author Name"),
-                discord.ui.TextInput(label="Enter Author Icon URL", required=False),
-                discord.ui.TextInput(label="Enter Author URL", required=False),
-            ],
-        )
-        self.embed.set_author(name=values[0], icon_url=values[1], url=values[2])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
-        label="URL",
-        style=discord.ButtonStyle.blurple,
-        row=0,
-    )
-    async def set_url(self, itx: discord.Interaction, button: discord.Button) -> None:
-        values = await generate_modal(
-            itx,
-            "Set URL",
+            "Set Image / Thumbnail",
             fields=[
                 discord.ui.TextInput(
-                    label="Enter Embed URL",
-                    style=discord.TextStyle.long,
+                    label="Enter Image URL",
+                    placeholder="Must be HTTP[S] format",
+                    required=False,
+                    default=self.embed.image.url if self.embed.image else None,
+                ),
+                discord.ui.TextInput(
+                    label="Enter Thumbnail URL",
+                    placeholder="Must be HTTP[S] format",
+                    required=False,
+                    default=self.embed.thumbnail.url if self.embed.thumbnail else None,
                 ),
             ],
         )
-        self.embed.url = values[0]
+        self.embed.set_image(url=image)
+        self.embed.set_thumbnail(url=thumb)
         await itx.followup.edit_message(itx.message.id, embed=self.embed)
 
     @discord.ui.button(
@@ -385,22 +405,57 @@ class EmbedView(VanirView):
         row=1,
     )
     async def add_field(self, itx: discord.Interaction, button: discord.Button) -> None:
-        values = await generate_modal(
+        name, value, inline, index = await generate_modal(
             itx,
             "Add Field",
             fields=[
-                discord.ui.TextInput(label="Field Name"),
-                discord.ui.TextInput(label="Field Value", required=False),
-                discord.ui.TextInput(label="Inline?", required=False, default="No"),
+                discord.ui.TextInput(
+                    label="Field Name",
+                    placeholder="Up to 256 characters",
+                    required=False,
+                    max_length=256,
+                ),
+                discord.ui.TextInput(
+                    label="Field Value",
+                    placeholder="Up to 1024 characters",
+                    required=False,
+                    style=discord.TextStyle.paragraph,
+                    max_length=1024,
+                ),
+                discord.ui.TextInput(
+                    label="Inline?",
+                    required=False,
+                    default="No",
+                ),
+                discord.ui.TextInput(
+                    label="Index",
+                    required=False,
+                    placeholder="Where to insert the field, between 1 and 25. Default is 25 (at the end)",
+                ),
             ],
         )
-        self.embed.add_field(
-            name=values[0],
-            value=values[1],
-            inline=values[2].lower()
+        if not index:
+            index = "25"
+        if not index.isdigit():
+            msg = "Please enter a valid index (1-25)"
+            raise ValueError(msg)
+        index = int(index) - 1
+        if index < 0 or index > 24:
+            msg = "Please enter a valid index (1-25)"
+            raise ValueError(msg)
+
+        if name is None and value is None:
+            msg = "Include a name or value to add a field."
+            raise ValueError(msg)
+        self.embed.insert_field_at(
+            index,
+            name=name,
+            value=value,
+            inline=inline.lower()
             in ("yes", "y", "true", "ok", "ye", "1", "on", "t", "yea", "sure", "yeah"),
         )
         self.remove_field.disabled = False
+        self.edit_field.disabled = False
         self.add_field.disabled = len(self.embed.fields) >= 25
         await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
 
@@ -414,105 +469,27 @@ class EmbedView(VanirView):
         itx: discord.Interaction,
         button: discord.Button,
     ) -> None:
-        values = await generate_modal(
-            itx,
-            "Remove Field",
-            fields=[
-                discord.ui.TextInput(
-                    label="Field Name to Remove",
-                    placeholder=f"Choose from: {', '.join(f.name for f in self.embed.fields)}",
-                ),
-            ],
-        )
-        before = self.embed.fields.copy()
-        self.embed.clear_fields()
-        for field in before:
-            if field.name != values[0]:
-                self.embed.add_field(
-                    name=field.name,
-                    value=field.value,
-                    inline=field.inline,
-                )
+        view = VanirView(self.ctx.bot, user=self.ctx.author)
+        select = RemoveFieldDetachment(itx.message, self, self.embed)
+        view.add_item(select)
 
-        self.remove_field.disabled = len(self.embed.fields) == 0
-        self.add_field.disabled = False
-        await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
+        await itx.response.send_message(view=view, ephemeral=True)
 
     @discord.ui.button(
-        label="Style:",
-        style=discord.ButtonStyle.grey,
-        disabled=True,
-        row=2,
+        emoji="\N{PENCIL}",
+        style=discord.ButtonStyle.blurple,
+        row=1,
     )
-    async def _header_style(
+    async def edit_field(
         self,
         itx: discord.Interaction,
         button: discord.Button,
     ) -> None:
-        return
+        view = VanirView(self.ctx.bot, user=self.ctx.author)
+        select = EditFieldDetachment(itx.message, self.embed)
+        view.add_item(select)
 
-    @discord.ui.button(
-        label="Color",
-        style=discord.ButtonStyle.blurple,
-        row=2,
-    )
-    async def set_color(self, itx: discord.Interaction, button: discord.Button) -> None:
-        values = await generate_modal(
-            itx,
-            "Set Embed Color",
-            fields=[
-                discord.ui.TextInput(label="Enter Color as `#HEXDEC` or `rgb(r, g, b)"),
-            ],
-        )
-        try:
-            self.embed.color = discord.Color.from_str(values[0].lower().strip())
-        except ValueError:
-            try:
-                self.embed.color = discord.Color.from_str(
-                    COLOR_INDEX[values[0].lower().strip()][0],
-                )
-            except KeyError:
-                await itx.followup.send(
-                    embed=discord.Embed(
-                        color=discord.Color.red(),
-                        description="Invalid color. Please use a valid hex or rgb color.",
-                    ),
-                    ephemeral=True,
-                )
-                return
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
-        label="Image",
-        style=discord.ButtonStyle.blurple,
-        row=2,
-    )
-    async def set_image(self, itx: discord.Interaction, button: discord.Button) -> None:
-        values = await generate_modal(
-            itx,
-            "Set Image",
-            fields=[discord.ui.TextInput(label="Enter Image URL")],
-        )
-        self.embed.set_image(url=values[0])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
-
-    @discord.ui.button(
-        label="Thumbnail",
-        style=discord.ButtonStyle.blurple,
-        row=2,
-    )
-    async def set_thumbnail(
-        self,
-        itx: discord.Interaction,
-        button: discord.Button,
-    ) -> None:
-        values = await generate_modal(
-            itx,
-            "Set Thumbnail",
-            fields=[discord.ui.TextInput(label="Enter Thumbnail URL")],
-        )
-        self.embed.set_thumbnail(url=values[0])
-        await itx.followup.edit_message(itx.message.id, embed=self.embed)
+        await itx.response.send_message(view=view, ephemeral=True)
 
     @discord.ui.button(
         label="JSON:",
@@ -556,7 +533,9 @@ class EmbedView(VanirView):
             ],
         )
         try:
-            self.embed = discord.Embed.from_dict(values[0])
+            self.embed = discord.Embed.from_dict(
+                json.loads(values[0].replace("'", '"'))
+            )
         except Exception as err:  # noqa: BLE001
             await itx.followup.send(
                 embed=discord.Embed(
@@ -630,6 +609,122 @@ class EmbedView(VanirView):
             return
         msg = await channel.send(embed=self.embed)
         await itx.followup.send(msg.jump_url, ephemeral=True)
+
+
+class RemoveFieldDetachment(discord.ui.Select):
+    def __init__(
+        self,
+        source_message: discord.Message,
+        source_view: VanirView,
+        embed: discord.Embed,
+    ) -> None:
+        self.source_message = source_message
+        self.source_view = source_view
+        self.embed = embed
+        super().__init__(
+            placeholder="Choose a field to remove",
+            options=[
+                discord.SelectOption(
+                    label=f"{f.name[:60] + "..." if len(f.name) > 60 else f.name} (index {index + 1})",
+                    description=f"{f.value[:96] + "..." if len(f.value) > 96 else f.value}",
+                    value=index,
+                )
+                for index, f in enumerate(embed.fields)
+            ],
+            max_values=len(embed.fields),
+        )
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        indicies = map(int, self.values)
+        for index in sorted(indicies, reverse=True):
+            self.embed.remove_field(index)
+        await itx.response.defer()
+        await itx.delete_original_response()
+        await self.source_message.edit(embed=self.embed, view=self.source_view)
+
+
+class EditFieldDetachment(discord.ui.Select):
+    # choose one field to edit
+    # prompt modal EditFieldModal
+
+    def __init__(self, source_message: discord.Message, embed: discord.Embed) -> None:
+        self.source_message = source_message
+        self.embed = embed
+        super().__init__(
+            placeholder="Choose a field to edit",
+            options=[
+                discord.SelectOption(
+                    label=f"{f.name[:60] + "..." if len(f.name) > 60 else f.name} (index {index + 1})",
+                    description=f"{f.value[:96] + "..." if len(f.value) > 96 else f.value}",
+                    value=index,
+                )
+                for index, f in enumerate(embed.fields)
+            ],
+            max_values=1,
+        )
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        index = int(self.values[0])
+        field = self.embed.fields[index]
+        modal = EditFieldModal(self.source_message, self.embed, index, field)
+        await itx.response.send_modal(modal)
+
+
+class EditFieldModal(VanirModal, title="Edit Field"):
+    def __init__(
+        self,
+        source_message: discord.Message,
+        embed: discord.Embed,
+        index: int,
+        field: Any,
+    ) -> None:
+        self.source_message = source_message
+        self.embed = embed
+        self.index = index
+        self.field = field
+        self.name_input.default = field.name
+        self.value_input.default = field.value
+        self.inline_input.default = "Yes" if field.inline else "No"
+        super().__init__(source_message.channel)
+
+    name_input = discord.ui.TextInput(
+        label="Field Name",
+        placeholder="Up to 256 characters",
+        required=False,
+        max_length=256,
+    )
+
+    value_input = discord.ui.TextInput(
+        label="Field Value",
+        placeholder="Up to 1024 characters",
+        required=False,
+        style=discord.TextStyle.paragraph,
+        max_length=1024,
+    )
+
+    inline_input = discord.ui.TextInput(
+        label="Inline?",
+        required=False,
+        default="No",
+    )
+
+    async def on_submit(self, itx: discord.Interaction) -> None:
+        name = self.name_input.value
+        value = self.value_input.value
+        inline = self.inline_input.value
+        if not name and not value:
+            msg = "Include a name or value to edit the field."
+            raise ValueError(msg)
+        self.embed.set_field_at(
+            self.index,
+            name=name,
+            value=value,
+            inline=inline.lower()
+            in ("yes", "y", "true", "ok", "ye", "1", "on", "t", "yea", "sure", "yeah"),
+        )
+        await itx.response.defer()
+        await itx.delete_original_response()
+        await self.source_message.edit(embed=self.embed)
 
 
 async def setup(bot: Vanir) -> None:

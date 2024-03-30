@@ -178,7 +178,8 @@ async def langcode_autocomplete(
     current: str,
 ) -> list[Choice]:
     options = [
-        Choice(name=f"{v} [{k}]", value=k) for k, v in constants.LANGUAGE_NAMES.items()
+        Choice(name=f"{v} [{k}]", value=k)
+        for k, v in constants.LANGUAGE_CODE_INDEX.items()
     ][:25]
     return sorted(
         filter(lambda c: current.lower() in c.name.lower(), options),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import time
 from typing import TYPE_CHECKING, NoReturn
 
@@ -213,12 +214,39 @@ class Dev(VanirCog):
 
         await ctx.reply(embed=embed)
 
-    @dev.command(aliases=["r"])
-    async def reload(self, ctx: VanirContext) -> None:
+    @commands.command(aliases=["r"])
+    @commands.is_owner()
+    async def reload(self, ctx: VanirContext, *, cog_only: bool = True) -> None:
         """Reload the bot."""
-        for ext in self.bot.extensions:
+        log = []
+        # first reload all utils and type containers
+        if not cog_only:
+            import src.util
+
+            for mod in src.util.MODULE_PATHS:
+                importlib.reload(importlib.import_module(mod))
+                log.append(f"... `{mod}`")
+            log.append("__Reloaded utils__\n")
+
+            import src.types
+
+            for mod in src.types.MODULE_PATHS:
+                importlib.reload(importlib.import_module(mod))
+                log.append(f"... `{mod}`")
+            log.append("__Reloaded types__\n")
+
+        # then reload all cogs
+        exts = list(
+            self.bot.extensions.keys()
+        )  # keysview will change during iteration, -> RuntimeError
+        for ext in exts:
             await self.bot.reload_extension(ext)
-        await ctx.reply("Reloaded")
+            log.append(f"... `{ext}`")
+        log.append("__Reloaded cogs__\n")
+
+        embed = ctx.embed("Reloaded")
+        embed.description = "\n".join(log)
+        await ctx.send(embed=embed)
 
 
 async def setup(bot: Vanir) -> None:

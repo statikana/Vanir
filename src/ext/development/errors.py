@@ -77,6 +77,12 @@ class Errors(VanirCog):
         if isinstance(error, commands.CommandInvokeError):
             error = error.original
 
+        if isinstance(
+            error,
+            (commands.NotOwner,),
+        ):
+            return None
+
         user = source.author if isinstance(source, VanirContext) else source.user
         view = ErrorView(source, self.bot, source.command)
 

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ext import commands
 
-from src.types.command import VanirCog, vanir_command
+from src.types.command import CloseButton, VanirCog, VanirView, vanir_command
 from src.types.piston import PistonExecutable, PistonPackage, PistonRuntime
 from src.util.format import trim_codeblock
 from src.util.parse import fuzzysearch
@@ -65,6 +65,8 @@ class Piston(VanirCog):
                     raise commands.CommandError(msg) from err
         code = trim_codeblock(code)
 
+        package = package.strip("`")
+        code = code.strip("`")
         valid_runtimes = list(
             filter(
                 lambda rt: f"{rt.language} {rt.version}".lower().startswith(
@@ -136,8 +138,8 @@ class Piston(VanirCog):
                     color=discord.Color.red(),
                 ),
             )
-
-        await ctx.reply(embeds=embeds, files=files)
+        view = AfterCodeExecView(ctx, runtime, code)
+        await ctx.reply(embeds=embeds, files=files, view=view)
         return None
 
     @exec.autocomplete("package")
@@ -169,18 +171,7 @@ class Piston(VanirCog):
     def fmtpack(self, rt: PistonRuntime) -> str:
         return f"{rt.language} {rt.version}"
 
-    @vanir_command()
-    async def actest(
-        self,
-        ctx: VanirContext,
-        argument: str = commands.param(
-            description="The argument to test",
-            default=None,
-        ),
-    ) -> None:
-        return await self._autocomplete_package(ctx.bot, argument)
-
-    @vanir_command()
+    @vanir_command(aliases=["python"])
     async def py(
         self,
         ctx: VanirContext,
@@ -192,6 +183,61 @@ class Piston(VanirCog):
     ) -> None:
         """Execute python code."""
         await self.exec(ctx, package="python", code=code)
+
+    @vanir_command()
+    async def math(
+        self,
+        ctx: VanirContext,
+        *,
+        code: str | None = commands.param(
+            description="The code to execute",
+            default=None,
+        ),
+    ) -> None:
+        """Math via python."""
+        lines = trim_codeblock(code).splitlines()
+        last = lines[-1]
+        if last.count("(") == last.count(")") and "print" not in last:
+            last = f"print({last})"
+        code = "\n".join(lines[:-1] + [last])
+        code = f"""
+from math import *
+{code}
+"""
+        await self.exec(ctx, package="python", code=code)
+
+
+class AfterCodeExecView(VanirView):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        runtime: PistonRuntime,
+        code: str,
+    ) -> None:
+        super().__init__(bot=ctx.bot, user=ctx.author)
+        self.ctx = ctx
+        self.runtime = runtime
+        self.code = code
+
+        self.add_item(CloseButton())
+
+    @discord.ui.button(
+        emoji="\N{CLOCKWISE RIGHTWARDS AND LEFTWARDS OPEN CIRCLE ARROWS}",
+        style=discord.ButtonStyle.primary,
+    )
+    async def run_again(
+        self,
+        itx: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
+        message = discord.utils.get(self.bot.cached_messages, id=self.ctx.message.id)
+        if message is None:
+            message = await self.ctx.channel.fetch_message(self.ctx.message.id)
+        if message is None:
+            return
+        await itx.message.delete()
+        self.ctx.message.content = message.content
+        await self.ctx.bot.process_commands(self.ctx.message)  # probably works
 
 
 async def setup(bot: Vanir) -> None:
