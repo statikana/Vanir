@@ -16,7 +16,7 @@ from src.env import DEEPL_API_KEY
 from src.ext import MODULE_PATHS
 from src.logging import book
 from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
-from src.types.piston import PistonORM, PistonPackage
+from src.types.piston import PistonORM, PistonRuntime
 
 
 class Vanir(commands.Bot):
@@ -42,7 +42,7 @@ class Vanir(commands.Bot):
         self.debug: bool = True
 
         self.piston: PistonORM | None = None
-        self.installed_piston_packages: list[PistonPackage] | None = None
+        self.installed_piston_packages: list[PistonRuntime] = []
 
     async def get_context(
         self,
@@ -104,9 +104,9 @@ class Vanir(commands.Bot):
         ]
         for resource in resources:
             if shutil.which(resource) is None:
-                book.warning(f"Could not find {resource} in PATH")
+                book.warning(f"SHUTIL: Could not find {resource} in PATH")
             else:
-                book.info(f"Found {resource} in PATH")
+                book.info(f"SHUTIL: Found {resource} in PATH")
 
 
 class VanirTree(discord.app_commands.CommandTree):

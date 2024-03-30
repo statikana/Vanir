@@ -33,17 +33,19 @@ class Errors(VanirCog):
         try:
             raise error
         except Exception:  # noqa: BLE001
-            # get the second link in the traceback chain
-            traceback_chain = traceback.extract_tb(error.__cause__.__traceback__)
-            tb = "".join(traceback.format_list(traceback_chain[1:]))
-            tb += f"\n{error.__cause__.__class__.__name__}: {error.__cause__}"
+            if error.__cause__ is None:
+                tb = "".join(
+                    traceback.format_exception(type(error), error, error.__traceback__),
+                )
+            else:
+                traceback_chain = traceback.extract_tb(error.__cause__.__traceback__)
+                tb = "".join(traceback.format_list(traceback_chain))
+                tb += f"\n{error.__cause__.__class__.__name__}: {error.__cause__}"
 
-        book.info(f"Handling error in command {source.command}", exc_info=error)
         if self.bot.debug and not isinstance(error, commands.CommandNotFound):
             name = source.command.qualified_name if source.command else "<NONE>"
             book.error(
-                f"Error in {name} command: {error}",
-                exc_info=tb,
+                f"Error in {name} command\n{tb}",
             )
             if isinstance(source, VanirContext):
                 await source.reply(
@@ -54,13 +56,22 @@ class Errors(VanirCog):
                     ),
                 )
             else:
-                await source.followup.send(
-                    embed=discord.Embed(
-                        title="An error occurred while processing this command",
-                        description=f"```{tb}```",
-                        color=discord.Color.red(),
-                    ),
-                )
+                try:
+                    await source.response.send_message(
+                        embed=discord.Embed(
+                            title="An error occurred while processing this command",
+                            description=f"```{tb}```",
+                            color=discord.Color.red(),
+                        ),
+                    )
+                except discord.InteractionResponded:
+                    await source.followup.send(
+                        embed=discord.Embed(
+                            title="An error occurred while processing this command",
+                            description=f"```{tb}```",
+                            color=discord.Color.red(),
+                        ),
+                    )
             return None
 
         if isinstance(error, commands.CommandInvokeError):
@@ -91,16 +102,24 @@ class Errors(VanirCog):
 
         embed = VanirContext.syn_embed(
             title=title,
-            description=str(error),
+            description=str(error)
+            or error.__class__.__doc__
+            or "No error description - report with `\\bug`",
             color=color,
             user=user,
         )
         if isinstance(source, discord.Interaction):
-            await source.followup.send(embed=embed, view=view, ephemeral=True)
-            return None
-        else:
+            with contextlib.suppress(ValueError):
+                source = await VanirContext.from_interaction(source)
+
+        if isinstance(source, VanirContext):
             await source.reply(embed=embed, view=view, ephemeral=True)
             return None
+        else:
+            try:
+                await source.response.send_message(embed=embed, view=view)
+            except discord.InteractionResponded:
+                await source.followup.send(embed=embed, view=view)
 
     async def on_command_not_found(
         self,
@@ -137,7 +156,6 @@ class Errors(VanirCog):
             view = CommandNotFoundHelper(source, command)
         else:
             view = None
-
         await source.reply(embed=embed, view=view, ephemeral=True)
         return None
 
@@ -209,9 +227,10 @@ class GetHelpButton(discord.ui.Button[ErrorView]):
             style=discord.ButtonStyle.primary,
             emoji="\N{WHITE QUESTION MARK ORNAMENT}",
         )
-        self.instance: Help = self.view.bot.get_cog("Help")
+        self.instance: Help
 
     async def callback(self, itx: discord.Interaction) -> None:
+        self.instance: Help = self.view.bot.get_cog("Help")
         embed = await self.instance.command_details_embed(self.command, self.user)
         await itx.response.edit_message(embed=embed, view=None)
 

@@ -219,8 +219,8 @@ class AutoCachedView(VanirView):
 
 
 class VanirModal(discord.ui.Modal):
-    def __init__(self, bot: Vanir) -> None:
-        super().__init__()
+    def __init__(self, bot: Vanir, *, title: str = discord.utils.MISSING) -> None:
+        super().__init__(title=title)
         self.bot = bot
 
     async def on_error(self, itx: discord.Interaction, error: Exception) -> None:

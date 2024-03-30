@@ -54,17 +54,24 @@ class Preview(VanirCog):
             description="Use math mode automatically",
             default=True,
         ),
+        preambled: bool = commands.param(
+            description="Automatically apply a simple preamble",
+            default=True,
+        ),
     ) -> None:
         """Render LaTeX code."""
         border_px = 10
 
         output = io.BytesIO()
         latex = latex.strip("` ").replace("\\\\", "\\").replace("\\n", "\n").strip()
-        if use_math:
-            latex = "\\begin{math}\n" + latex + "\n\\end{math}"
+        preamble = "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{amsfonts}\n\\usepackage{amssymb}\n\\pagestyle{empty}\n\\begin{document}"
+        outline = "\\[ [[LATEX]] \\]" if use_math else "[[LATEX]]"
+        frame = outline + "\n\\end{document}"
+        latex = frame.replace("[[LATEX]]", latex)
         try:
             sympy.preview(
-                latex.strip(" `"),
+                latex.strip(),
+                preamble=preamble if preambled else None,
                 viewer="BytesIO",
                 outputbuffer=output,
                 fontsize=12,

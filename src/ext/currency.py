@@ -44,7 +44,7 @@ class Currency(VanirCog):
         """Get yours, or someone else's balance'."""
         balance = await self.bot.db_currency.balance(user.id)
 
-        embed = VanirContext.syn_embed(title=f"{balance:,}\N{COIN}", user=user)
+        embed = VanirContext.syn_embed(title=f"$**{balance:,}**", user=user)
         await ctx.reply(
             embed=embed,
             view=WalletOptionsView(bot=self.bot, user=ctx.author),
@@ -65,7 +65,7 @@ class Currency(VanirCog):
             raise ValueError(msg)
         from_bal = await self.bot.db_currency.balance(ctx.author.id)
         if from_bal < amount:
-            msg = f"You only have {from_bal:,}\N{COIN}, you cannot send {amount:,}\N{COIN}"
+            msg = f"You only have $**{from_bal:,}**, you cannot send $**{amount:,}**"
             raise ValueError(
                 msg,
             )
@@ -93,7 +93,7 @@ class Currency(VanirCog):
         """Request coins from another user."""
         from_bal = await self.bot.db_currency.balance(user.id)
         if from_bal < amount:
-            msg = f"{user.name} only has {from_bal:,}\N{COIN}, you cannot request {amount:,}\N{COIN}"
+            msg = f"{user.name} only has $**{from_bal:,}**, you cannot request $**{amount:,}"
             raise ValueError(
                 msg,
             )
@@ -119,13 +119,13 @@ class Currency(VanirCog):
         to_bal: int,
     ) -> tuple[discord.Embed, GiveCoinsView]:
         data = {
-            "Amount": f"`{amount}`\N{COIN}",
-            f"{from_user.name} [ID {from_user.id}]": f"{from_bal:,}\N{COIN} -> {from_bal-amount:,}\N{COIN}",  # from
-            f"{to_user.name} [ID {to_user.id}]": f"{to_bal:,}\N{COIN} -> {to_bal + amount:,}\N{COIN}",  # to
+            "Amount": f"$**{amount}**",
+            f"{from_user.name} [ID {from_user.id}]": f"$**{from_bal:,}** -> $**{from_bal-amount:,}**",  # from
+            f"{to_user.name} [ID {to_user.id}]": f"$**{to_bal:,}** -> $**{to_bal + amount:,}**",  # to
         }
 
         embed = VanirContext.syn_embed(
-            title=f"Transfer {amount:,}\N{COIN} to {to_user.name}?",
+            title=f"Transfer $**{amount:,}** to {to_user.name}?",
             description=f"This is **{(amount/from_bal * 100):.2f}**% of your total balance.\nTransfer info:\n{fmt_dict(data, linesplit=True)}",
             user=from_user,
         )
@@ -180,12 +180,12 @@ class GiveCoinsView(VanirView):
         )
 
         data = {
-            "Amount": f"`{self.amount}`\N{COIN}",
-            f"{self.from_user.name} [ID {self.from_user.id}]": f"{self.from_bal:,}\N{COIN} -> {new_from:,}\N{COIN}",
-            f"{self.to_user.name} [ID {self.to_user.id}": f"{self.to_bal:,}\N{COIN} -> {new_to:,}\N{COIN}",
+            "Amount": f"$**{self.amount}**",
+            f"{self.from_user.name} [ID {self.from_user.id}]": f"$**{self.from_bal:,}** -> $**{new_from:,}**",
+            f"{self.to_user.name} [ID {self.to_user.id}": f"$**{self.to_bal:,}** -> $**{new_to:,}**",
         }
         embed = VanirContext.syn_embed(
-            title=f"Transferred {self.amount:,}\N{COIN} to {self.to_user.name}",
+            title=f"Transferred $**{self.amount:,}** to {self.to_user.name}",
             description=fmt_dict(data, linesplit=True),
             user=itx.user,
         )
@@ -323,7 +323,7 @@ class AmountPromptModal(VanirModal, title="Transfer"):
 
         if from_bal < amount:
             return await itx.response.send_message(
-                f"You only have {from_bal:,}\N{COIN}, you cannot send {amount:,}\N{COIN}",
+                f"You only have $**{from_bal:,}**, you cannot send $**{amount:,}**",
                 ephemeral=True,
             )
 

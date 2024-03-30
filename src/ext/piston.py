@@ -9,8 +9,9 @@ import discord
 from discord.ext import commands
 
 from src.types.command import VanirCog, vanir_command
-from src.types.piston import PistonExecutable, PistonPackage
+from src.types.piston import PistonExecutable, PistonPackage, PistonRuntime
 from src.util.format import trim_codeblock
+from src.util.parse import fuzzysearch
 from src.util.ux import generate_modal
 
 if TYPE_CHECKING:
@@ -33,8 +34,6 @@ class Piston(VanirCog):
         ),
     ) -> None:
         """Execute code."""
-        await ctx.defer()
-
         if code is None:
             if ctx.interaction is not None:
                 code, *_ = await generate_modal(
@@ -42,6 +41,7 @@ class Piston(VanirCog):
                     "Enter code to execute",
                     fields=[
                         discord.ui.TextInput(
+                            label=f"Enter {package} Code",
                             placeholder="Enter code here",
                             min_length=1,
                             max_length=2000,
@@ -67,7 +67,9 @@ class Piston(VanirCog):
 
         valid_runtimes = list(
             filter(
-                lambda rt: rt.language.lower() == package.lower()
+                lambda rt: f"{rt.language} {rt.version}".lower().startswith(
+                    package.lower(),
+                )
                 or package.lower() in rt.aliases,
                 await self.bot.piston.runtimes(),
             ),
@@ -78,7 +80,7 @@ class Piston(VanirCog):
 
         runtime = max(
             valid_runtimes,
-            key=lambda rt: rt.version.split("."),
+            key=lambda rt: tuple(map(int, rt.version.split("."))),
         )
 
         start_time = time.perf_counter()
@@ -137,6 +139,46 @@ class Piston(VanirCog):
 
         await ctx.reply(embeds=embeds, files=files)
         return None
+
+    @exec.autocomplete("package")
+    async def _autocomplete_package(
+        self,
+        itx: discord.Interaction,
+        argument: str,
+    ) -> list[str]:
+        return (
+            fuzzysearch(
+                argument,
+                self.bot.installed_piston_packages,
+                output=lambda rt: discord.app_commands.Choice(
+                    name=f"{rt.language} [{rt.version}]",
+                    value=f"{rt.language} {rt.version}",
+                ),
+                threshold=70,
+            )[:25]
+            if argument
+            else [
+                discord.app_commands.Choice(
+                    name=f"{rt.language} [{rt.version}]",
+                    value=f"{rt.language} {rt.version}",
+                )
+                for rt in self.bot.installed_piston_packages
+            ][:25]
+        )
+
+    def fmtpack(self, rt: PistonRuntime) -> str:
+        return f"{rt.language} {rt.version}"
+
+    @vanir_command()
+    async def actest(
+        self,
+        ctx: VanirContext,
+        argument: str = commands.param(
+            description="The argument to test",
+            default=None,
+        ),
+    ) -> None:
+        return await self._autocomplete_package(ctx.bot, argument)
 
     @vanir_command()
     async def py(

@@ -167,6 +167,13 @@ class Currency(DBBase):
             amount,
         )
 
+    async def add(self, user_id: int, amount: int) -> int:
+        return await self.pool.fetchval(
+            "UPDATE currency_data SET balance = currency_data.balance + $2 WHERE user_id = $1 RETURNING balance",
+            user_id,
+            amount,
+        )
+
 
 class Todo(DBBase):
     async def create(self, user_id: int, title: str) -> TASK:

@@ -9,5 +9,5 @@ MODULE_PATHS = [
         onerror=lambda oserror: book.fatal(oserror),
     )
     for f in filenames
-    if f.endswith(".py") and not f.startswith("__")
+    if f.endswith(".py") and not f.startswith("_")
 ]

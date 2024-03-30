@@ -14,6 +14,12 @@ class PistonRuntime:
     aliases: list[str]
     runtime: str | None = None
 
+    def __str__(self) -> str:
+        return f"RTIME[{self.language}, {self.version}]"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 @dataclass
 class PistonExecutable:
@@ -43,6 +49,12 @@ class PistonPackage:
     language: str
     language_version: str
     installed: bool = False
+
+    def __str__(self) -> str:
+        return f"PKG[{self.language} {self.language_version}]"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class PistonORM:
