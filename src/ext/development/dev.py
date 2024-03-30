@@ -237,7 +237,7 @@ class Dev(VanirCog):
 
         # then reload all cogs
         exts = list(
-            self.bot.extensions.keys()
+            self.bot.extensions.keys(),
         )  # keysview will change during iteration, -> RuntimeError
         for ext in exts:
             await self.bot.reload_extension(ext)

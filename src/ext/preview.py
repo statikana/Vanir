@@ -262,7 +262,9 @@ class EmbedView(VanirView):
 
     @discord.ui.button(label="Embed", style=discord.ButtonStyle.blurple, row=0)
     async def edit_embed(
-        self, itx: discord.Interaction, button: discord.Button
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
     ) -> None:
         title, description, url, color = await generate_modal(
             itx,
@@ -321,9 +323,9 @@ class EmbedView(VanirView):
         self.embed.color = color
         try:
             await itx.followup.edit_message(itx.message.id, embed=self.embed, view=self)
-        except discord.HTTPException:
+        except discord.HTTPException as err:
             msg = "An embed needs content (title, description, or fields)."
-            raise ValueError(msg)
+            raise ValueError(msg) from err
 
     @discord.ui.button(
         label="Footer",
@@ -331,7 +333,9 @@ class EmbedView(VanirView):
         row=0,
     )
     async def set_footer(
-        self, itx: discord.Interaction, button: discord.Button
+        self,
+        itx: discord.Interaction,
+        button: discord.Button,
     ) -> None:
         text, icon_url = await generate_modal(
             itx,
@@ -534,7 +538,7 @@ class EmbedView(VanirView):
         )
         try:
             self.embed = discord.Embed.from_dict(
-                json.loads(values[0].replace("'", '"'))
+                json.loads(values[0].replace("'", '"')),
             )
         except Exception as err:  # noqa: BLE001
             await itx.followup.send(

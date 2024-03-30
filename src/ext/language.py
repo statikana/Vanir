@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -9,8 +13,10 @@ from src.constants import (
     LANGUAGE_NAMES,
 )
 from src.types.command import VanirCog, VanirView, vanir_command
-from src.types.core import Vanir, VanirContext
 from src.util.command import langcode_autocomplete
+
+if TYPE_CHECKING:
+    from src.types.core import Vanir, VanirContext
 
 
 class Language(VanirCog):
@@ -101,7 +107,7 @@ class Language(VanirCog):
         ctx: VanirContext,
         target_lang: str | None = commands.param(
             description="The language to translate to",
-            default=None
+            default=None,
         ),
         *,
         text: str = commands.param(
@@ -129,10 +135,6 @@ class Language(VanirCog):
         else:
             text = f"{target_lang} {text if text else ''}"
             target_lang = "EN"
-        
-        print("from", source_lang)
-        print("to", target_lang)
-        print("text", text)    
 
         source_lang = source_lang.upper()
         target_lang = target_lang.upper()
@@ -164,10 +166,8 @@ class Language(VanirCog):
         }
         if source_lang != "AUTO":
             json["source_lang"] = source_lang
-        print(json)
         response = await self.bot.session.deepl("/translate", json=json)
         response.raise_for_status()
-        print(await response.json())
         tsl = (await response.json())["translations"][0]
 
         source = LANGUAGE_CODE_MAP[tsl["detected_source_language"]]
@@ -177,7 +177,12 @@ class Language(VanirCog):
         embed.set_footer(
             text=f"{source} -> {target}",
         )
-        view = AfterTranslateView(ctx, tsl["detected_source_language"], target_lang, tsl["text"])
+        view = AfterTranslateView(
+            ctx,
+            tsl["detected_source_language"],
+            target_lang,
+            tsl["text"],
+        )
         await ctx.reply(embed=embed, view=view)
 
 
@@ -188,23 +193,25 @@ class AfterTranslateView(VanirView):
         from_lang_code: str,
         to_lang_code: str,
         text: str,
-    ):
+    ) -> None:
         super().__init__(ctx.bot, user=ctx.author)
         self.ctx = ctx
         self.from_lang_code = from_lang_code
         self.to_lang_code = to_lang_code
         self.text = text
-        
+
         self.add_item(
             RepeatTranslateSelect(from_lang_code, to_lang_code, text),
         )
-        
+
+
 class RepeatTranslateSelect(discord.ui.Select[AfterTranslateView]):
     def __init__(
-        self,from_lang_code: str,
+        self,
+        from_lang_code: str,
         to_lang_code: str,
         text: str,
-    ):
+    ) -> None:
         options = [
             discord.SelectOption(
                 label=lang,
@@ -221,12 +228,16 @@ class RepeatTranslateSelect(discord.ui.Select[AfterTranslateView]):
         self.from_lang_code = from_lang_code
         self.to_lang_code = to_lang_code
         self.text = text
-    
-    async def callback(self, itx: discord.Interaction):
+
+    async def callback(self, itx: discord.Interaction) -> None:
         await itx.message.delete()
         translate = self.view.ctx.bot.get_command("translate")
-        await self.view.ctx.invoke(translate, target_lang=self.values[0], text=self.text, source_lang=self.to_lang_code)
-    
+        await self.view.ctx.invoke(
+            translate,
+            target_lang=self.values[0],
+            text=self.text,
+            source_lang=self.to_lang_code,
+        )
 
 
 async def setup(bot: Vanir) -> None:
