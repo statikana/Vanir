@@ -153,11 +153,6 @@ class Events(VanirCog):
                     icon_url=message.author.display_avatar.url,
                 )
                 embed.add_field(
-                    name="View Message",
-                    value=f"[JUMP LINK](https://discordapp.com/channels/{guild.id}/{original_channel.id}/{payload.message_id})",
-                )
-                embed.add_field(name="Message ID", value=f"`{payload.message_id}`")
-                embed.add_field(
                     name="Channel",
                     value=f"<#{original_channel.id}>",
                     inline=False,
@@ -172,8 +167,15 @@ class Events(VanirCog):
                     if image is not None:
                         embed.set_image(url=image.url)
                 content = f":star: {n_stars}"
-
-                message = await starboard_channel.send(content=content, embed=embed)
+                view = discord.ui.View()
+                view.add_item(
+                    discord.ui.Button(
+                        style=discord.ButtonStyle.link,
+                        url=message.jump_url,
+                        label="Jump",
+                    )
+                )
+                message = await starboard_channel.send(content=content, embed=embed, view=view)
                 await starboard.set_starboard_post(
                     payload.message_id,
                     message.id,
