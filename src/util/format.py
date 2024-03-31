@@ -10,18 +10,13 @@ from src.util.regex import CODEBLOCK_REGEX
 
 def fmt_dict(
     data: dict[Any, Any],
-    miss_keys: list[Any] | None = None,
     linesplit: bool = False,
+    colons: bool = True,
 ) -> str:
-    if miss_keys is None:
-        miss_keys = []
     lines: list[str] = []
     for k, v in data.items():
         v_str = f"{v}"
-        if linesplit:
-            lines.append(f"**{k}**:\n. . . {v_str}")
-        else:
-            lines.append(f"**{k}**: {v_str}")
+        lines.append(f"**{k}**{":" if colons else ""}{"\n. . ." if linesplit else ""} {v_str}")
 
     return "\n".join(lines)
 

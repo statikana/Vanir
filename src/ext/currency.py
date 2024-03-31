@@ -119,14 +119,14 @@ class Currency(VanirCog):
         to_bal: int,
     ) -> tuple[discord.Embed, GiveCoinsView]:
         data = {
-            "Amount": f"$**{amount}**",
-            f"{from_user.name} [ID {from_user.id}]": f"$**{from_bal:,}** -> $**{from_bal-amount:,}**",  # from
-            f"{to_user.name} [ID {to_user.id}]": f"$**{to_bal:,}** -> $**{to_bal + amount:,}**",  # to
+            "Amount": f"$**{amount:,}**",
+            f"{from_user.name}": f"${from_bal:,} -> ${from_bal-amount:,}",  # from
+            f"{to_user.name}": f"${to_bal:,} -> ${to_bal + amount:,}",  # to
         }
 
         embed = VanirContext.syn_embed(
             title=f"Transfer $**{amount:,}** to {to_user.name}?",
-            description=f"This is **{(amount/from_bal * 100):.2f}**% of your total balance.\nTransfer info:\n{fmt_dict(data, linesplit=True)}",
+            description=f"This is **{(amount/from_bal * 100):.2f}**% of your total balance.\n{fmt_dict(data, linesplit=True, colons=False)}",
             user=from_user,
         )
 
@@ -181,12 +181,12 @@ class GiveCoinsView(VanirView):
 
         data = {
             "Amount": f"$**{self.amount}**",
-            f"{self.from_user.name} [ID {self.from_user.id}]": f"$**{self.from_bal:,}** -> $**{new_from:,}**",
-            f"{self.to_user.name} [ID {self.to_user.id}": f"$**{self.to_bal:,}** -> $**{new_to:,}**",
+            f"{self.from_user.name}": f"${self.from_bal:,} -> ${new_from:,}",
+            f"{self.to_user.name}": f"${self.to_bal:,} -> ${new_to:,}",
         }
         embed = VanirContext.syn_embed(
             title=f"Transferred $**{self.amount:,}** to {self.to_user.name}",
-            description=fmt_dict(data, linesplit=True),
+            description=fmt_dict(data, linesplit=True, colons=False),
             user=itx.user,
         )
 
