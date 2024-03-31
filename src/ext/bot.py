@@ -49,7 +49,7 @@ class Bot(VanirCog):
             default=None,
         ),
     ) -> None:
-        """Retrieve a command's full source code (from github.com/StatHusky13/Vanir)."""
+        """Retrieve a command's full source code (from `github.com/statikana/Vanir`)."""
         root = GITHUB_ROOT + "/tree/main"
         line_preview_limit = 30
 
@@ -131,7 +131,17 @@ class Bot(VanirCog):
         )
         embed.add_field(
             name="Commands",
-            value=f"I have `{n_user_commands}` commands and `{n_user_cogs}` modules.",
+            value=f"I have `{n_user_cogs}` modules, among `{n_user_commands}` commands",
+            inline=False,
+        )
+        uptime = int(
+            time.time()
+            - (discord.utils.utcnow() - self.bot.launch_time).total_seconds(),
+        )
+        rem, tot = (f"<t:{uptime}:{s}>" for s in ("R", "F"))
+        embed.add_field(
+            name=f"Most recent restart: {rem}",
+            value=f"I've been online since {tot}",
             inline=False,
         )
 
@@ -166,13 +176,11 @@ class Bot(VanirCog):
             - (discord.utils.utcnow() - self.bot.launch_time).total_seconds(),
         )
         rem, tot = (f"<t:{uptime}:{s}>" for s in ("R", "F"))
-        embed = ctx.embed()
-        embed.add_field(
-            name="Recent Launch",
-            value=f"{rem} [at {tot} `UTC`]",
+        embed = ctx.embed(
+            title=f"I've been up since {rem}",
+            description=f"Since: {tot}",
         )
         await ctx.reply(embed=embed)
-
 
 async def setup(bot: Vanir) -> None:
     await bot.add_cog(Bot(bot))
