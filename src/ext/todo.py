@@ -31,7 +31,7 @@ class Todo(VanirCog):
 
     @vanir_group()
     async def todo(self, ctx: VanirContext, *, task: str | None = None) -> None:
-        r"""Get your todo list [default: `\\todo get` or `\\todo add <task>`]."""
+        r"""Get your todo list [default: `\todo get` or `\todo add <task>`]."""
         if task is None:
             await ctx.invoke(self.get, True, False)
         else:
@@ -44,7 +44,7 @@ class Todo(VanirCog):
         *,
         task: str = commands.param(description="The task to complete."),
     ) -> None:
-        r"""Create a new task. You can also use `\\todo <task>` as shorthand."""
+        r"""Create a new task. You can also use `\todo <task>` as shorthand."""
         task = await self.bot.db_todo.create(ctx.author.id, task)
         embed = ctx.embed(
             title=f"\N{WHITE HEAVY CHECK MARK} TODO: {task['title']}",
@@ -127,7 +127,7 @@ class Todo(VanirCog):
             converter=TaskIDConverter(),
         ),
     ) -> None:
-        r"""Completely removes a task from your list. You may want `\\todo done` instead."""
+        r"""Completely removes a task from your list. You may want `\todo done` instead."""
         removed = (await self.bot.db_todo.remove(task))[0]
 
         embed = ctx.embed(f"{removed['title']} removed")
@@ -135,7 +135,7 @@ class Todo(VanirCog):
 
     @todo.command()
     async def clear(self, ctx: VanirContext) -> None:
-        r"""Removes all of your tasks. You may want `\\todo done <name>` or `\\todo remove <name>` instead."""
+        r"""Removes all of your tasks. You may want `\todo done <name>` or `\todo remove <name>` instead."""
         removed = await self.bot.db_todo.clear(ctx.author.id)
         embed = ctx.embed(f"Removed {len(removed)} task{'s' if removed else ''}")
         await ctx.reply(embed=embed, ephemeral=True)

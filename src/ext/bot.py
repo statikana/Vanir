@@ -182,5 +182,6 @@ class Bot(VanirCog):
         )
         await ctx.reply(embed=embed)
 
+
 async def setup(bot: Vanir) -> None:
     await bot.add_cog(Bot(bot))

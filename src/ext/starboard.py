@@ -30,7 +30,7 @@ class StarBoard(VanirCog):
             default=1,
         ),
     ) -> None:
-        r"""Feature hot posts! [default: `\\starboard get` or `\\starboard setup ...`]."""
+        r"""Feature hot posts! [default: `\starboard get` or `\starboard setup ...`]."""
         if channel is not None:
             await ctx.invoke(self.setup, channel=channel, threshold=threshold)
         else:
@@ -81,7 +81,7 @@ class StarBoard(VanirCog):
         if config is None:
             embed = ctx.embed(
                 title="Starboard Configuration",
-                description="No starboard configuration found. Use `\\starboard setup` to set one up!",
+                description="No starboard configuration found",
             )
             await ctx.reply(embed=embed)
             return
@@ -92,6 +92,9 @@ class StarBoard(VanirCog):
         )
         embed.add_field(name="Channel", value=channel.mention)
         embed.add_field(name="Star Post Threshold", value=config["threshold"])
+        embed.set_footer(
+            text="See \\help starboard for more info",
+        )
         await ctx.reply(embed=embed)
 
 

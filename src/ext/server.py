@@ -147,7 +147,7 @@ class Server(VanirCog):
         emoji_name: str | None = commands.param(
             description="The name of the added emoji",
             default=None,
-            displayed_default="Filename of image"
+            displayed_default="Filename of image",
         ),
         emoji: str | None = commands.param(
             description="The emojis to steal",
@@ -158,9 +158,9 @@ class Server(VanirCog):
             default=None,
         ),
     ) -> None:
-        """Creates a guild emoji from an image"""
+        """Creates a guild emoji from an image."""
         if emoji is None and emoji_image is None:
-            if (match := EMOJI_REGEX.fullmatch(emoji_name)):
+            if match := EMOJI_REGEX.fullmatch(emoji_name):
                 emoji = emoji_name
                 emoji_name = match.group("name")
             else:

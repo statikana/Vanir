@@ -36,7 +36,7 @@ class Waifu(VanirCog):
             default="",
         ),
         excluded_tags: str = commands.param(
-            description="Comma-separated list of tags to exclude from the search [see `\\wf tags`]",
+            description=r"Comma-separated list of tags to exclude from the search [see `\wf tags`]",
             default="",
         ),
         gif: bool = commands.param(
@@ -48,7 +48,7 @@ class Waifu(VanirCog):
             default=False,
         ),
     ) -> None:
-        r"""Prety self-explanatory [default: `\\wf get ...`]."""
+        r"""Prety self-explanatory [default: `\wf get ...`]."""
         await ctx.invoke(
             self.get,
             included_tags=included_tags,
@@ -89,7 +89,7 @@ class Waifu(VanirCog):
             default="",
         ),
         excluded_tags: str = commands.param(
-            description="Comma-separated list of tags to exclude from the search [see `\\wf tags`]",
+            description=r"Comma-separated list of tags to exclude from the search [see `\wf tags`]",
             default="",
         ),
         gif: bool = commands.param(
@@ -101,7 +101,7 @@ class Waifu(VanirCog):
             default=False,
         ),
     ) -> None:
-        r"""Gets you a waifu image from waifu.im. See `\\wf tags` for a list of available tags."""
+        r"""Gets you a waifu image from waifu.im. See `\wf tags` for a list of available tags."""
         embed, view = await get_results(
             ctx,
             included_tags,

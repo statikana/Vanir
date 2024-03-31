@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import discord  # noqa: TCH002
 from discord.ext import commands
 
-from src.constants import LANGUAGE_CODES, LANGUAGE_NAMES
+from src.constants import LANGUAGE_CODE_MAP, LANGUAGE_CODES
 from src.types.command import VanirCog, vanir_group
 from src.util.command import safe_default
 
@@ -42,7 +42,7 @@ class TLink(VanirCog):
             default="EN",
         ),
     ) -> None:
-        r"""Links channels together for translation [default: `\\tlink list` or `\\tlink create ...`]."""
+        r"""Links channels together for translation [default: `\tlink list` or `\tlink create ...`]."""
         from_channel = safe_default(from_channel)
         if from_channel is not None:
             if to_channel is None:
@@ -94,7 +94,7 @@ class TLink(VanirCog):
                 raise ValueError(msg)
 
         if from_lang != "AUTO":
-            from_lang = LANGUAGE_NAMES.get(from_lang.upper(), from_lang.title())
+            from_lang = LANGUAGE_CODE_MAP.get(from_lang.upper(), from_lang.title())
             from_lang_code = LANGUAGE_CODES.get(from_lang)
 
             if (
@@ -105,7 +105,7 @@ class TLink(VanirCog):
         else:
             from_lang_code = "__"  # auto (see events ext)
 
-        to_lang = LANGUAGE_NAMES.get(to_lang.upper(), to_lang.title())
+        to_lang = LANGUAGE_CODE_MAP.get(to_lang.upper(), to_lang.title())
         to_lang_code = LANGUAGE_CODES.get(to_lang)
 
         if to_lang_code is None:
@@ -174,7 +174,7 @@ class TLink(VanirCog):
             to_channel = ctx.guild.get_channel(link["to_channel_id"])
             embed.add_field(
                 name=f"{from_channel.mention} -> {to_channel.mention}",
-                value=f"From {LANGUAGE_NAMES.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_NAMES[link['to_lang_code']]}",
+                value=f"From {LANGUAGE_CODE_MAP.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_CODE_MAP[link['to_lang_code']]}",
                 inline=False,
             )
 
@@ -202,7 +202,7 @@ class TLink(VanirCog):
             to_channel = ctx.guild.get_channel(link["to_channel_id"])
             embed.add_field(
                 name=f"{from_channel.mention} -> {to_channel.mention}",
-                value=f"From {LANGUAGE_NAMES.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_NAMES[link['to_lang_code']]}",
+                value=f"From {LANGUAGE_CODE_MAP.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_CODE_MAP[link['to_lang_code']]}",
                 inline=False,
             )
 
@@ -225,7 +225,7 @@ class TLink(VanirCog):
             to_channel = ctx.guild.get_channel(link["to_channel_id"])
             embed.add_field(
                 name=f"{from_channel.mention} -> {to_channel.mention}",
-                value=f"From {LANGUAGE_NAMES.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_NAMES[link['to_lang_code']]}",
+                value=f"From {LANGUAGE_CODE_MAP.get(link['from_lang_code'], 'AUTO')} to {LANGUAGE_CODE_MAP[link['to_lang_code']]}",
                 inline=False,
             )
 

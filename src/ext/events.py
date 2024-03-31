@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ext import commands
 
-from src.constants import LANGUAGE_NAMES
+from src.constants import LANGUAGE_CODE_MAP
 from src.logging import book
 from src.types.command import VanirCog
 from src.types.core import TranslatedMessage, Vanir, VanirContext
@@ -39,8 +39,8 @@ class Events(VanirCog):
             tsl = (await response.json())["translations"][0]
 
             # "detected_source_language" will be what it detected, or what was given, if AUTO
-            source = LANGUAGE_NAMES[tsl["detected_source_language"]]
-            target = LANGUAGE_NAMES[to_lang_code.upper()]
+            source = LANGUAGE_CODE_MAP[tsl["detected_source_language"]]
+            target = LANGUAGE_CODE_MAP[to_lang_code.upper()]
 
             if message.channel in self.bot.cache.tlink_translated_messages:
                 previous_response_meta = discord.utils.get(
@@ -173,9 +173,11 @@ class Events(VanirCog):
                         style=discord.ButtonStyle.link,
                         url=message.jump_url,
                         label="Jump",
-                    )
+                    ),
                 )
-                message = await starboard_channel.send(content=content, embed=embed, view=view)
+                message = await starboard_channel.send(
+                    content=content, embed=embed, view=view
+                )
                 await starboard.set_starboard_post(
                     payload.message_id,
                     message.id,
