@@ -144,21 +144,28 @@ class Server(VanirCog):
     async def emoji_(
         self,
         ctx: VanirContext,
-        emoji_name: str = commands.param(
+        emoji_name: str | None = commands.param(
             description="The name of the added emoji",
+            default=None,
+            displayed_default="Filename of image"
         ),
         emoji: str | None = commands.param(
-            description="The emojis to display",
+            description="The emojis to steal",
             default=None,
         ),
         emoji_image: discord.Attachment | None = commands.param(
-            description="The image to display",
+            description="The image to use in the emoji",
             default=None,
         ),
     ) -> None:
+        """Creates a guild emoji from an image"""
         if emoji is None and emoji_image is None:
-            msg = "Please either specify some emojis or an image to display"
-            raise ValueError(msg)
+            if (match := EMOJI_REGEX.fullmatch(emoji_name)):
+                emoji = emoji_name
+                emoji_name = match.group("name")
+            else:
+                msg = "Please either specify some emojis or an image to display"
+                raise ValueError(msg)
 
         if emoji and emoji_image:
             msg = "Please specify either emojis or an image, not both"

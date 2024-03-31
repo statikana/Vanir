@@ -116,7 +116,7 @@ class GitHubView(VanirView):
 
         button = discord.ui.Button(
             url=f"{GITHUB_ROOT}/blob/main/{path}",
-            emoji="\N{SQUID}",
+            emoji=str(EMOJIS["github"]),
             label="View on GitHub",
         )
         self.add_item(button)

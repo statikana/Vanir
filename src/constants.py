@@ -159,6 +159,7 @@ EMOJIS = {
     "timeout": VanirEmoji(name="timeout", id=1222339703613816842, animated=False),
     "kick": VanirEmoji(name="kick", id=1222340933119512736, animated=False),
     "ban": VanirEmoji(name="ban", id=1222341200397205655, animated=False),
+    "github": VanirEmoji(name="github", id=1223806510598193223, animated=False),
 }
 
 TIMESTAMP_STYLES = {

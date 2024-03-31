@@ -237,7 +237,7 @@ class GetHelpButton(discord.ui.Button[ErrorView]):
 
     async def callback(self, itx: discord.Interaction) -> None:
         self.instance: Help = self.view.bot.get_cog("Help")
-        embed = await self.instance.command_details_embed(self.command, self.user)
+        embed = await self.instance.command_details_embed(self.view.command, self.view.user)
         await itx.response.edit_message(embed=embed, view=None)
 
 
