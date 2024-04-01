@@ -177,6 +177,7 @@ async def create_task_gui(
 
     return await view.update_embed(), view
 
+
 def fmt_task_row(task: TASK) -> list[str]:
     return [
         task["title"],

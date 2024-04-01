@@ -4,6 +4,8 @@ from src.types.core import Vanir, VanirContext
 
 
 class Casino(VanirCog):
+    """Real life simulator lmao."""
+
     emoji = "\N{GAME DIE}"
 
     @vanir_command(aliases=["rl"])

@@ -17,7 +17,7 @@ def fmt_dict(
     for k, v in data.items():
         v_str = f"{v}"
         lines.append(
-            f"**{k}**{":" if colons else ""}{"\n. . ." if linesplit else ""} {v_str}"
+            f"**{k}**{":" if colons else ""}{"\n. . ." if linesplit else ""} {v_str}",
         )
 
     return "\n".join(lines)

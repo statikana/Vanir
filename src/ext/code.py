@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import io
 import time
 from typing import TYPE_CHECKING
@@ -8,6 +9,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ext import commands
 
+from src.constants import EMOJIS
 from src.types.command import CloseButton, VanirCog, VanirView, vanir_command
 from src.types.piston import PistonExecutable, PistonPackage, PistonRuntime
 from src.util.format import trim_codeblock
@@ -18,7 +20,11 @@ if TYPE_CHECKING:
     from src.types.core import Vanir, VanirContext
 
 
-class Piston(VanirCog):
+class Code(VanirCog):
+    """Code execution and formatting."""
+
+    emoji = str(EMOJIS["piston"])
+
     @vanir_command(aliases=["eval"])
     async def exec(
         self,
@@ -206,6 +212,131 @@ from math import *
 """
         await self.exec(ctx, package="python", code=code)
 
+    @vanir_command(aliases=["fmt", "ruff"])
+    async def format(
+        self,
+        ctx: VanirContext,
+        *,
+        python_code: str | None = commands.param(
+            description="The code to format",
+            default=None,
+        ),
+        diff: bool = commands.param(
+            description="Show diff instead of new code",
+            default=True,
+        ),
+    ) -> None:
+        if isinstance(python_code, commands.Parameter):
+            python_code = python_code.default
+        if isinstance(diff, commands.Parameter):
+            diff = diff.default
+
+        if python_code is None:
+            if ctx.interaction is not None:
+                python_code, *_ = await generate_modal(
+                    ctx.interaction,
+                    "Enter code to format",
+                    fields=[
+                        discord.ui.TextInput(
+                            label="Enter Python Code",
+                            placeholder="Enter code here",
+                            min_length=1,
+                            max_length=2000,
+                        ),
+                    ],
+                )
+            else:
+                try:
+                    msg = await ctx.send("Send code...")
+                    res: discord.Message = await ctx.bot.wait_for(
+                        "message",
+                        check=lambda m: m.author == ctx.author
+                        and m.channel == ctx.channel,
+                        timeout=300,
+                    )
+                    await msg.delete()
+                    python_code = res.content
+
+                except asyncio.TimeoutError as err:
+                    msg = "Timed out waiting for code"
+                    raise commands.CommandError(msg) from err
+
+        python_code = trim_codeblock(python_code)
+        start_time = time.perf_counter()
+        command = "py -m ruff format -"
+
+        shell = await asyncio.create_subprocess_shell(
+            command,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await shell.communicate(python_code.encode())
+        exec_diff = time.perf_counter() - start_time
+
+        out = stdout.decode()
+        if diff:
+            out = self.diff_formatter(python_code, out)
+        err = stderr.decode()
+
+        if len(out) > 4000:
+            files = [
+                discord.File(
+                    io.BytesIO(out.encode()),
+                    filename="output.diff" if diff else "output.txt",
+                ),
+            ]
+            embeds = [
+                ctx.embed(
+                    title="Input",
+                    description=f"```python\n{python_code}```"[:4000],
+                ),
+                ctx.embed(
+                    title="Output",
+                    description=f"completed in `{exec_diff*1000:.2f}ms",
+                ),
+            ]
+        else:
+            embeds = [
+                ctx.embed(
+                    title="Input",
+                    description=f"```python\n{python_code}```"[:4000],
+                ),
+                ctx.embed(
+                    title="Output",
+                    description=f"completed in `{exec_diff*1000:.2f}ms`\n```diff\n{out}```",
+                ),
+            ]
+            files = []
+
+        if err:
+            if len(err) > 4000:
+                files.append(
+                    discord.File(
+                        io.BytesIO(err.encode()),
+                        filename="stderr.txt",
+                    ),
+                )
+            else:
+                embeds.append(
+                    ctx.embed(
+                        title="stderr",
+                        description=f"```\n{err}```",
+                        color=discord.Color.red(),
+                    ),
+                )
+
+        await ctx.reply(embeds=embeds, files=files)
+
+    def diff_formatter(self, old: str, new: str) -> str:
+        diff = difflib.unified_diff(
+            old.splitlines(),
+            new.splitlines(),
+            fromfile="old",
+            tofile="new",
+        )
+        return "\n".join(diff)
+
 
 class AfterCodeExecView(VanirView):
     def __init__(
@@ -241,4 +372,4 @@ class AfterCodeExecView(VanirView):
 
 
 async def setup(bot: Vanir) -> None:
-    await bot.add_cog(Piston(bot))
+    await bot.add_cog(Code(bot))

@@ -14,6 +14,9 @@ URL_REGEX = re.compile(
 SPACE_FORMAT_REGEX = re.compile(r"(?P<last>[0-9]) (?P<start>[A-z])")
 SPACE_SUB_REGEX = r"\g<last>\g<start>"
 
+UNIT_SEPARATOR_REGEX = re.compile(r"(?P<qty>[0-9]+)(?P<unit>[A-z]+)")
+UNIT_SEPARATOR_SUB_REGEX = r"\g<qty> \g<unit>"
+
 DISCORD_TIMESTAMP_REGEX = re.compile(r"<t:(?P<ts>[0-9]{0,12})(?::[RFfDdTt])?>")
 TIMESTAMP_REGEX_REGEX = re.compile(r"^[0-9]{0,12}(\.[0-9]{1,10})?$")
 

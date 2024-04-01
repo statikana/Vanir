@@ -176,7 +176,9 @@ class Events(VanirCog):
                     ),
                 )
                 message = await starboard_channel.send(
-                    content=content, embed=embed, view=view
+                    content=content,
+                    embed=embed,
+                    view=view,
                 )
                 await starboard.set_starboard_post(
                     payload.message_id,

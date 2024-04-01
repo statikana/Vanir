@@ -51,5 +51,6 @@ class VanirFormatter(logbook.StreamHandler):
         return None
 
 
-book.handlers.append(VanirFormatter())
-book.info("Vanir logging initialized", logger=book)
+def main() -> None:
+    book.handlers.append(VanirFormatter())
+    book.info("Vanir logging initialized", logger=book)

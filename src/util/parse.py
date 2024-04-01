@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import typing
+import unicodedata
 from enum import Enum
+from multiprocessing import Pool
 from urllib.parse import urlparse
 
 from fuzzywuzzy import fuzz
@@ -56,16 +58,38 @@ def fuzzysearch(
     key: typing.Callable[[FuzzyT], str] = lambda f: str(f),
     output: typing.Callable[[FuzzyT], typing.Any] = lambda v: v,
     threshold: int = 0,
+    judge: typing.Callable[[str, str], int] = fuzz.partial_token_set_ratio,
 ) -> list[FuzzyT]:
-    pairs: list[tuple[FuzzyT, int]] = [
-        (s, fuzz.partial_token_set_ratio(source, key(s))) for s in values
-    ]
+    pairs: list[tuple[FuzzyT, int]] = [(s, judge(source, key(s))) for s in values]
 
     std = sorted(pairs, key=lambda t: t[1], reverse=True)
 
     flt = filter(lambda t: t[1] >= threshold, std)
 
     return [output(v[0]) for v in flt]
+
+
+def fuzzysearch_thread(
+    source: str,
+    values: list[FuzzyT],
+    /,
+    *,
+    key: typing.Callable[[FuzzyT], str] | None = None,
+    output: typing.Callable[[FuzzyT], typing.Any] | None = None,
+    threshold: int = 0,
+    judge: typing.Callable[[str, str], int] = fuzz.partial_token_set_ratio,
+) -> typing.Generator[FuzzyT, None, None]:
+    if key is not None:
+        values = map(key, values)
+    with Pool() as pool:
+        result = pool.starmap(
+            lambda v: judge(source, v),
+            values,
+        )
+
+    for i, v in enumerate(values):
+        if result[i] >= threshold:
+            yield output(v) if output is not None else v
 
 
 def unique(
@@ -80,3 +104,48 @@ def unique(
             seen.add(k)
             out.append(item)
     return out
+
+
+def soundex(string: str) -> str:
+    # https://stackoverflow.com/a/67197882
+    if not string:
+        return ""
+
+    string = unicodedata.normalize("NFKD", string)
+    string = string.upper()
+
+    replacements = (
+        ("BFPV", "1"),
+        ("CGJKQSXZ", "2"),
+        ("DT", "3"),
+        ("L", "4"),
+        ("MN", "5"),
+        ("R", "6"),
+    )
+    result = [string[0]]
+    count = 1
+
+    for lset, sub in replacements:
+        if string[0] in lset:
+            last = sub
+            break
+    else:
+        last = None
+
+    for letter in string[1:]:
+        for lset, sub in replacements:
+            if letter in lset:
+                if sub != last:
+                    result.append(sub)
+                    count += 1
+                last = sub
+                break
+        else:
+            if letter not in ("H", "W"):
+                # leave last alone if middle letter is H or W
+                last = None
+        if count == 4:
+            break
+
+    result += "0" * (4 - count)
+    return "".join(result)

@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from src.constants import EMOJIS
 from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command
+from src.util.format import fmt_dict
 from src.util.regex import EMOJI_REGEX
 from src.util.time import parse_time, regress_time
 from src.util.ux import generate_modal
@@ -115,6 +116,53 @@ class Server(VanirCog):
         )
         embed.set_image(url=created.url)
         await ctx.send(embed=embed)
+
+    @vanir_command()
+    async def whois(
+        self,
+        ctx: VanirContext,
+        member: discord.Member = commands.param(
+            description="The member to view",
+            default=lambda ctx: ctx.author,
+            displayed_default="You",
+        ),
+    ) -> None:
+        """Shows information about a member."""
+        embed = await self.whois_main_embed(ctx, member)
+        await ctx.send(embed=embed)
+
+    async def whois_main_embed(self, ctx: VanirContext, member: discord.Member) -> None:
+        embed = ctx.embed(
+            title=member.name,
+            color=member.color,
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+
+        join_pos = (
+            sorted(ctx.guild.members, key=lambda m: m.joined_at).index(member) + 1
+        )
+        time_data = {
+            f"{EMOJIS["new"]} Created": f"<t:{round(member.created_at.timestamp())}:R>",
+            f"{EMOJIS["join"]} Joined": f"<t:{round(member.joined_at.timestamp())}:R> [{join_pos}/{len(ctx.guild.members)}]",
+        }
+        embed.description = fmt_dict(time_data, linesplit=True, colons=False)
+        badge_emojis = []
+        for flag in member.public_flags.all():
+            emoji = EMOJIS[f"bdg_{flag.name}"]
+            badge_emojis.append(f"{emoji} {emoji.description}")
+
+        if member.premium_since or member.banner is not None:
+            badge_emojis.append(str(EMOJIS["bdg_nitro"]))
+        if member.is_timed_out():
+            badge_emojis.append(str(EMOJIS["timeout"]))
+        if member.bot and not member.public_flags.verified_bot:
+            badge_emojis.append(str(EMOJIS["bdg_bot"]))
+        embed.add_field(
+            name=f"{EMOJIS["tag"]} Badges",
+            value="\n".join(badge_emojis) or "No badges",
+        )
+
+        return embed
 
 
 class NewUsersPager(AutoTablePager):

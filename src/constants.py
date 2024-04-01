@@ -132,6 +132,7 @@ class VanirEmoji(NamedTuple):
     name: str
     id: int
     animated: bool
+    description: str = ""
 
     def __str__(self) -> str:
         return f"<{"a" if self.animated else ""}:{self.name}:{self.id}>"
@@ -156,10 +157,130 @@ EMOJIS = {
         animated=False,
     ),
     "waifuim": VanirEmoji(name="waifuim", id=1220801796977725531, animated=False),
-    "timeout": VanirEmoji(name="timeout", id=1222339703613816842, animated=False),
-    "kick": VanirEmoji(name="kick", id=1222340933119512736, animated=False),
-    "ban": VanirEmoji(name="ban", id=1222341200397205655, animated=False),
-    "github": VanirEmoji(name="github", id=1223806510598193223, animated=False),
+    "timeout": VanirEmoji(
+        name="timeout",
+        id=1222339703613816842,
+        animated=False,
+        description="Timed Out",
+    ),
+    "kick": VanirEmoji(
+        name="kick",
+        id=1222340933119512736,
+        animated=False,
+        description="Kicked",
+    ),
+    "ban": VanirEmoji(
+        name="ban",
+        id=1222341200397205655,
+        animated=False,
+        description="Banned",
+    ),
+    "piston": VanirEmoji(name="piston", id=1223830801938911253, animated=False),
+    "bdg_active_developer": VanirEmoji(
+        name="bdg_active_developer",
+        id=1223845037163544718,
+        animated=False,
+        description="Active Developer",
+    ),
+    "bdg_bug_hunter": VanirEmoji(
+        name="bdg_bug_hunter",
+        id=1223845051130708071,
+        animated=False,
+        description="Bug Hunter",
+    ),
+    "bdg_bug_hunter_level_2": VanirEmoji(
+        name="bdg_bug_hunter_level_2",
+        id=1223845064997081120,
+        animated=False,
+        description="Golden Bug Hunter",
+    ),
+    "bdg_discord_staff": VanirEmoji(
+        name="bdg_discord_staff",
+        id=1223845079178022974,
+        animated=False,
+        description="Discord Staff",
+    ),
+    "bdg_early_supporter": VanirEmoji(
+        name="bdg_early_supporter",
+        id=1223845093459361842,
+        animated=False,
+        description="Early Supporter",
+    ),
+    "bdg_early_verified_bot_developer": VanirEmoji(
+        name="bdg_early_verified_bot_developer",
+        id=1223845107720126535,
+        animated=False,
+        description="Early Verified Bot Developer",
+    ),
+    "bdg_hypesquad_events": VanirEmoji(
+        name="bdg_hypesquad_events",
+        id=1223845121888485486,
+        animated=False,
+        description="HypeSquad Events",
+    ),
+    "bdg_hypesquad_balance": VanirEmoji(
+        name="bdg_hypesquad_balance",
+        id=1223845136102850702,
+        animated=False,
+        description="HypeSquad Balance",
+    ),
+    "bdg_hypesquad_bravery": VanirEmoji(
+        name="bdg_hypesquad_bravery",
+        id=1223845150267015249,
+        animated=False,
+        description="HypeSquad Bravery",
+    ),
+    "bdg_hypesquad_brilliance": VanirEmoji(
+        name="bdg_hypesquad_brilliance",
+        id=1223846361678610523,
+        animated=False,
+        description="HypeSquad Brilliance",
+    ),
+    "bdg_moderator_programs_alumni": VanirEmoji(
+        name="bdg_moderator_programs_alumni",
+        id=1223846375503036446,
+        animated=False,
+        description="Mod. Programs Alumni",
+    ),
+    "bdg_nitro": VanirEmoji(
+        name="bdg_nitro",
+        id=1223846389700628532,
+        animated=False,
+        description="Nitro",
+    ),
+    "bdg_partnered_server_owner": VanirEmoji(
+        name="bdg_partnered_server_owner",
+        id=1223846404053667881,
+        animated=False,
+        description="Partnered Server Owner",
+    ),
+    "bdg_server_partner": VanirEmoji(
+        name="bdg_server_partner",
+        id=1223846418238800082,
+        animated=False,
+        description="Server Partner",
+    ),
+    "bdg_server_verified": VanirEmoji(
+        name="bdg_server_verified",
+        id=1223846432176603196,
+        animated=False,
+        description="Server Verified",
+    ),
+    "bdg_bot": VanirEmoji(
+        name="bdg_bot",
+        id=1223853099471474689,
+        animated=False,
+        description="Bot",
+    ),
+    "bdg_verified_bot": VanirEmoji(
+        name="bdg_verified_bot",
+        id=1223853476036218950,
+        animated=False,
+        description="Verified Bot",
+    ),
+    "tag": VanirEmoji(name="tag", id=1223855353540775937, animated=False),
+    "join": VanirEmoji(name="join", id=1223858211866677349, animated=False),
+    "new": VanirEmoji(name="new", id=1223858039799414824, animated=False),
 }
 
 TIMESTAMP_STYLES = {

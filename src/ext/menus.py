@@ -1,8 +1,7 @@
-
-
 import discord
-from src.types.core import Vanir, VanirContext
+
 from src.types.command import VanirCog
+from src.types.core import Vanir, VanirContext
 from src.util.command import cog_hidden
 
 
@@ -17,8 +16,12 @@ class Menus(VanirCog):
             callback=self.translate_callback,
         )
         self.bot.tree.add_command(self.translate)
-    
-    async def translate_callback(self, itx: discord.Interaction, msg: discord.Message) -> None:
+
+    async def translate_callback(
+        self,
+        itx: discord.Interaction,
+        msg: discord.Message,
+    ) -> None:
         ctx = await VanirContext.from_interaction(itx)
         translate = self.bot.get_command("translate")
         await ctx.invoke(translate, text=msg.content, source_lang="AUTO")
@@ -26,4 +29,3 @@ class Menus(VanirCog):
 
 async def setup(bot: Vanir) -> None:
     await bot.add_cog(Menus(bot))
-        

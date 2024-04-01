@@ -13,7 +13,6 @@ from src.types.command import (
 from src.types.core import Vanir, VanirContext
 from src.types.interface import BotObjectConverter
 from src.util.command import (
-    cog_hidden,
     discover_cog,
     discover_group,
     get_display_cogs,
@@ -23,10 +22,8 @@ from src.util.format import fmt_dict
 from src.util.parse import fuzzysearch
 
 
-@cog_hidden
 class Help(VanirCog):
     @vanir_command()
-    @commands.cooldown(5, 60, commands.BucketType.user)
     async def help(
         self,
         ctx: VanirContext,

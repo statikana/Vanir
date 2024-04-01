@@ -32,6 +32,8 @@ from src.util.regex import (
     SPACE_FORMAT_REGEX,
     SPACE_SUB_REGEX,
     TIMESTAMP_REGEX_REGEX,
+    UNIT_SEPARATOR_REGEX,
+    UNIT_SEPARATOR_SUB_REGEX,
 )
 from src.util.time import ShortTime, regress_time
 
@@ -194,11 +196,9 @@ class Info(VanirCog):
     async def unit(
         self,
         ctx: VanirContext,
-        from_qty: float = commands.param(
-            description="The quantity to convert",
-        ),
-        from_unit: str = commands.param(
-            description="The unit to convert from",
+        from_: str = commands.param(
+            displayed_name="from",
+            description="What to convert from (eg 10min, 15kg, 5m/s)",
         ),
         to_unit: str | None = commands.param(
             description="The unit to convert to",
@@ -207,10 +207,17 @@ class Info(VanirCog):
         ),
     ) -> None:
         """Convert a quantity between compatible units."""
+        from_qty, from_unit = UNIT_SEPARATOR_REGEX.sub(
+            UNIT_SEPARATOR_SUB_REGEX,
+            from_,
+        ).split()
         from_pint = ureg(f"{from_qty} {from_unit}")
 
         if to_unit is None:
             _, to_unit_pint = ureg.get_base_units(from_pint.units)
+            if to_unit_pint == from_pint.units:
+                # hmm secondary base unit?
+                pass
             to_unit = str(to_unit_pint)
             to_pint = ureg(to_unit)
             assumed = True
@@ -236,7 +243,6 @@ class Info(VanirCog):
         )
         await ctx.reply(embed=embed)
 
-    @unit.autocomplete("from_unit")
     @unit.autocomplete("to_unit")
     async def unit_autocomplete(
         self,
