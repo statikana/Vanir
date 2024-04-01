@@ -125,6 +125,57 @@ ANSI_EMOJIS = {
     "white": "\U0001f90d",
 }
 
+POS_COLORS = {
+    "LS": "white",  # list item marker
+    "TO": "white",  # "to" as in "to be"
+    "''": "grey",  # closing quotation mark
+    "--": "grey",  # dash
+    ".": "grey",  # sentence terminator
+    ":": "grey",  # colon or ellipsis
+    "(": "grey",  # opening parenthesis
+    ")": "grey",  # closing parenthesis
+    
+    "DT": "grey",  # determiner
+    
+    "IN": "blue",  # preposition or conjunction
+    
+    "UH": "yellow",  # interjection
+    
+    "VB": "green",  # verb, base form
+    "VBG": "green",  # verb, gerund or present participle
+    "VBD": "green",  # verb, past tense
+    "VBZ": "green",  # verb, 3rd person singular present
+    "VBP": "green",  # verb, non-3rd person singular present
+    "VBN": "green",  # verb, past participle
+    
+    "JJ": "cyan",  # adjective
+    "DT$": "pink",  # possessive determiner
+    "PRP": "pink",  # pronoun, personal
+    "PRP$": "pink",  # pronoun, possessive
+    
+    "WP": "white",  # wh-pronoun
+    "WP$": "white",  # possessive wh-pronoun
+    
+    "NNP": "white",  # proper noun, singular
+    "NN": "white",  # noun, singular or mass
+    "NNS": "grey",  # noun, plural
+    "NNPS": "grey",  # proper noun, plural
+    
+    "CC": "blue",  # coordinating conjunction
+    "RB": "red",  # adverb
+    "RBR": "red",  # adverb, comparative
+    "RBS": "red",  # adverb, superlative
+    "MD": "yellow",  # verb, modal auxiliary
+    "CD": "white",  # cardinal number
+    "SYM": "white",  # symbol
+    "POS": "white",  # possessive ending
+    "EX": "white",  # existential there
+    "FW": "white",  # foreign word
+    "PDT": "pink",  # predeterminer
+    "RP": "red",  # particle
+    "WDT": "pink",  # wh-determiner
+}
+
 MONOSPACE_FONT_HEIGHT_RATIO = 1.6
 
 
@@ -281,6 +332,7 @@ EMOJIS = {
     "tag": VanirEmoji(name="tag", id=1223855353540775937, animated=False),
     "join": VanirEmoji(name="join", id=1223858211866677349, animated=False),
     "new": VanirEmoji(name="new", id=1223858039799414824, animated=False),
+    "github": VanirEmoji(name="github", id=1224196311545413704, animated=False),
 }
 
 TIMESTAMP_STYLES = {

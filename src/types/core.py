@@ -8,7 +8,6 @@ from typing import Any
 import aiohttp
 import asyncpg
 import discord
-import nltk
 from discord.ext import commands
 from nltk.corpus import words as corpus_words
 
@@ -222,14 +221,12 @@ class BotCache:
         if self.bot.connect_db_on_init:
             self.tlinks = await self.bot.db_link.get_all_links()
 
-        book.info("Initializing nltk words corpus")
-        nltk.download("words")
+        if config.create_trie:
+            book.info("Inserting words into trie")
+            self.words = corpus_words.words()
 
-        book.info("Inserting words into trie")
-        self.words = corpus_words.words()
-
-        for word in self.words:
-            self.bot.trie.insert(word.lower())
+            for word in self.words:
+                self.bot.trie.insert(word.lower())
 
 
 @dataclass

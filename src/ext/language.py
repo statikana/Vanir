@@ -3,10 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import discord
+import nltk
 from discord import app_commands
 from discord.ext import commands
 
 from src.constants import (
+    ANSI,
+    POS_COLORS,
     LANGUAGE_CODE_MAP,
     LANGUAGE_CODES,
     LANGUAGE_NAME_MAP,
@@ -185,6 +188,70 @@ class Language(VanirCog):
         )
         await ctx.reply(embed=embed, view=view)
 
+    @vanir_command()
+    async def pos(
+        self,
+        ctx: VanirContext,
+        *,
+        text: str = commands.param(
+            description="The text to tag parts of speech",
+        ),
+    ) -> None:
+        """Tags parts of speech in the text."""
+        tokens = nltk.word_tokenize(text)
+        tagged = nltk.pos_tag(tokens)
+
+        tag_map = nltk.data.load("help/tagsets/upenn_tagset.pickle")
+        relavant_tags = {
+            k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
+        }
+        desc = self.format_pos_tags(tagged, relavant_tags)
+
+        await ctx.reply(f"```ansi\n{desc}```")
+
+    def format_pos_tags(
+        self,
+        word_tagging: list[tuple[str, str]],
+        tag_map: dict[str, str],
+    ) -> None:
+        # first, what the tags mean
+        tags = list(tag_map.keys())
+        intro = "\n".join(
+            f"{ANSI[POS_COLORS[tag]]}{f"{tags.index(tag)+1}.":<3}{ANSI["reset"]} {ANSI[POS_COLORS[tag]]}[{tag:<4}]{ANSI["reset"]} {ANSI["grey"]}{desc}{ANSI["reset"]}"
+            for tag, desc in tag_map.items()
+        )
+
+        body = " ".join(
+            f"{ANSI[POS_COLORS[tag]]}{word}{ANSI["reset"]}"
+            for word, tag in word_tagging
+        )
+        
+        # add a row of numbers below the start of each word, pointing to the number of the tag
+        # spacing array is the number of the tag and then the number of spaces after
+        # ie
+        # rushmore
+        # 4       
+        # is (4, 7, NNP)
+        spacing = []
+        for word, tag in word_tagging:
+            tag_num = tags.index(tag) + 1
+            spacing.append((len(word), tag_num, tag))
+            
+        # add the numbers to the definition
+        definitions = []
+        
+        for wordlen, num, tag in spacing:
+            spacing = wordlen - len(str(num))
+            print(spacing, num, tag)
+            tag_color = ANSI[POS_COLORS[tag]]
+            string = f"{tag_color}{num}{ANSI['reset']}{' ' * spacing}"
+            if wordlen >= len(str(num)):
+                string += " "
+            definitions.append(string)
+            
+        return f"{intro}\n\n{body}\n{"".join(definitions)}"
+        # return f"{intro}\n{body}"
+        
 
 class AfterTranslateView(VanirView):
     def __init__(
