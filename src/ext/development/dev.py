@@ -201,9 +201,7 @@ class Dev(VanirCog):
     async def fmt(self, ctx: VanirContext) -> None:
         # run ./fmt.bat
         proc = await asyncio.create_subprocess_exec(
-            "cmd",
-            "/c",
-            "fmt.bat",
+            '"scripts/fmt"',
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

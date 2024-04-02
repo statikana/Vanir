@@ -1,18 +1,25 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING, Awaitable, Callable, Coroutine
+from typing import TYPE_CHECKING, Awaitable
 
 import discord
 from discord.ext import commands
 
-from src.constants import ALL_PERMISSIONS, ANSI, EMOJIS
-from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command, AcceptItx, VanirContext
-from src.util.format import format_dict, format_children
+from src.constants import ALL_PERMISSIONS, EMOJIS
+from src.types.command import (
+    AcceptItx,
+    AutoTablePager,
+    VanirCog,
+    VanirContext,
+    VanirView,
+    vanir_command,
+)
+from src.util.format import format_children
+from src.util.parse import closest_color_name
 from src.util.regex import EMOJI_REGEX
 from src.util.time import parse_time, regress_time
 from src.util.ux import generate_modal
-from src.util.parse import closest_color_name
 
 if TYPE_CHECKING:
     from src.types.core import Vanir
@@ -131,10 +138,10 @@ class Server(VanirCog):
         """Shows information about a member."""
         embed = await self.whois_embed(ctx, member)
         view = VanirView(self.bot, user=ctx.author, accept_itx=AcceptItx.ANY)
-        
+
         view.add_item(AvatarButton(member, self.whois_avatar_embed))
         view.add_item(PermissionsButton(member, self.whois_permissions))
-        
+
         await ctx.send(embed=embed, view=view)
 
     async def whois_embed(self, ctx: VanirContext, member: discord.Member) -> None:
@@ -143,56 +150,56 @@ class Server(VanirCog):
             color=member.color,
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         name, value = format_identity(member)
         embed.add_field(
             name=name,
-            value=value
+            value=value,
         )
-        
+
         name, value = format_times(member)
         embed.add_field(
             name=name,
-            value=value
-        )
-        
-        embed.add_field(
-            name="ㅤ",
-            value="ㅤ"
-        )
-        
-        name, value = format_badges(member)
-        embed.add_field(
-            name=name,    
             value=value,
         )
-        
+
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
+
+        name, value = format_badges(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+
         name, value = format_roles(member)
         embed.add_field(
             name=name,
-            value=value
+            value=value,
         )
-        
+
         embed.add_field(
             name="ㅤ",
-            value="ㅤ"
+            value="ㅤ",
         )
-        
+
         name, value = format_statues(member)
         embed.add_field(
             name=name,
-            value=value
+            value=value,
         )
-        
+
         name, value = format_boosting(member)
         embed.add_field(
             name=name,
-            value=value
+            value=value,
         )
-        
+
         embed.add_field(
             name="ㅤ",
-            value="ㅤ"
+            value="ㅤ",
         )
         return embed
 
@@ -208,14 +215,14 @@ class Server(VanirCog):
         )
         embed.set_image(url=member.display_avatar.url)
         await itx.response.send_message(embed=embed, ephemeral=True)
-    
+
     async def whois_permissions(
         self,
         itx: discord.Interaction,
         member: discord.Member,
     ) -> discord.Embed:
         info = self.bot.get_cog("Info")
-        
+
         content = await info.get_permission_table(
             {"?": member.resolved_permissions or member.guild_permissions},
             checked=ALL_PERMISSIONS,
@@ -228,11 +235,10 @@ class Server(VanirCog):
         embed.set_image(url="attachment://spacer.png")
         file = discord.File("assets/spacer.png")
         await itx.response.send_message(embed=embed, file=file, ephemeral=True)
-        
+
+
 def format_times(member: discord.Member) -> tuple[str, str]:
-    join_pos = (
-        list(sorted(member.guild.members, key=lambda m: m.joined_at)).index(member) + 1
-    )
+    join_pos = sorted(member.guild.members, key=lambda m: m.joined_at).index(member) + 1
     children = [
         ("`Created`", f"<t:{round(member.created_at.timestamp())}:R>"),
         ("` Joined`", f"<t:{round(member.joined_at.timestamp())}:R>"),
@@ -242,8 +248,9 @@ def format_times(member: discord.Member) -> tuple[str, str]:
         title="User ",
         emoji=EMOJIS["join"],
         children=children,
-        as_field=True
+        as_field=True,
     )
+
 
 def format_badges(member: discord.Member) -> tuple[str, str]:
     flags = [f.name for f in member.public_flags.all()]
@@ -253,57 +260,65 @@ def format_badges(member: discord.Member) -> tuple[str, str]:
         flags.append("timeout")
     if member.bot and not member.public_flags.verified_bot:
         flags.append("bot")
-        
+
     children = []
     for flag in flags:
         emoji = EMOJIS[f"bdg_{flag}"]
         children.append(
-            ("", # no keys
-            f"{emoji} {emoji.description}")
+            (
+                "",  # no keys
+                f"{emoji} {emoji.description}",
+            ),
         )
-    
+
     return format_children(
         title="Badges",
-        emoji=EMOJIS["tag"], 
+        emoji=EMOJIS["tag"],
         children=children,
-        as_field=True
+        as_field=True,
     )
+
 
 def format_identity(member: discord.Member) -> tuple[str, str]:
     children = []
     children.append(
-        ("`User`", member.name)
+        ("`User`", member.name),
     )
     children.append(
-        ("`Name`", member.global_name or member.name)
+        ("`Name`", member.global_name or member.name),
     )
     if member.nick:
         children.append(
-            ("`Nick`", member.nick)
+            ("`Nick`", member.nick),
         )
     children.append(
-        ("`ID`", f"`{member.id}`")
+        ("`ID`", f"`{member.id}`"),
     )
     return format_children(
         title="Identity",
         emoji=EMOJIS["bw_info"],
         children=children,
-        as_field=True
+        as_field=True,
     )
-    
+
+
 def format_roles(member: discord.Member) -> tuple[str, str]:
     top_color_str = closest_color_name(str(member.color))[0]
     children = [
         ("` Amt.`", f"`{len(member.roles) - 1}`"),
-        ("`  Top`", f"{member.top_role.mention if member.top_role != member.guild.default_role else "@everyone"}"),
-        ("`Color`", f"{top_color_str} `[{str(member.color)}]`"),
+        (
+            "`  Top`",
+            f"{member.top_role.mention if member.top_role != member.guild.default_role else "@everyone"}",
+        ),
+        ("`Color`", f"{top_color_str} `[{member.color!s}]`"),
     ]
     return format_children(
         title="Roles",
         emoji=EMOJIS["role"],
         children=children,
-        as_field=True
+        as_field=True,
     )
+
 
 def format_statues(member: discord.Member) -> tuple[str, str]:
     device: str = ""
@@ -315,18 +330,22 @@ def format_statues(member: discord.Member) -> tuple[str, str]:
         device = "web"
     else:
         device = "offline"
-        
+
     device_emoji = EMOJIS[device]
     children = [
-        ("`Status`", f"{EMOJIS[member.status.value]} {member.status.name.replace("_", " ").title()}"),
+        (
+            "`Status`",
+            f"{EMOJIS[member.status.value]} {member.status.name.replace("_", " ").title()}",
+        ),
         ("`Device`", f"{device_emoji} {device.title()}"),
     ]
     return format_children(
         title="Statuses",
         emoji=EMOJIS["status"],
         children=children,
-        as_field=True
+        as_field=True,
     )
+
 
 def format_boosting(member: discord.Member) -> tuple[str, str]:
     boosting = member.premium_since
@@ -343,8 +362,9 @@ def format_boosting(member: discord.Member) -> tuple[str, str]:
         title="Boosting",
         emoji=EMOJIS["boost"],
         children=children,
-        as_field=True
+        as_field=True,
     )
+
 
 class NewUsersPager(AutoTablePager):
     def __init__(
@@ -644,7 +664,9 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
 
 
 class AvatarButton(discord.ui.Button):
-    def __init__(self, member: discord.Member, method: Awaitable[discord.Embed]) -> None:
+    def __init__(
+        self, member: discord.Member, method: Awaitable[discord.Embed]
+    ) -> None:
         super().__init__(
             label="Avatar",
             style=discord.ButtonStyle.grey,
@@ -652,13 +674,15 @@ class AvatarButton(discord.ui.Button):
         )
         self.member = member
         self.method = method
-        
+
     async def callback(self, itx: discord.Interaction) -> None:
         await self.method(itx, self.member)
 
 
 class PermissionsButton(discord.ui.Button):
-    def __init__(self, member: discord.Member, method: Awaitable[discord.Embed]) -> None:
+    def __init__(
+        self, member: discord.Member, method: Awaitable[discord.Embed]
+    ) -> None:
         super().__init__(
             label="Permissions",
             style=discord.ButtonStyle.grey,
@@ -666,12 +690,9 @@ class PermissionsButton(discord.ui.Button):
         )
         self.member = member
         self.method = method
-        
+
     async def callback(self, itx: discord.Interaction) -> None:
         await self.method(itx, self.member)
-
-
-
 
 
 async def setup(bot: Vanir) -> None:

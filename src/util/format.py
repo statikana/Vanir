@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Generator, Iterable
+from typing import Any, Generator, Iterable, overload
 
 from src.constants import ANSI
 from src.util.parse import Convention
@@ -22,25 +22,42 @@ def format_dict(
 
     return "\n".join(lines)
 
+
+@overload
 def format_children(
     *,
     emoji: str,
     title: str,
     children: list[tuple[str, str]],
-    as_field: bool = False
-):
-    
+    as_field: bool = False,
+) -> str:
+    ...
+
+@overload
+def format_children(
+    *,
+    emoji: str,
+    title: str,
+    children: list[tuple[str, str]],
+    as_field: bool = True,
+) -> list[str]:
+    ...
+
+def format_children(
+    *,
+    emoji: str,
+    title: str,
+    children: list[tuple[str, str]],
+    as_field: bool = False,
+) -> list[str] | str:
     con_line = "├─"
-    fin_line  = "└─"
-    
+    fin_line = "└─"
+
     lines: list[str] = [f"{emoji} **{title}**"]
 
     for i, (k, v) in enumerate(children):
-        if k:
-            key = f"**{k}:** "
-        else:
-            key = ""
-            
+        key = f"**{k}:** " if k else ""
+
         if i == len(children) - 1:
             lines.append(f"{fin_line}{key}{v}")
         else:
@@ -49,8 +66,6 @@ def format_children(
         return "\n".join(lines)
     else:
         return [lines[0], "\n".join(lines[1:])]
-            
-        
 
 
 def format_size(n_bytes: int, cvtn: Convention = Convention.BINARY) -> str:

@@ -208,7 +208,7 @@ class Language(VanirCog):
         desc = format_pos_tags(tagged, relavant_tags)
 
         await ctx.reply(f"```ansi\n{desc}```")
-    
+
     @vanir_command()
     async def autocorrect(
         self,
@@ -220,15 +220,21 @@ class Language(VanirCog):
     ) -> None:
         if len(word_or_phrase.split()) == 1:
             config = self.bot.cache.fuzzy_ac.config
-            contianer = self.bot.cache.fuzzy_ac.possible(word_or_phrase, distance=2, n=10)
+            contianer = self.bot.cache.fuzzy_ac.possible(
+                word_or_phrase, distance=2, n=10
+            )
             values = sorted(
                 contianer.stack,
-                key=lambda pack: (config.levenshtein_offset-pack[1][0], 1-pack[1][1]),
+                key=lambda pack: (
+                    config.levenshtein_offset - pack[1][0],
+                    1 - pack[1][1],
+                ),
             )
             try:
                 maxlen = max(len(word) for word, _ in values)
             except ValueError as err:
-                raise ValueError("No words found") from err
+                msg = "No words found"
+                raise ValueError(msg) from err
             words = [
                 f"`{word:<{maxlen}}` [D: `{config.levenshtein_offset-distance}`, P: `{proportion*100:.2f}`]"
                 for word, (distance, proportion) in values
@@ -244,9 +250,9 @@ class Language(VanirCog):
             embed = ctx.embed(
                 description=" ".join(words),
             )
-        
+
         await ctx.reply(embed=embed)
-    
+
 
 def format_pos_tags(
     word_tagging: list[tuple[str, str]],
@@ -260,8 +266,7 @@ def format_pos_tags(
     )
 
     body = " ".join(
-        f"{ANSI[POS_COLORS[tag]]}{word}{ANSI["reset"]}"
-        for word, tag in word_tagging
+        f"{ANSI[POS_COLORS[tag]]}{word}{ANSI["reset"]}" for word, tag in word_tagging
     )
 
     # add a row of numbers below the start of each word, pointing to the number of the tag

@@ -286,13 +286,13 @@ class Info(VanirCog):
             return False
 
         embed: discord.File = await getattr(self, f"{attr}_info_embed")(ctx, received)
-        
+
         if "ansi" in embed.description:
             file = discord.File("assets/spacer.png")
             embed.set_image(url="attachment://spacer.png")
         else:
             file = None
-            
+
         await ctx.reply(embed=embed, file=file)
         return True
 
@@ -539,8 +539,7 @@ class Info(VanirCog):
         table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
 
         table.set_deco(
-            texttable.Texttable.HEADER
-            | texttable.Texttable.VLINES,
+            texttable.Texttable.HEADER | texttable.Texttable.VLINES,
         )
 
         for name in checked:
@@ -565,7 +564,6 @@ class Info(VanirCog):
                 major,
                 ctext(major, "blue"),
             )
-        print(drawn)
         return f"**```ansi\n{drawn}```**"
 
     async def add_permission_data_from_channel(

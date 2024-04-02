@@ -95,19 +95,22 @@ class FuzzyAC:
 
     def possible(self, word: str, /, *, distance: int, n: int) -> NHighestContianer:
         return n_highest(
-            n, 
-            self.candidates(word, distance=distance), 
-            key=lambda trier: (self.config.levenshtein_offset-Levenshtein.distance(word, trier), self.proportion(trier))
+            n,
+            self.candidates(word, distance=distance),
+            key=lambda trier: (
+                self.config.levenshtein_offset - Levenshtein.distance(word, trier),
+                self.proportion(trier),
+            ),
         )
 
     def most_probable(self, word: str, /, *, distance: int = 1) -> str:
         return max(
-            self.candidates(word, distance=distance), 
+            self.candidates(word, distance=distance),
             key=lambda trier: (
-                self.config.levenshtein_offset-Levenshtein.distance(word, trier), self.proportion(trier)
-            )
+                self.config.levenshtein_offset - Levenshtein.distance(word, trier),
+                self.proportion(trier),
+            ),
         )
-
 
 
 NHighestT = TypeVar("NHighestT")
@@ -123,22 +126,21 @@ class NHighestContianer(Generic[NHighestT]):
         if len(self) < self.n:
             self.stack.append((item, value))
             return
-        
+
         smallest = min(self.stack, key=lambda t: t[1])
         if value > smallest[1]:
             self.stack.remove(smallest)
             self.stack.append((item, value))
-        
-    
+
     def get(self) -> list[tuple[NHighestT, NHighestValueT]]:
         return sorted(self.stack, key=lambda t: t[1])
-            
+
     def __iter__(self) -> Iterator[tuple[NHighestT, NHighestValueT]]:
         return iter(self.stack)
 
     def __len__(self) -> int:
         return len(self.stack)
-    
+
     def __getitem__(self, index: int) -> tuple[NHighestT, float]:
         return self.stack[index]
 

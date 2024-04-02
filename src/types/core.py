@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-from collections import Counter
 import shutil
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
+import aiofiles
 import aiohttp
 import asyncpg
 import discord
 from discord.ext import commands
-from nltk.corpus import words as corpus_words
-import aiofiles
 
 import config
 from src import env
@@ -48,7 +47,7 @@ class Vanir(commands.Bot):
 
         self.piston: PistonORM | None = None
         self.installed_piston_packages: list[PistonRuntime] = []
-        
+
     async def get_context(
         self,
         origin: discord.Message | discord.Interaction,
