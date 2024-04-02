@@ -1,20 +1,21 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Callable, Coroutine
 
 import discord
 from discord.ext import commands
 
-from src.constants import EMOJIS
-from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command
-from src.util.format import fmt_dict
+from src.constants import ALL_PERMISSIONS, ANSI, EMOJIS
+from src.types.command import AutoTablePager, VanirCog, VanirView, vanir_command, AcceptItx, VanirContext
+from src.util.format import format_dict, format_children
 from src.util.regex import EMOJI_REGEX
 from src.util.time import parse_time, regress_time
 from src.util.ux import generate_modal
+from src.util.parse import closest_color_name
 
 if TYPE_CHECKING:
-    from src.types.core import Vanir, VanirContext
+    from src.types.core import Vanir
 
 
 class Server(VanirCog):
@@ -117,7 +118,7 @@ class Server(VanirCog):
         embed.set_image(url=created.url)
         await ctx.send(embed=embed)
 
-    @vanir_command()
+    @vanir_command(aliases=["user", "member", "who", "userinfo", "ui"])
     async def whois(
         self,
         ctx: VanirContext,
@@ -128,42 +129,222 @@ class Server(VanirCog):
         ),
     ) -> None:
         """Shows information about a member."""
-        embed = await self.whois_main_embed(ctx, member)
-        await ctx.send(embed=embed)
+        embed = await self.whois_embed(ctx, member)
+        view = VanirView(self.bot, user=ctx.author, accept_itx=AcceptItx.ANY)
+        
+        view.add_item(AvatarButton(member, self.whois_avatar_embed))
+        view.add_item(PermissionsButton(member, self.whois_permissions))
+        
+        await ctx.send(embed=embed, view=view)
 
-    async def whois_main_embed(self, ctx: VanirContext, member: discord.Member) -> None:
+    async def whois_embed(self, ctx: VanirContext, member: discord.Member) -> None:
         embed = ctx.embed(
             title=member.name,
             color=member.color,
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-
-        join_pos = (
-            sorted(ctx.guild.members, key=lambda m: m.joined_at).index(member) + 1
-        )
-        time_data = {
-            f"{EMOJIS["new"]} Created": f"<t:{round(member.created_at.timestamp())}:R>",
-            f"{EMOJIS["join"]} Joined": f"<t:{round(member.joined_at.timestamp())}:R> [{join_pos}/{len(ctx.guild.members)}]",
-        }
-        embed.description = fmt_dict(time_data, linesplit=True, colons=False)
-        badge_emojis = []
-        for flag in member.public_flags.all():
-            emoji = EMOJIS[f"bdg_{flag.name}"]
-            badge_emojis.append(f"{emoji} {emoji.description}")
-
-        if member.premium_since or member.banner is not None:
-            badge_emojis.append(str(EMOJIS["bdg_nitro"]))
-        if member.is_timed_out():
-            badge_emojis.append(str(EMOJIS["timeout"]))
-        if member.bot and not member.public_flags.verified_bot:
-            badge_emojis.append(str(EMOJIS["bdg_bot"]))
+        
+        name, value = format_identity(member)
         embed.add_field(
-            name=f"{EMOJIS["tag"]} Badges",
-            value="\n".join(badge_emojis) or "No badges",
+            name=name,
+            value=value
         )
-
+        
+        name, value = format_times(member)
+        embed.add_field(
+            name=name,
+            value=value
+        )
+        
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ"
+        )
+        
+        name, value = format_badges(member)
+        embed.add_field(
+            name=name,    
+            value=value,
+        )
+        
+        name, value = format_roles(member)
+        embed.add_field(
+            name=name,
+            value=value
+        )
+        
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ"
+        )
+        
+        name, value = format_statues(member)
+        embed.add_field(
+            name=name,
+            value=value
+        )
+        
+        name, value = format_boosting(member)
+        embed.add_field(
+            name=name,
+            value=value
+        )
+        
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ"
+        )
         return embed
 
+    async def whois_avatar_embed(
+        self,
+        itx: discord.Interaction,
+        member: discord.Member,
+    ) -> discord.Embed:
+        embed = VanirContext.syn_embed(
+            title=member.name,
+            color=member.color,
+            user=itx.user,
+        )
+        embed.set_image(url=member.display_avatar.url)
+        await itx.response.send_message(embed=embed, ephemeral=True)
+    
+    async def whois_permissions(
+        self,
+        itx: discord.Interaction,
+        member: discord.Member,
+    ) -> discord.Embed:
+        info = self.bot.get_cog("Info")
+        
+        content = await info.get_permission_table(
+            {"?": member.resolved_permissions or member.guild_permissions},
+            checked=ALL_PERMISSIONS,
+        )
+        embed = VanirContext.syn_embed(
+            title="Permissions",
+            description=content,
+            user=itx.user,
+        )
+        embed.set_image(url="attachment://spacer.png")
+        file = discord.File("assets/spacer.png")
+        await itx.response.send_message(embed=embed, file=file, ephemeral=True)
+        
+def format_times(member: discord.Member) -> tuple[str, str]:
+    join_pos = (
+        list(sorted(member.guild.members, key=lambda m: m.joined_at)).index(member) + 1
+    )
+    children = [
+        ("`Created`", f"<t:{round(member.created_at.timestamp())}:R>"),
+        ("` Joined`", f"<t:{round(member.joined_at.timestamp())}:R>"),
+        ("` Join #`", f"`{join_pos} / {len(member.guild.members)}`"),
+    ]
+    return format_children(
+        title="User ",
+        emoji=EMOJIS["join"],
+        children=children,
+        as_field=True
+    )
+
+def format_badges(member: discord.Member) -> tuple[str, str]:
+    flags = [f.name for f in member.public_flags.all()]
+    if member.premium_since:
+        flags.append("nitro")
+    if member.is_timed_out():
+        flags.append("timeout")
+    if member.bot and not member.public_flags.verified_bot:
+        flags.append("bot")
+        
+    children = []
+    for flag in flags:
+        emoji = EMOJIS[f"bdg_{flag}"]
+        children.append(
+            ("", # no keys
+            f"{emoji} {emoji.description}")
+        )
+    
+    return format_children(
+        title="Badges",
+        emoji=EMOJIS["tag"], 
+        children=children,
+        as_field=True
+    )
+
+def format_identity(member: discord.Member) -> tuple[str, str]:
+    children = []
+    children.append(
+        ("`User`", member.name)
+    )
+    children.append(
+        ("`Name`", member.global_name or member.name)
+    )
+    if member.nick:
+        children.append(
+            ("`Nick`", member.nick)
+        )
+    children.append(
+        ("`ID`", f"`{member.id}`")
+    )
+    return format_children(
+        title="Identity",
+        emoji=EMOJIS["bw_info"],
+        children=children,
+        as_field=True
+    )
+    
+def format_roles(member: discord.Member) -> tuple[str, str]:
+    top_color_str = closest_color_name(str(member.color))[0]
+    children = [
+        ("` Amt.`", f"`{len(member.roles) - 1}`"),
+        ("`  Top`", f"{member.top_role.mention if member.top_role != member.guild.default_role else "@everyone"}"),
+        ("`Color`", f"{top_color_str} `[{str(member.color)}]`"),
+    ]
+    return format_children(
+        title="Roles",
+        emoji=EMOJIS["role"],
+        children=children,
+        as_field=True
+    )
+
+def format_statues(member: discord.Member) -> tuple[str, str]:
+    device: str = ""
+    if member.desktop_status.value != "offline":
+        device = "desktop"
+    elif member.mobile_status.value != "offline":
+        device = "mobile"
+    elif member.web_status.value != "offline":
+        device = "web"
+    else:
+        device = "offline"
+        
+    device_emoji = EMOJIS[device]
+    children = [
+        ("`Status`", f"{EMOJIS[member.status.value]} {member.status.name.replace("_", " ").title()}"),
+        ("`Device`", f"{device_emoji} {device.title()}"),
+    ]
+    return format_children(
+        title="Statuses",
+        emoji=EMOJIS["status"],
+        children=children,
+        as_field=True
+    )
+
+def format_boosting(member: discord.Member) -> tuple[str, str]:
+    boosting = member.premium_since
+    if boosting:
+        children = [
+            ("`Since`", f"<t:{round(boosting.timestamp())}:R>"),
+            ("` Role`", member.guild.premium_subscriber_role.mention),
+        ]
+    else:
+        children = [
+            ("", "<Not boosting"),
+        ]
+    return format_children(
+        title="Boosting",
+        emoji=EMOJIS["boost"],
+        children=children,
+        as_field=True
+    )
 
 class NewUsersPager(AutoTablePager):
     def __init__(
@@ -460,6 +641,37 @@ class BanDetachmentSelect(discord.ui.Select[NewUsersPager]):
                 f"Deleting messages from the last {regress_time(delete_secs)}"
             )
         await itx.response.send_message(embed=embed, ephemeral=True)
+
+
+class AvatarButton(discord.ui.Button):
+    def __init__(self, member: discord.Member, method: Awaitable[discord.Embed]) -> None:
+        super().__init__(
+            label="Avatar",
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["person"]),
+        )
+        self.member = member
+        self.method = method
+        
+    async def callback(self, itx: discord.Interaction) -> None:
+        await self.method(itx, self.member)
+
+
+class PermissionsButton(discord.ui.Button):
+    def __init__(self, member: discord.Member, method: Awaitable[discord.Embed]) -> None:
+        super().__init__(
+            label="Permissions",
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["shield"]),
+        )
+        self.member = member
+        self.method = method
+        
+    async def callback(self, itx: discord.Interaction) -> None:
+        await self.method(itx, self.member)
+
+
+
 
 
 async def setup(bot: Vanir) -> None:

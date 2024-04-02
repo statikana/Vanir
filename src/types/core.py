@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 import shutil
 from dataclasses import dataclass
 from typing import Any
@@ -10,6 +11,7 @@ import asyncpg
 import discord
 from discord.ext import commands
 from nltk.corpus import words as corpus_words
+import aiofiles
 
 import config
 from src import env
@@ -19,7 +21,7 @@ from src.logging import book
 from src.logging import main as init_logging
 from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
 from src.types.piston import PistonORM, PistonRuntime
-from src.types.trie import Trie
+from src.util.autocorrect import FuzzyAC, words
 
 
 class Vanir(commands.Bot):
@@ -46,9 +48,7 @@ class Vanir(commands.Bot):
 
         self.piston: PistonORM | None = None
         self.installed_piston_packages: list[PistonRuntime] = []
-
-        self.trie = Trie()
-
+        
     async def get_context(
         self,
         origin: discord.Message | discord.Interaction,
@@ -211,7 +211,7 @@ class BotCache:
     def __init__(self, bot: Vanir) -> None:
         self.bot = bot
         self.tlinks: list[TLINK] = []
-        self.words: list[str] = []
+        self.fuzzy_ac: FuzzyAC | None = None
 
         # channel id: (source_msg_id, translated_msg_id)
         self.tlink_translated_messages: dict[int, list[TranslatedMessage]] = {}
@@ -221,12 +221,10 @@ class BotCache:
         if self.bot.connect_db_on_init:
             self.tlinks = await self.bot.db_link.get_all_links()
 
-        if config.create_trie:
-            book.info("Inserting words into trie")
-            self.words = corpus_words.words()
-
-            for word in self.words:
-                self.bot.trie.insert(word.lower())
+        async with aiofiles.open("dataset.txt") as file:
+            wordset = words(await file.read())
+            counter = Counter(wordset)
+            self.fuzzy_ac = FuzzyAC(counter)
 
 
 @dataclass

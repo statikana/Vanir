@@ -19,7 +19,7 @@ from src.types.command import (
     VanirView,
     vanir_group,
 )
-from src.util.format import fmt_dict, fmt_size
+from src.util.format import format_dict, format_size
 
 
 class Waifu(VanirCog):
@@ -429,10 +429,10 @@ class WaifuDataView(VanirView):
             "Uploaded At": f"{self.data.uploaded_at:%x}",
             "Is NSFW": self.data.is_nsfw,
             "Dimensions": f"{self.data.width}x{self.data.height}",
-            "File Size": fmt_size(self.data.byte_size),
+            "File Size": format_size(self.data.byte_size),
             "File Type": self.data.extension[1:].upper(),
         }
-        description = fmt_dict(data)
+        description = format_dict(data)
         embed = self.ctx.embed(title="Image Data", description=description)
         embed.set_thumbnail(url=self.data.url)
         await itx.response.send_message(embed=embed, ephemeral=True)

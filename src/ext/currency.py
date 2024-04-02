@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from src.types.command import VanirCog, VanirModal, VanirView, vanir_group
 from src.types.core import Vanir, VanirContext
-from src.util.format import fmt_dict
+from src.util.format import format_dict
 
 if TYPE_CHECKING:
     from src.types.orm import Currency as DBCurrency
@@ -126,7 +126,7 @@ class Currency(VanirCog):
 
         embed = VanirContext.syn_embed(
             title=f"Transfer $**{amount:,}** to {to_user.name}?",
-            description=f"This is **{(amount/from_bal * 100):.2f}**% of your total balance.\n{fmt_dict(data, linesplit=True, colons=False)}",
+            description=f"This is **{(amount/from_bal * 100):.2f}**% of your total balance.\n{format_dict(data, linesplit=True, colons=False)}",
             user=from_user,
         )
 
@@ -186,7 +186,7 @@ class GiveCoinsView(VanirView):
         }
         embed = VanirContext.syn_embed(
             title=f"Transferred $**{self.amount:,}** to {self.to_user.name}",
-            description=fmt_dict(data, linesplit=True, colons=False),
+            description=format_dict(data, linesplit=True, colons=False),
             user=itx.user,
         )
 

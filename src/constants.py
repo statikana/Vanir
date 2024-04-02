@@ -131,36 +131,29 @@ POS_COLORS = {
     "''": "grey",  # closing quotation mark
     "--": "grey",  # dash
     ".": "grey",  # sentence terminator
+    ",": "grey",  # comma
     ":": "grey",  # colon or ellipsis
     "(": "grey",  # opening parenthesis
     ")": "grey",  # closing parenthesis
-    
     "DT": "grey",  # determiner
-    
     "IN": "blue",  # preposition or conjunction
-    
     "UH": "yellow",  # interjection
-    
     "VB": "green",  # verb, base form
     "VBG": "green",  # verb, gerund or present participle
     "VBD": "green",  # verb, past tense
     "VBZ": "green",  # verb, 3rd person singular present
     "VBP": "green",  # verb, non-3rd person singular present
     "VBN": "green",  # verb, past participle
-    
     "JJ": "cyan",  # adjective
     "DT$": "pink",  # possessive determiner
     "PRP": "pink",  # pronoun, personal
     "PRP$": "pink",  # pronoun, possessive
-    
     "WP": "white",  # wh-pronoun
     "WP$": "white",  # possessive wh-pronoun
-    
     "NNP": "white",  # proper noun, singular
     "NN": "white",  # noun, singular or mass
     "NNS": "grey",  # noun, plural
     "NNPS": "grey",  # proper noun, plural
-    
     "CC": "blue",  # coordinating conjunction
     "RB": "red",  # adverb
     "RBR": "red",  # adverb, comparative
@@ -333,6 +326,23 @@ EMOJIS = {
     "join": VanirEmoji(name="join", id=1223858211866677349, animated=False),
     "new": VanirEmoji(name="new", id=1223858039799414824, animated=False),
     "github": VanirEmoji(name="github", id=1224196311545413704, animated=False),
+    "bw_info": VanirEmoji(name="bw_info", id=1224536530563891292, animated=False),
+    "role": VanirEmoji(name="role", id=1224540138814570647, animated=False),
+    
+    "mobile": VanirEmoji(name="mobile", id=1224542517937049670, animated=False),
+    "desktop": VanirEmoji(name="desktop", id=1224542647163551755, animated=False),
+    "web": VanirEmoji(name="web", id=1224544021591097384, animated=False),
+    
+    "offline": VanirEmoji(name="offline", id=1224552198126567456, animated=False),
+    "invisible": VanirEmoji(name="offline", id=1224552198126567456, animated=False), # offline
+    "idle": VanirEmoji(name="idle", id=1224552076646944828, animated=False),
+    "dnd": VanirEmoji(name="dnd", id=1224552124516536342, animated=False),
+    "online": VanirEmoji(name="online", id=1224552158045671434, animated=False),
+    
+    "status": VanirEmoji(name="status", id=1224551297424949308, animated=False),
+    "boost": VanirEmoji(name="boost", id=1224561790797611009, animated=False),
+    "person": VanirEmoji(name="person", id=1224563879384711188, animated=False),
+    "shield": VanirEmoji(name="shield", id=1224564433687154769, animated=False),
 }
 
 TIMESTAMP_STYLES = {

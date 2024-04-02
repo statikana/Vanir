@@ -307,7 +307,7 @@ class EmbedView(VanirView):
         self.embed.url = url
         try:
             color = discord.Color.from_str(color)
-        except ValueError:
+        except (ValueError, IndexError):
             if (fixed := color.lower().replace(" ", "")) in COLOR_INDEX:
                 color = discord.Color.from_str(COLOR_INDEX[fixed][0])
             else:

@@ -8,7 +8,7 @@ from src.util.parse import Convention
 from src.util.regex import CODEBLOCK_REGEX
 
 
-def fmt_dict(
+def format_dict(
     data: dict[Any, Any],
     linesplit: bool = False,
     colons: bool = True,
@@ -22,8 +22,38 @@ def fmt_dict(
 
     return "\n".join(lines)
 
+def format_children(
+    *,
+    emoji: str,
+    title: str,
+    children: list[tuple[str, str]],
+    as_field: bool = False
+):
+    
+    con_line = "├─"
+    fin_line  = "└─"
+    
+    lines: list[str] = [f"{emoji} **{title}**"]
 
-def fmt_size(n_bytes: int, cvtn: Convention = Convention.BINARY) -> str:
+    for i, (k, v) in enumerate(children):
+        if k:
+            key = f"**{k}:** "
+        else:
+            key = ""
+            
+        if i == len(children) - 1:
+            lines.append(f"{fin_line}{key}{v}")
+        else:
+            lines.append(f"{con_line}{key}{v}")
+    if not as_field:
+        return "\n".join(lines)
+    else:
+        return [lines[0], "\n".join(lines[1:])]
+            
+        
+
+
+def format_size(n_bytes: int, cvtn: Convention = Convention.BINARY) -> str:
     if cvtn == Convention.BINARY:
         size_factor = math.log(n_bytes, 2) // 10
     else:
@@ -70,7 +100,7 @@ def ctext(text: str, color: str) -> str:
     return f"{ANSI[color]}{text}{ANSI['reset']}"
 
 
-def fmt_bool(b: bool) -> str:  # ignore[boolean-type-hint-positional-argument]
+def format_bool(b: bool) -> str:  # ignore[boolean-type-hint-positional-argument]
     return ctext("Yes", color="green") if b else ctext("No", color="red")
 
 

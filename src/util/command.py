@@ -117,8 +117,8 @@ async def send_file(
     )
     embed.add_field(
         name="File Size [Output]",
-        value=f"`{format.fmt_size(new_info.size, format.Convention.BINARY)}` **|** "
-        f"`{format.fmt_size(new_info.size, format.Convention.DECIMAL)}`",
+        value=f"`{format.format_size(new_info.size, format.Convention.BINARY)}` **|** "
+        f"`{format.format_size(new_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
 
@@ -136,8 +136,8 @@ async def assure_working(ctx: VanirContext, media: MediaInterface) -> discord.Me
     )
     embed.add_field(
         name="File Size [Input]",
-        value=f"`{format.fmt_size(media.initial_info.size, format.Convention.BINARY)}` **|** "
-        f"`{format.fmt_size(media.initial_info.size, format.Convention.DECIMAL)}`",
+        value=f"`{format.format_size(media.initial_info.size, format.Convention.BINARY)}` **|** "
+        f"`{format.format_size(media.initial_info.size, format.Convention.DECIMAL)}`",
         inline=False,
     )
     return await ctx.reply(embed=embed)

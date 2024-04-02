@@ -19,7 +19,7 @@ from src.constants import EMOJIS, GITHUB_ROOT
 from src.logging import book
 from src.types.core import Vanir, VanirContext
 from src.types.util import MessageState
-from src.util.format import fmt_bool
+from src.util.format import format_bool
 
 VanirPagerT = TypeVar("VanirPagerT")
 CommandT = TypeVar("CommandT", bound=commands.Command)
@@ -436,9 +436,9 @@ class AutoTablePager(VanirPager):
 
         text = table.draw()
 
-        text = text.replace("True", fmt_bool(True) + " ").replace(
+        text = text.replace("True", format_bool(True) + " ").replace(
             "False",
-            fmt_bool(False) + "   ",
+            format_bool(False) + "   ",
         )
         return VanirContext.syn_embed(
             title=title,

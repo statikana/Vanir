@@ -22,7 +22,7 @@ from src.constants import (
     VOICE_CHANNEL_PERMISSIONS,
 )
 from src.types.command import VanirCog, vanir_command
-from src.util.format import ctext, fmt_bool, fmt_dict
+from src.util.format import ctext, format_bool, format_dict
 from src.util.parse import closest_color_name, find_ext, find_filename, fuzzysearch
 from src.util.regex import (
     CONNECTOR_REGEX,
@@ -285,8 +285,15 @@ class Info(VanirCog):
         if received is None:
             return False
 
-        embed = await getattr(self, f"{attr}_info_embed")(ctx, received)
-        await ctx.reply(embed=embed)
+        embed: discord.File = await getattr(self, f"{attr}_info_embed")(ctx, received)
+        
+        if "ansi" in embed.description:
+            file = discord.File("assets/spacer.png")
+            embed.set_image(url="attachment://spacer.png")
+        else:
+            file = None
+            
+        await ctx.reply(embed=embed, file=file)
         return True
 
     async def maybecoro_get(self, method: Callable[[int], Any], snowflake: int) -> Any:
@@ -325,7 +332,7 @@ class Info(VanirCog):
         if member is not None:
             data.update({"Color": closest_color_name(str(member.color)[1:])[0].title()})
 
-        embed.add_field(name="Misc. Data", value=fmt_dict(data), inline=False)
+        embed.add_field(name="Misc. Data", value=format_dict(data), inline=False)
 
         if member is not None:
             embed.add_field(
@@ -357,7 +364,7 @@ class Info(VanirCog):
                 "Created At": f"<t:{int(cat.created_at.timestamp())}:R>",
                 "NSFW?": cat.is_nsfw(),
             }
-            embed.add_field(name="Category Data", value=fmt_dict(data))
+            embed.add_field(name="Category Data", value=format_dict(data))
 
         await self.add_permission_data_from_channel(ctx, embed, channel)
 
@@ -400,7 +407,7 @@ class Info(VanirCog):
                 )
 
             if mentions:
-                embed.add_field(name="Mentions", value=fmt_dict(mentions))
+                embed.add_field(name="Mentions", value=format_dict(mentions))
 
             pat = r"\s"
             content_info = {
@@ -410,7 +417,7 @@ class Info(VanirCog):
                 "# Lines": f"{len(msg.content.splitlines()):,}",
             }
 
-            embed.add_field(name="Content Info", value=fmt_dict(content_info))
+            embed.add_field(name="Content Info", value=format_dict(content_info))
 
         if msg.attachments:
             urls = [a.url.lower() for a in msg.attachments]
@@ -445,7 +452,7 @@ class Info(VanirCog):
             "Bots": len(set(filter(lambda m: m.bot, guild.members))),
             "Max Members": f"{guild.max_members:,}",
         }
-        embed.add_field(name="Member Info", value=fmt_dict(member_data))
+        embed.add_field(name="Member Info", value=format_dict(member_data))
 
         boost_data = {
             "Boost Count": f"{guild.premium_subscription_count:,}",
@@ -463,7 +470,7 @@ class Info(VanirCog):
             ),
             "Boost Level": f"{guild.premium_tier} / 3",
         }
-        embed.add_field(name="Boost Info", value=fmt_dict(boost_data))
+        embed.add_field(name="Boost Info", value=format_dict(boost_data))
         await self.add_sf_data(embed, guild.id)
         return embed
 
@@ -481,7 +488,7 @@ class Info(VanirCog):
 
         embed.add_field(
             name="Role Info",
-            value=fmt_dict(
+            value=format_dict(
                 {
                     "\N{ARTIST PALETTE}Color": closest_color_name(str(role.color)[1:])[
                         0
@@ -532,8 +539,7 @@ class Info(VanirCog):
         table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
 
         table.set_deco(
-            texttable.Texttable.BORDER
-            | texttable.Texttable.HEADER
+            texttable.Texttable.HEADER
             | texttable.Texttable.VLINES,
         )
 
@@ -545,9 +551,9 @@ class Info(VanirCog):
                 ],
             )
         drawn = table.draw()
-        drawn = drawn.replace("True", f"{fmt_bool(True)} ").replace(
+        drawn = drawn.replace("True", f"{format_bool(True)} ").replace(
             "False",
-            f"{fmt_bool(False)}   ",
+            f"{format_bool(False)}   ",
         )
 
         for major in (
@@ -559,6 +565,7 @@ class Info(VanirCog):
                 major,
                 ctext(major, "blue"),
             )
+        print(drawn)
         return f"**```ansi\n{drawn}```**"
 
     async def add_permission_data_from_channel(
@@ -613,7 +620,7 @@ class Info(VanirCog):
             "SF Generation ID": f"`{generation}`",
         }
 
-        embed.add_field(name="Snowflake Info", value=fmt_dict(data), inline=False)
+        embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
 
 
 async def setup(bot: Vanir) -> None:

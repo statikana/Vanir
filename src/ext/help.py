@@ -18,7 +18,7 @@ from src.util.command import (
     get_display_cogs,
     get_param_annotation,
 )
-from src.util.format import fmt_dict
+from src.util.format import format_dict
 from src.util.parse import fuzzysearch
 
 
@@ -207,7 +207,7 @@ class Help(VanirCog):
                 data["Default"] = param.displayed_default or param.default
             embed.add_field(
                 name=f"__`{name}`__: `{get_param_annotation(param)}`",
-                value=f"*{param.description}*\n{fmt_dict(data)}",
+                value=f"*{param.description}*\n{format_dict(data)}",
                 inline=False,
             )
 

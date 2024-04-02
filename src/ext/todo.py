@@ -178,7 +178,7 @@ async def create_task_gui(
     return await view.update_embed(), view
 
 
-def fmt_task_row(task: TASK) -> list[str]:
+def format_task_row(task: TASK) -> list[str]:
     return [
         task["title"],
         task["completed"],
@@ -209,7 +209,7 @@ class TaskPager(AutoTablePager):
             dtypes=dtypes,
             data_name=data_name,
             include_hline=include_hline,
-            row_key=fmt_task_row,
+            row_key=format_task_row,
             start_page=start_page,
         )
         self.ctx = ctx

@@ -9,11 +9,11 @@ from discord.ext import commands
 
 from src.constants import (
     ANSI,
-    POS_COLORS,
     LANGUAGE_CODE_MAP,
     LANGUAGE_CODES,
     LANGUAGE_NAME_MAP,
     LANGUAGE_NAMES,
+    POS_COLORS,
 )
 from src.types.command import VanirCog, VanirView, vanir_command
 from src.util.command import langcode_autocomplete
@@ -66,12 +66,12 @@ class Language(VanirCog):
                 )
 
         def format_def(definition: dict):
-            fmt_definition = f"**{i + 1}.** {discord.utils.escape_markdown(definition['definition'])}"
+            format_definition = f"**{i + 1}.** {discord.utils.escape_markdown(definition['definition'])}"
             if "example" in definition:
-                fmt_definition += (
+                format_definition += (
                     f"\n\t> *{discord.utils.escape_markdown(definition['example'])}*"
                 )
-            return fmt_definition
+            return format_definition
 
         for meaning in json["meanings"]:
             definitions = []
@@ -205,53 +205,89 @@ class Language(VanirCog):
         relavant_tags = {
             k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
         }
-        desc = self.format_pos_tags(tagged, relavant_tags)
+        desc = format_pos_tags(tagged, relavant_tags)
 
         await ctx.reply(f"```ansi\n{desc}```")
-
-    def format_pos_tags(
+    
+    @vanir_command()
+    async def autocorrect(
         self,
-        word_tagging: list[tuple[str, str]],
-        tag_map: dict[str, str],
+        ctx: VanirContext,
+        *,
+        word_or_phrase: str = commands.param(
+            description="The word or phrase to autocorrect",
+        ),
     ) -> None:
-        # first, what the tags mean
-        tags = list(tag_map.keys())
-        intro = "\n".join(
-            f"{ANSI[POS_COLORS[tag]]}{f"{tags.index(tag)+1}.":<3}{ANSI["reset"]} {ANSI[POS_COLORS[tag]]}[{tag:<4}]{ANSI["reset"]} {ANSI["grey"]}{desc}{ANSI["reset"]}"
-            for tag, desc in tag_map.items()
-        )
+        if len(word_or_phrase.split()) == 1:
+            config = self.bot.cache.fuzzy_ac.config
+            contianer = self.bot.cache.fuzzy_ac.possible(word_or_phrase, distance=2, n=10)
+            values = sorted(
+                contianer.stack,
+                key=lambda pack: (config.levenshtein_offset-pack[1][0], 1-pack[1][1]),
+            )
+            try:
+                maxlen = max(len(word) for word, _ in values)
+            except ValueError as err:
+                raise ValueError("No words found") from err
+            words = [
+                f"`{word:<{maxlen}}` [D: `{config.levenshtein_offset-distance}`, P: `{proportion*100:.2f}`]"
+                for word, (distance, proportion) in values
+            ]
+            embed = ctx.embed(
+                description="\n".join(words),
+            )
+        else:
+            words = [
+                self.bot.cache.fuzzy_ac.most_probable(word, distance=2)
+                for word in word_or_phrase.split()
+            ]
+            embed = ctx.embed(
+                description=" ".join(words),
+            )
+        
+        await ctx.reply(embed=embed)
+    
 
-        body = " ".join(
-            f"{ANSI[POS_COLORS[tag]]}{word}{ANSI["reset"]}"
-            for word, tag in word_tagging
-        )
-        
-        # add a row of numbers below the start of each word, pointing to the number of the tag
-        # spacing array is the number of the tag and then the number of spaces after
-        # ie
-        # rushmore
-        # 4       
-        # is (4, 7, NNP)
-        spacing = []
-        for word, tag in word_tagging:
-            tag_num = tags.index(tag) + 1
-            spacing.append((len(word), tag_num, tag))
-            
-        # add the numbers to the definition
-        definitions = []
-        
-        for wordlen, num, tag in spacing:
-            spacing = wordlen - len(str(num))
-            print(spacing, num, tag)
-            tag_color = ANSI[POS_COLORS[tag]]
-            string = f"{tag_color}{num}{ANSI['reset']}{' ' * spacing}"
-            if wordlen >= len(str(num)):
-                string += " "
-            definitions.append(string)
-            
-        return f"{intro}\n\n{body}\n{"".join(definitions)}"
-        # return f"{intro}\n{body}"
-        
+def format_pos_tags(
+    word_tagging: list[tuple[str, str]],
+    tag_map: dict[str, str],
+) -> None:
+    # first, what the tags mean
+    tags = list(tag_map.keys())
+    intro = "\n".join(
+        f"{ANSI[POS_COLORS[tag]]}{f"{tags.index(tag)+1}.":<3}{ANSI["reset"]} {ANSI[POS_COLORS[tag]]}[{tag:<4}]{ANSI["reset"]} {ANSI["grey"]}{desc}{ANSI["reset"]}"
+        for tag, desc in tag_map.items()
+    )
+
+    body = " ".join(
+        f"{ANSI[POS_COLORS[tag]]}{word}{ANSI["reset"]}"
+        for word, tag in word_tagging
+    )
+
+    # add a row of numbers below the start of each word, pointing to the number of the tag
+    # spacing array is the number of the tag and then the number of spaces after
+    # ie
+    # rushmore
+    # 4
+    # is (4, 7, NNP)
+    spacing = []
+    for word, tag in word_tagging:
+        tag_num = tags.index(tag) + 1
+        spacing.append((len(word), tag_num, tag))
+
+    # add the numbers to the definition
+    definitions = []
+
+    for wordlen, num, tag in spacing:
+        spacing = wordlen - len(str(num))
+        tag_color = ANSI[POS_COLORS[tag]]
+        string = f"{tag_color}{num}{ANSI['reset']}{' ' * spacing}"
+        if wordlen >= len(str(num)):
+            string += " "
+        definitions.append(string)
+
+    return f"{intro}\n\n{body}\n{"".join(definitions)}"
+
 
 class AfterTranslateView(VanirView):
     def __init__(

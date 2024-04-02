@@ -32,7 +32,7 @@ def find_ext(url: str) -> str:
 
 
 def closest_color_name(start_hex: str) -> tuple[str, int]:
-    start = int(start_hex, 16)
+    start = int(start_hex.strip("#"), 16)
     best: tuple[str, int] | None = None
     for col, (check_hex, _) in COLOR_INDEX.items():
         if best is None:
