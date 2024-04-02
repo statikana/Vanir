@@ -4,7 +4,7 @@ import asyncio
 import shutil
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 import aiofiles
 import aiohttp
@@ -21,6 +21,16 @@ from src.logging import main as init_logging
 from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
 from src.types.piston import PistonORM, PistonRuntime
 from src.util.autocorrect import FuzzyAC, words
+
+SFType = TypeVar(
+    "SFType",
+    discord.Member,
+    discord.Role,
+    discord.abc.GuildChannel,
+    discord.Emoji,
+    discord.Message,
+    discord.Guild,
+)
 
 
 class Vanir(commands.Bot):
@@ -112,6 +122,13 @@ class Vanir(commands.Bot):
                 book.warning(f"SHUTIL: Could not find {resource} in PATH")
             else:
                 book.info(f"SHUTIL: Found {resource} in PATH")
+
+    async def dispatch_sf(self, ctx: VanirContext, sf_object: SFType) -> None:
+        for command in self.walk_commands():
+            if sf_receiver := getattr(command, "sf_receiver", None):
+                if issubclass(type(sf_object), sf_receiver):
+                    book.info(f"Dispatching {command} for {sf_object}")
+                    await ctx.invoke(command, sf_object)
 
 
 class VanirTree(discord.app_commands.CommandTree):

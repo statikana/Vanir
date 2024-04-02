@@ -189,12 +189,12 @@ EMOJIS = {
     "bb_arrow": VanirEmoji(name="bb_arrow", id=1220035023827374080, animated=False),
     "f_arrow": VanirEmoji(name="f_arrow", id=1220034630992789575, animated=False),
     "ff_arrow": VanirEmoji(name="ff_arrow", id=1220034497454801006, animated=False),
-    "close": VanirEmoji(name="close", id=1220186816225874091, animated=False),
+    "close": VanirEmoji(name="close", id=1224772174460747809, animated=False),
     "execute": VanirEmoji(name="execute", id=1220179060928282805, animated=False),
-    "info": VanirEmoji(name="info", id=1220177488886501529, animated=False),
+    "info": VanirEmoji(name="info", id=1224536530563891292, animated=False),
     "patreon": VanirEmoji(name="patreon", id=1220769788159066132, animated=False),
     "pixiv": VanirEmoji(name="pixiv", id=1220769964030431243, animated=False),
-    "x": VanirEmoji(name="x", id=1220770263566778529, animated=False),
+    "x": VanirEmoji(name="x", id=1224772736224595968, animated=False),
     "deviant_art": VanirEmoji(
         name="deviant_art",
         id=1220770290670244042,
@@ -203,23 +203,29 @@ EMOJIS = {
     "waifuim": VanirEmoji(name="waifuim", id=1220801796977725531, animated=False),
     "timeout": VanirEmoji(
         name="timeout",
-        id=1222339703613816842,
+        id=1224773987062644777,
+        animated=False,
+        description="Timed Out",
+    ),
+    "bdg_timeout": VanirEmoji(
+        name="bdg_timeout",
+        id=1224773987062644777,
         animated=False,
         description="Timed Out",
     ),
     "kick": VanirEmoji(
         name="kick",
-        id=1222340933119512736,
+        id=1224773047278633061,
         animated=False,
         description="Kicked",
     ),
     "ban": VanirEmoji(
         name="ban",
-        id=1222341200397205655,
+        id=1224773147757379596,
         animated=False,
         description="Banned",
     ),
-    "piston": VanirEmoji(name="piston", id=1223830801938911253, animated=False),
+    "piston": VanirEmoji(name="piston", id=1224773309422370867, animated=False),
     "bdg_active_developer": VanirEmoji(
         name="bdg_active_developer",
         id=1223845037163544718,
@@ -326,14 +332,15 @@ EMOJIS = {
     "join": VanirEmoji(name="join", id=1223858211866677349, animated=False),
     "new": VanirEmoji(name="new", id=1223858039799414824, animated=False),
     "github": VanirEmoji(name="github", id=1224196311545413704, animated=False),
-    "bw_info": VanirEmoji(name="bw_info", id=1224536530563891292, animated=False),
     "role": VanirEmoji(name="role", id=1224540138814570647, animated=False),
     "mobile": VanirEmoji(name="mobile", id=1224542517937049670, animated=False),
     "desktop": VanirEmoji(name="desktop", id=1224542647163551755, animated=False),
     "web": VanirEmoji(name="web", id=1224544021591097384, animated=False),
     "offline": VanirEmoji(name="offline", id=1224552198126567456, animated=False),
     "invisible": VanirEmoji(
-        name="offline", id=1224552198126567456, animated=False
+        name="offline",
+        id=1224552198126567456,
+        animated=False,
     ),  # offline
     "idle": VanirEmoji(name="idle", id=1224552076646944828, animated=False),
     "dnd": VanirEmoji(name="dnd", id=1224552124516536342, animated=False),
@@ -342,6 +349,24 @@ EMOJIS = {
     "boost": VanirEmoji(name="boost", id=1224561790797611009, animated=False),
     "person": VanirEmoji(name="person", id=1224563879384711188, animated=False),
     "shield": VanirEmoji(name="shield", id=1224564433687154769, animated=False),
+    "invite": VanirEmoji(name="invite", id=1224748736765235343, animated=False),
+    "gear": VanirEmoji(name="gear", id=1224749126760267848, animated=False),
+    "down_right_curve": VanirEmoji(
+        name="down_right_curve",
+        id=1224770648337944707,
+        animated=False,
+    ),
+    "down_split_right_curve": VanirEmoji(
+        name="down_split_right_curve",
+        id=1224770711432855756,
+        animated=False,
+    ),
+    "up_right_curve": VanirEmoji(
+        name="up_right_curve",
+        id=1224770788171710575,
+        animated=False,
+    ),
+    "down_line": VanirEmoji(name="down_line", id=1224770890831761530, animated=False),
 }
 
 TIMESTAMP_STYLES = {

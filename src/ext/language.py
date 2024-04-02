@@ -198,6 +198,7 @@ class Language(VanirCog):
         ),
     ) -> None:
         """Tags parts of speech in the text."""
+        text = text[:130]
         tokens = nltk.word_tokenize(text)
         tagged = nltk.pos_tag(tokens)
 
@@ -206,7 +207,7 @@ class Language(VanirCog):
             k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
         }
         desc = format_pos_tags(tagged, relavant_tags)
-
+        
         await ctx.reply(f"```ansi\n{desc}```")
 
     @vanir_command()
@@ -221,7 +222,9 @@ class Language(VanirCog):
         if len(word_or_phrase.split()) == 1:
             config = self.bot.cache.fuzzy_ac.config
             contianer = self.bot.cache.fuzzy_ac.possible(
-                word_or_phrase, distance=2, n=10
+                word_or_phrase,
+                distance=2,
+                n=10,
             )
             values = sorted(
                 contianer.stack,

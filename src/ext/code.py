@@ -226,6 +226,7 @@ from math import *
             default=True,
         ),
     ) -> None:
+        """Format your python code with ruff"""
         if isinstance(python_code, commands.Parameter):
             python_code = python_code.default
         if isinstance(diff, commands.Parameter):

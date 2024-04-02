@@ -3,8 +3,7 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
-from asyncio import iscoroutinefunction
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Awaitable
 
 import discord
 import pint
@@ -14,6 +13,7 @@ from pint import UnitRegistry
 
 from src.constants import (
     ALL_PERMISSIONS,
+    EMOJIS,
     GLOBAL_CHANNEL_PERMISSIONS,
     STRONG_CHANNEL_PERMISSIONS,
     TEXT_CHANNEL_PERMISSIONS,
@@ -21,9 +21,20 @@ from src.constants import (
     VALID_IMAGE_FORMATS,
     VOICE_CHANNEL_PERMISSIONS,
 )
-from src.types.command import VanirCog, vanir_command
-from src.util.format import ctext, format_bool, format_dict
+from src.ext._sf_find import (
+    find_channel,
+    find_emoji,
+    find_guild,
+    find_member,
+    find_message,
+    find_role,
+)
+from src.types.command import AcceptItx, VanirCog, VanirView, vanir_command
+from src.types.core import VanirContext
+from src.types.interface import EmojiConverter
+from src.util.format import ctext, format_bool, format_children, format_dict
 from src.util.parse import closest_color_name, find_ext, find_filename, fuzzysearch
+from src.util.time import format_time
 from src.util.regex import (
     CONNECTOR_REGEX,
     DISCORD_TIMESTAMP_REGEX,
@@ -35,10 +46,10 @@ from src.util.regex import (
     UNIT_SEPARATOR_REGEX,
     UNIT_SEPARATOR_SUB_REGEX,
 )
-from src.util.time import ShortTime, regress_time
+from src.util.time import ShortTime, format_time
 
 if TYPE_CHECKING:
-    from src.types.core import Vanir, VanirContext
+    from src.types.core import Vanir
 
 ureg = UnitRegistry()
 units = [
@@ -77,33 +88,33 @@ class Info(VanirCog):
         if not SNOWFLAKE_REGEX.fullmatch(snowflake):
             msg = "Not a snowflake."
             raise ValueError(msg)
-            # check cache first
 
         sf = int(snowflake)
 
-        found: bool = False
         if search:
-            cache_attributes = ("user", "channel", "guild", "role", "emoji")
+            methods = [
+                find_member,
+                find_role,
+                find_channel,
+                find_emoji,
+                find_message,
+                find_guild,
+            ]
+            for finder in methods:
+                print(f"Trying {finder.__name__}")
+                result = await finder(ctx, sf, make_request=True)
+                if result is not None:
+                    print(f"Found {finder.__name__}")
+                    await self.bot.dispatch_sf(ctx, result)
+                    return
 
-            fetch_attributes = ("message", "user", "channel", "role")
-
-            for cache_attr in cache_attributes:
-                if await self.scan_methods(ctx, "get", cache_attr, sf):
-                    found = True
-                    break
-            else:
-                for fetch_attr in fetch_attributes:
-                    if await self.scan_methods(ctx, "fetch", fetch_attr, sf):
-                        found = True
-                        break
         else:
             self.snowflake.reset_cooldown(ctx)
 
-        if not found:
-            embed = await self.snowflake_info_embed(ctx, sf)
-            await ctx.reply(embed=embed)
+        embed = await self.snowflake_info_embed(ctx, sf)
+        await ctx.reply(embed=embed)
 
-    @vanir_command(aliases=["ci", "char", "chars"])
+    @vanir_command(aliases=["char", "chars"])
     async def charinfo(
         self,
         ctx: VanirContext,
@@ -187,7 +198,7 @@ class Info(VanirCog):
         embed.add_field(name="UNIX Timestamp", value=f"`{ts}`", inline=True)
         embed.add_field(
             name="Human Readable",
-            value=f"{"in " if ts > time.time() else ""}{regress_time(ts)}{" ago" if ts < time.time() else ""}",
+            value=f"{"in " if ts > time.time() else ""}{format_time(ts)}{" ago" if ts < time.time() else ""}",
             inline=False,
         )
         await ctx.reply(embed=embed)
@@ -255,122 +266,233 @@ class Info(VanirCog):
             key=lambda x: x.name,
         )[:25]
 
-    async def scan_methods(
+    @vanir_command(
+        aliases=["user", "member", "who", "userinfo", "ui"],
+        sf_receiver=discord.Member,
+    )
+    async def whois(
         self,
         ctx: VanirContext,
-        method: str,
-        attr: str,
-        snowflake: int,
-    ) -> bool:
-        if attr == "message":
-            received = discord.utils.find(
-                lambda m: m.id == snowflake,
-                ctx.bot.cached_messages,
-            )
-            if received is None:
-                try:
-                    received = await ctx.channel.fetch_message(snowflake)
-                except discord.NotFound:
-                    return False
-        else:
-            sources = (self.bot, ctx.guild, ctx.channel)
-            received: Any = None
-            for source in sources:
-                try:
-                    func = getattr(source, f"{method}_{attr}")
-                    received = await self.maybecoro_get(func, snowflake)
-                except (AttributeError, discord.NotFound):
-                    continue
+        member: discord.Member = commands.param(
+            description="The member to view",
+            default=lambda ctx: ctx.author,
+            displayed_default="You",
+        ),
+    ) -> None:
+        """Shows information about a member."""
+        embed = await self.whois_embed(ctx, member)
+        view = VanirView(self.bot, user=ctx.author, accept_itx=AcceptItx.ANY)
 
-        if received is None:
-            return False
+        view.add_item(AvatarButton(member, self.whois_avatar_embed))
+        view.add_item(PermissionsButton(member, self.whois_permissions))
 
-        embed: discord.File = await getattr(self, f"{attr}_info_embed")(ctx, received)
+        await ctx.send(embed=embed, view=view)
 
-        if "ansi" in embed.description:
-            file = discord.File("assets/spacer.png")
-            embed.set_image(url="attachment://spacer.png")
-        else:
-            file = None
-
-        await ctx.reply(embed=embed, file=file)
-        return True
-
-    async def maybecoro_get(self, method: Callable[[int], Any], snowflake: int) -> Any:
-        if iscoroutinefunction(method):
-            received = await method(snowflake)
-        else:
-            received = method(snowflake)
-        return received
-
-    async def user_info_embed(
+    @vanir_command(aliases=["mi"], sf_receiver=discord.Message)
+    async def messageinfo(
         self,
         ctx: VanirContext,
-        user: discord.User,
-    ) -> discord.Embed:
-        member = ctx.guild.get_member_named(user.name)
+        message: discord.Message = commands.param(
+            description="The message to view",
+            default=lambda ctx: ctx.message,
+            displayed_default="This message",
+        ),
+    ) -> None:
+        """Shows information about a message."""
+        embed = await self.message_info_embed(ctx, message)
+        await ctx.send(embed=embed)
 
-        embed = ctx.embed(title=f"User: {user.name}", description=f"ID: `{user.id}`")
-        created_ts = int(user.created_at.timestamp())
-        embed.add_field(
-            name="Created At",
-            value=f"<t:{created_ts}:F> [<t:{created_ts}:R>]",
-            inline=False,
+    @vanir_command(aliases=["gi"], sf_receiver=discord.Guild)
+    async def guildinfo(
+        self,
+        ctx: VanirContext,
+        guild: discord.Guild = commands.param(
+            description="The guild to view",
+            default=lambda ctx: ctx.guild,
+            displayed_default="This guild",
+        ),
+    ) -> None:
+        """Shows information about a guild."""
+        embed = await self.guild_info_embed(ctx, guild)
+        await ctx.send(embed=embed)
+
+    @vanir_command(aliases=["ri"], sf_receiver=discord.Role)
+    async def roleinfo(
+        self,
+        ctx: VanirContext,
+        role: discord.Role = commands.param(
+            description="The role to view",
+        ),
+    ) -> None:
+        """Shows information about a role."""
+        embed = await self.role_info_embed(ctx, role)
+        await ctx.send(embed=embed)
+
+    @vanir_command(aliases=["ei"], sf_receiver=discord.Emoji)
+    async def emojiinfo(
+        self,
+        ctx: VanirContext,
+        emoji: discord.Emoji = commands.param(
+            description="The emoji to view",
+            converter=EmojiConverter(),
+        ),
+    ) -> None:
+        """Shows information about an emoji."""
+        embed = await self.emoji_info_embed(ctx, emoji)
+        await ctx.send(embed=embed)
+
+    @vanir_command(aliases=["ci"], sf_receiver=discord.abc.GuildChannel)
+    async def channelinfo(
+        self,
+        ctx: VanirContext,
+        channel: discord.abc.GuildChannel = commands.param(
+            description="The channel to view",
+        ),
+    ) -> None:
+        """Shows information about a channel."""
+
+        # data = await self.get_permission_data_from_channel(ctx, channel)
+        
+        embed = await self.channel_info_embed(ctx, channel)
+        
+        await ctx.send(embed=embed)
+
+    async def whois_embed(self, ctx: VanirContext, member: discord.Member) -> None:
+        embed = ctx.embed(
+            title=member.name,
+            color=member.color,
         )
+        embed.set_thumbnail(url=member.display_avatar.url)
+
+        name, value = format_whois_identity(member)
         embed.add_field(
-            name=f"Mutual Guilds [`{len(user.mutual_guilds)}`]",
-            value="\n".join(
-                f"- {guild.name} [ID: `{guild.id}`]" for guild in user.mutual_guilds[:7]
-            ),
-            inline=False,
+            name=name,
+            value=value,
         )
-        data = {
-            "Bot?": user.bot,
-            "System?": user.system,
-        }
 
-        if member is not None:
-            data.update({"Color": closest_color_name(str(member.color)[1:])[0].title()})
+        name, value = format_whois_times(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
 
-        embed.add_field(name="Misc. Data", value=format_dict(data), inline=False)
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
 
-        if member is not None:
-            embed.add_field(
-                name="Roles",
-                value=f"{(len(member.roles) - 1):,} Total\nTop: {' '.join(r.mention for r in sorted(filter(lambda r: r.name != '@everyone', member.roles), key=lambda r: r.permissions.value, reverse=True)[:3])}",
-            )
-        # discord.Permissions.value
-        await self.add_sf_data(embed, user.id)
+        name, value = format_whois_badges(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
 
-        embed.set_image(url=(member or user).display_avatar.url)
+        name, value = format_whois_roles(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
 
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
+
+        name, value = format_whois_statues(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+
+        name, value = format_whois_boosting(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
         return embed
+
+    async def whois_avatar_embed(
+        self,
+        itx: discord.Interaction,
+        member: discord.Member,
+    ) -> discord.Embed:
+        embed = VanirContext.syn_embed(
+            title=member.name,
+            color=member.color,
+            user=itx.user,
+        )
+        embed.set_image(url=member.display_avatar.url)
+        await itx.response.send_message(embed=embed, ephemeral=True)
+
+    async def whois_permissions(
+        self,
+        itx: discord.Interaction,
+        member: discord.Member,
+    ) -> discord.Embed:
+
+        content = await self.get_permission_table(
+            {"?": member.resolved_permissions or member.guild_permissions},
+            checked=ALL_PERMISSIONS,
+            hlines=False
+        )
+        embed = VanirContext.syn_embed(
+            title="Permissions",
+            description=content,
+            user=itx.user,
+        )
+        embed.set_image(url="attachment://spacer.png")
+        file = discord.File("assets/spacer.png")
+        await itx.response.send_message(embed=embed, file=file, ephemeral=True)
 
     async def channel_info_embed(
         self,
         ctx: VanirContext,
         channel: discord.abc.GuildChannel,
     ) -> discord.Embed:
+        # the goal is to get this to look like userinfo
+        # but with channel specific data obviously
+        formatted_type = (channel.type.name.replace("_", " ") + " Channel   ").title()
         embed = ctx.embed(
-            title=f"{str(channel.type).replace('_', ' ').title()} Channel: {channel.name}",
-            description=f"ID: `{channel.id}`\nGuild: {channel.guild} [ID: `{channel.guild.id}`]",
+            title=f"`{formatted_type}`: {channel.name}",
         )
-
-        if channel.category is not None:
-            cat = channel.category
-            data = {
-                "Name": cat.name,
-                "ID": f"`{cat.id}`",
-                "Created At": f"<t:{int(cat.created_at.timestamp())}:R>",
-                "NSFW?": cat.is_nsfw(),
-            }
-            embed.add_field(name="Category Data", value=format_dict(data))
-
-        await self.add_permission_data_from_channel(ctx, embed, channel)
-
-        embed.add_field(name="Jump URL", value=f"[[JUMP]]({channel.jump_url})")
-
-        await self.add_sf_data(embed, channel.id)
+        
+        # add data for:
+        # name, id, topic
+        # slowmode, nsfw?, thread inactivity timeout
+        # permissions (button, like in whois)
+        # current invites
+        # integrations (button)
+        
+        name, value = format_channel_meta(channel)  # name, id, topic
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+        
+        name, value = format_channel_settings(channel)  # slowmode, nsfw, thread timeout
+        
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+        
+        # spacer
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
+        
+        name, value = await format_channel_invites(channel)  # invites
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+        
         return embed
 
     async def message_info_embed(
@@ -527,26 +649,39 @@ class Info(VanirCog):
 
     async def get_permission_table(
         self,
-        permissions: dict[str, discord.Permissions],
+        permission_map: dict[str, discord.Permissions],
         *,
         checked: list[str],
+        hlines: bool = True,
     ) -> str:
-        table = texttable.Texttable(max_width=0)
+        table = texttable.Texttable(max_width=40)
 
-        table.header(["permission", *list(permissions)])
-        table.set_header_align(["r"] + (["l"] * (len(permissions))))
-        table.set_cols_align(["r"] + (["l"] * (len(permissions))))
-        table.set_cols_dtype(["t"] + (["b"] * (len(permissions))))
+        table.header(["permission", *list(permission_map)])
+        
+        align = ["r"] + ["l"] * len(permission_map)
+        dtype = ["t"] + ["b"] * len(permission_map)
+        
+        table.set_header_align(align)
+        table.set_cols_align(align)
+        table.set_cols_dtype(dtype)
 
-        table.set_deco(
-            texttable.Texttable.HEADER | texttable.Texttable.VLINES,
-        )
+        deco = texttable.Texttable.HEADER | texttable.Texttable.VLINES
+        if hlines:
+            deco |= texttable.Texttable.HLINES
+        table.set_deco(deco)
+
+        # if the user has admin, then they have all permissions
+        # even though it isn't explicitly listed
+
+        for user, perms in permission_map.items():
+            new = discord.Permissions.all() if perms.administrator else perms
+            permission_map[user] = new
 
         for name in checked:
             table.add_row(
                 [
                     name.replace("_", " ").title(),
-                    *(getattr(p, name) for p in permissions.values()),
+                    *(getattr(p, name) for p in permission_map.values()),
                 ],
             )
         drawn = table.draw()
@@ -566,10 +701,9 @@ class Info(VanirCog):
             )
         return f"**```ansi\n{drawn}```**"
 
-    async def add_permission_data_from_channel(
+    async def get_permission_data_from_channel(
         self,
         ctx: VanirContext,
-        embed: discord.Embed,
         channel: discord.abc.GuildChannel,
     ) -> None:
         default = channel.permissions_for(ctx.guild.default_role)
@@ -588,7 +722,7 @@ class Info(VanirCog):
             {"you": you, "me": me, "default": default},
             checked=permission_to_check,
         )
-        embed.description += "\n" + data
+        return "\n" + data
 
     async def snowflake_info_embed(
         self,
@@ -619,6 +753,265 @@ class Info(VanirCog):
         }
 
         embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
+
+
+def format_whois_times(member: discord.Member) -> tuple[str, str]:
+    join_pos = sorted(member.guild.members, key=lambda m: m.joined_at).index(member) + 1
+    children = [
+        ("`Created`", f"<t:{round(member.created_at.timestamp())}:R>"),
+        ("`Joined`", f"<t:{round(member.joined_at.timestamp())}:R>"),
+        ("`Join #`", f"`{join_pos} / {len(member.guild.members)}`"),
+    ]
+    return format_children(
+        title="User ",
+        emoji=EMOJIS["join"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_whois_badges(member: discord.Member) -> tuple[str, str]:
+    flags = [f.name for f in member.public_flags.all()]
+    if member.premium_since:
+        flags.append("nitro")
+    if member.is_timed_out():
+        flags.append("timeout")
+    if member.bot and not member.public_flags.verified_bot:
+        flags.append("bot")
+
+    children = []
+    for flag in flags:
+        emoji = EMOJIS[f"bdg_{flag}"]
+        children.append(
+            (
+                "",  # no keys
+                f"{emoji} `{emoji.description}`",
+            ),
+        )
+    try:
+        return format_children(
+            title="Badges",
+            emoji=EMOJIS["tag"],
+            children=children,
+            as_field=True,
+        )
+    except ValueError:
+        return (
+            f"{EMOJIS['tag']} No Badges",
+            ""
+        )
+
+
+def format_whois_identity(member: discord.Member) -> tuple[str, str]:
+    children = []
+    children.append(
+        ("`User`", member.name),
+    )
+    children.append(
+        ("`Name`", member.global_name or member.name),
+    )
+    if member.nick:
+        children.append(
+            ("`Nick`", member.nick),
+        )
+    children.append(
+        ("`ID`", f"`{member.id}`"),
+    )
+    return format_children(
+        title="Identity",
+        emoji=EMOJIS["info"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_whois_roles(member: discord.Member) -> tuple[str, str]:
+    top_color_str = closest_color_name(str(member.color))[0]
+    children = [
+        ("`Amt`", f"`{len(member.roles) - 1}`"),
+        (
+            "`Top`",
+            f"{member.top_role.mention if member.top_role != member.guild.default_role else "@everyone"}",
+        ),
+        ("`Color`", f"{top_color_str} `[{member.color!s}]`"),
+    ]
+    if member.top_role.id == member.guild.default_role.id:
+        children = children[:1]
+    return format_children(
+        title="Roles",
+        emoji=EMOJIS["role"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_whois_statues(member: discord.Member) -> tuple[str, str]:
+    device: str = ""
+    if member.desktop_status.value != "offline":
+        device = "desktop"
+    elif member.mobile_status.value != "offline":
+        device = "mobile"
+    elif member.web_status.value != "offline":
+        device = "web"
+    else:
+        device = "offline"
+
+    device_emoji = EMOJIS[device]
+    children = [
+        (
+            "`Status`",
+            f"{EMOJIS[member.status.value]} {member.status.name.replace("_", " ").title()}",
+        ),
+        ("`Device`", f"{device_emoji} {device.title()}"),
+    ]
+    activity_type = member.activity.type if member.activity else None
+    if activity_type:
+        match activity_type:
+            case discord.ActivityType.custom:
+                activity = f"{member.activity.emoji} {member.activity.name}"
+            case discord.ActivityType.playing:
+                activity = f"playing {member.activity.name}"
+            case discord.ActivityType.streaming:
+                activity = f"streaming {member.activity.name}"
+            case discord.ActivityType.watching:
+                activity = f"watching {member.activity.name}"
+            case discord.ActivityType.listening:
+                activity = f"listening to {member.activity.name}"
+            case discord.ActivityType.competing:
+                activity = f"competing in {member.activity.name}"
+            case _:
+                activity = "Doing nothing"
+    
+    else:
+        activity = "Doing nothing"
+                
+    children.append(
+        (
+            "`Activity`",
+            f"\n`  `{activity} {member.activity.details if getattr(member.activity, "details", None) else ""}",
+        )
+    )
+    return format_children(
+        title="Statuses",
+        emoji=EMOJIS["status"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_whois_boosting(member: discord.Member) -> tuple[str, str]:
+    boosting = member.premium_since
+    if boosting:
+        children = [
+            ("`Since`", f"<t:{round(boosting.timestamp())}:R>"),
+            ("`Role`", member.guild.premium_subscriber_role.mention),
+        ]
+    else:
+        children = [
+            ("", f"{EMOJIS["x"]}Not boosting"),
+        ]
+    return format_children(
+        title="Boosting",
+        emoji=EMOJIS["boost"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_channel_meta(channel: discord.abc.GuildChannel) -> tuple[str, str]:
+    children = [
+        ("`Name`", f"`{channel.name}`"),
+        ("`ID`", f"`{channel.id}`"),
+    ]
+    if hasattr(channel, "topic") and channel.topic:
+        children.append(
+            ("`Topic`", f"{channel.topic}"),
+        )
+    return format_children(
+        title="Meta",
+        emoji=EMOJIS["info"],
+        children=children,
+        as_field=True,
+    )
+
+
+def format_channel_settings(channel: discord.TextChannel) -> tuple[str, str]:
+    children = [
+        ("`Slowmode`", f"`{format_time(channel.slowmode_delay, from_ts=False) if channel.slowmode_delay else 'None'}`"),
+        ("`NSFW`", f"`{channel.is_nsfw()}`"),
+        ("`Archive`", f"`{format_time(channel.default_auto_archive_duration, from_ts=False)}`"),
+    ]
+    return format_children(
+        title="Settings",
+        emoji=EMOJIS["gear"],
+        children=children,
+        as_field=True,
+    )
+
+
+async def format_channel_invites(channel: discord.TextChannel) -> tuple[str, str]:
+    invites = await channel.invites()
+    children = []
+    if invites:
+        invites: list[discord.Invite] = sorted(invites, key=lambda i: i.created_at, reverse=True)[:10]  # type: list[discord.Invite]
+        for invite in invites:
+            expires = invite.expires_at
+            if expires:
+                expire_fmt = f"<t:{round(expires.timestamp())}:R>"
+            else:
+                expire_fmt = "Never"
+            
+            author_fmt = invite.inviter.mention if invite.inviter else "[Unknown User]"
+            code = invite.id
+            
+            fmt = (code, f"{author_fmt} | Expires: {expire_fmt}")
+            children.append(fmt)
+
+    else:
+        children = [
+            ("", "<No invites found"),
+        ]
+    return format_children(
+        title="Invites",
+        emoji=EMOJIS["invite"],
+        children=children,
+        as_field=True,
+    )
+
+class AvatarButton(discord.ui.Button):
+    def __init__(
+        self,
+        member: discord.Member,
+        method: Awaitable[discord.Embed],
+    ) -> None:
+        super().__init__(
+            label="Avatar",
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["person"]),
+        )
+        self.member = member
+        self.method = method
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        await self.method(itx, self.member)
+
+
+class PermissionsButton(discord.ui.Button):
+    def __init__(
+        self,
+        member: discord.Member,
+        method: Awaitable[discord.Embed],
+    ) -> None:
+        super().__init__(
+            label="Permissions",
+            style=discord.ButtonStyle.grey,
+            emoji=str(EMOJIS["shield"]),
+        )
+        self.member = member
+        self.method = method
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        await self.method(itx, self.member)
 
 
 async def setup(bot: Vanir) -> None:

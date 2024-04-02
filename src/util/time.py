@@ -74,8 +74,10 @@ class ShortTime:
         return cls(argument, now=ctx.message.created_at)
 
 
-def regress_time(ts: float) -> str:
-    ts = int(ts) - int(time.time())
+def format_time(ts: float, from_ts: bool = True) -> str:
+    if from_ts:
+        ts = int(ts) - int(time.time())
+    ts = int(ts)
     desc: dict[str, int] = {}
     for name, length in TIME_UNITS.items():
         n = int(ts / length)  # // is weird for negative numbers

@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 
 from src.types.command import BotObjectT
+from src.util.regex import EMOJI_REGEX
 
 if TYPE_CHECKING:
     import re
@@ -100,3 +101,16 @@ class TaskIDConverter(commands.Converter[int]):
         raise commands.CommandInvokeError(
             ValueError("Could not find task with name or ID " + argument),
         )
+
+
+class EmojiConverter(commands.Converter[discord.Emoji]):
+    async def convert(self, ctx: VanirContext, argument: str) -> discord.Emoji:
+        if not (match := EMOJI_REGEX.fullmatch(argument)):
+            msg = "Invalid emoji format"
+            raise commands.BadArgument(msg)
+
+        if not (emoji := ctx.bot.get_emoji(int(match.group("id")))):
+            msg = "Emoji not found"
+            raise commands.BadArgument(msg)
+
+        return emoji

@@ -176,7 +176,7 @@ class CommandNotFoundHelper(VanirView):
 
     @discord.ui.button(
         label="Run",
-        emoji=str(EMOJIS["execute"]),
+        emoji=str(EMOJIS["gear"]),
         style=discord.ButtonStyle.success,
     )
     async def run_command(

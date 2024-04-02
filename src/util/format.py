@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any, Generator, Iterable, overload
 
-from src.constants import ANSI
+from src.constants import ANSI, EMOJIS
 from src.util.parse import Convention
 from src.util.regex import CODEBLOCK_REGEX
 
@@ -30,8 +30,8 @@ def format_children(
     title: str,
     children: list[tuple[str, str]],
     as_field: bool = False,
-) -> str:
-    ...
+) -> str: ...
+
 
 @overload
 def format_children(
@@ -40,8 +40,8 @@ def format_children(
     title: str,
     children: list[tuple[str, str]],
     as_field: bool = True,
-) -> list[str]:
-    ...
+) -> list[str]: ...
+
 
 def format_children(
     *,
@@ -49,15 +49,22 @@ def format_children(
     title: str,
     children: list[tuple[str, str]],
     as_field: bool = False,
+    rjust: bool = False
+    
 ) -> list[str] | str:
-    con_line = "├─"
-    fin_line = "└─"
+    con_line = EMOJIS["down_split_right_curve"]
+    fin_line = EMOJIS["down_right_curve"]
 
     lines: list[str] = [f"{emoji} **{title}**"]
-
-    for i, (k, v) in enumerate(children):
-        key = f"**{k}:** " if k else ""
-
+    
+    maxn = max(len(k) for k, _ in children)
+    
+    for i, (key, v) in enumerate(children):
+        if key and rjust:
+            key = key.rjust(maxn, " ")
+            
+        key = f"**{key}:** " if key else ""
+            
         if i == len(children) - 1:
             lines.append(f"{fin_line}{key}{v}")
         else:

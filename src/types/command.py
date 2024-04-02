@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.constants import EMOJIS, GITHUB_ROOT
 from src.logging import book
-from src.types.core import Vanir, VanirContext
+from src.types.core import SFType, Vanir, VanirContext
 from src.types.util import MessageState
 from src.util.format import format_bool
 
@@ -241,10 +241,12 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         items_per_page: int,
         *,
         start_page: int = 0,
+        include_spacer_image: bool = False
     ) -> None:
         super().__init__(bot, user=user)
         self.items = items
         self.items_per_page = items_per_page
+        self.include_spacer_image = include_spacer_image
 
         self.page = start_page
         if items_per_page <= 0:
@@ -353,14 +355,19 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         if update_content:
             if self.message is not None:
                 embed = await self.update_embed()
+                if self.include_spacer_image:
+                    file = discord.File("assets/spacer.png", filename="spacer.png")
+                    embed.set_image(url="attachment://spacer.png")
+                else:
+                    file = None
 
                 if itx is not None:
                     try:
-                        await itx.response.edit_message(embed=embed, view=self)
+                        await itx.response.edit_message(embed=embed, view=self, attachments=[file])
                     except discord.InteractionResponded:
-                        await itx.edit_original_response(embed=embed, view=self)
+                        await itx.edit_original_response(embed=embed, view=self, file=file)
                 else:
-                    await self.message.edit(embed=embed, view=self)
+                    await self.message.edit(embed=embed, view=self, file=file)
             else:
                 book.warning(
                     f"Pager has no message attached "
@@ -396,8 +403,9 @@ class AutoTablePager(VanirPager):
         include_hline: bool = False,
         row_key: Callable[[VanirPagerT], list] | None = None,
         start_page: int = 0,
+        include_spacer_image: bool = False
     ) -> None:
-        super().__init__(bot, user, rows, rows_per_page, start_page=start_page)
+        super().__init__(bot, user, rows, rows_per_page, start_page=start_page, include_spacer_image=include_spacer_image)
         self.headers = headers
         self.rows = self.items
         self.data_name = data_name
@@ -535,8 +543,10 @@ class CloseButton(discord.ui.Button):
         await itx.message.delete()
 
 
-class VanirHybridCommand(commands.Command):
-    pass
+class VanirHybridCommand(commands.HybridCommand):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.sf_receiver: SFType | None = kwargs.pop("sf_receiver", None)
+        super().__init__(*args, **kwargs)
 
 
 class VanirHybridGroup(commands.HybridGroup):
@@ -594,18 +604,21 @@ def vanir_command(
     name: str | None = None,
     hidden: bool = False,
     aliases: list[str] | None = None,
+    sf_receiver: SFType | None = None,
 ) -> Callable[[Any], commands.HybridCommand]:
     if aliases is None:
         aliases = []
 
     def inner(func: Any):
         func = autopopulate_descriptions(func)
-        cmd = commands.HybridCommand(
+        cmd = VanirHybridCommand(
             func,
             aliases=aliases,
             name=name or discord.utils.MISSING,
+            sf_receiver=sf_receiver,
         )
         cmd.hidden = hidden
+        cmd.sf_receiver = sf_receiver
         return inherit(cmd)
 
     return inner
