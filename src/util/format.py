@@ -49,22 +49,20 @@ def format_children(
     title: str,
     children: list[tuple[str, str]],
     as_field: bool = False,
-    rjust: bool = False
-    
+    rjust: bool = False,
 ) -> list[str] | str:
     con_line = EMOJIS["down_split_right_curve"]
     fin_line = EMOJIS["down_right_curve"]
 
     lines: list[str] = [f"{emoji} **{title}**"]
-    
+
     maxn = max(len(k) for k, _ in children)
-    
-    for i, (key, v) in enumerate(children):
-        if key and rjust:
-            key = key.rjust(maxn, " ")
-            
+
+    for i, (k, v) in enumerate(children):
+        key = k.rjust(maxn, " ") if k and rjust else k
+
         key = f"**{key}:** " if key else ""
-            
+
         if i == len(children) - 1:
             lines.append(f"{fin_line}{key}{v}")
         else:

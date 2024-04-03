@@ -195,6 +195,7 @@ EMOJIS = {
     "patreon": VanirEmoji(name="patreon", id=1220769788159066132, animated=False),
     "pixiv": VanirEmoji(name="pixiv", id=1220769964030431243, animated=False),
     "x": VanirEmoji(name="x", id=1224772736224595968, animated=False),
+    "check": VanirEmoji(name="check", id=1224873167487500350, animated=False),
     "deviant_art": VanirEmoji(
         name="deviant_art",
         id=1220770290670244042,

@@ -241,7 +241,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
         items_per_page: int,
         *,
         start_page: int = 0,
-        include_spacer_image: bool = False
+        include_spacer_image: bool = False,
     ) -> None:
         super().__init__(bot, user=user)
         self.items = items
@@ -363,9 +363,17 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
 
                 if itx is not None:
                     try:
-                        await itx.response.edit_message(embed=embed, view=self, attachments=[file])
+                        await itx.response.edit_message(
+                            embed=embed,
+                            view=self,
+                            attachments=[file],
+                        )
                     except discord.InteractionResponded:
-                        await itx.edit_original_response(embed=embed, view=self, file=file)
+                        await itx.edit_original_response(
+                            embed=embed,
+                            view=self,
+                            file=file,
+                        )
                 else:
                     await self.message.edit(embed=embed, view=self, file=file)
             else:
@@ -403,9 +411,16 @@ class AutoTablePager(VanirPager):
         include_hline: bool = False,
         row_key: Callable[[VanirPagerT], list] | None = None,
         start_page: int = 0,
-        include_spacer_image: bool = False
+        include_spacer_image: bool = False,
     ) -> None:
-        super().__init__(bot, user, rows, rows_per_page, start_page=start_page, include_spacer_image=include_spacer_image)
+        super().__init__(
+            bot,
+            user,
+            rows,
+            rows_per_page,
+            start_page=start_page,
+            include_spacer_image=include_spacer_image,
+        )
         self.headers = headers
         self.rows = self.items
         self.data_name = data_name

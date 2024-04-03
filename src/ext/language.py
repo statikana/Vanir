@@ -207,7 +207,7 @@ class Language(VanirCog):
             k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
         }
         desc = format_pos_tags(tagged, relavant_tags)
-        
+
         await ctx.reply(f"```ansi\n{desc}```")
 
     @vanir_command()

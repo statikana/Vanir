@@ -15,7 +15,7 @@ from src.types.command import (
     vanir_command,
 )
 from src.util.regex import EMOJI_REGEX
-from src.util.time import parse_time, format_time
+from src.util.time import format_time, parse_time
 from src.util.ux import generate_modal
 
 if TYPE_CHECKING:
