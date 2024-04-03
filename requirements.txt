@@ -1,11 +1,16 @@
+aiofiles==23.2.1
 aiohttp==3.9.3
 asyncpg==0.29.0
 discord.py==2.3.2
 fuzzywuzzy==0.18.0
 Logbook==1.7.0.post0
+nltk==3.8.1
+numpy==1.26.4
 opencv_python==4.9.0.80
-Pillow==10.2.0
+Pillow==10.3.0
 Pint==0.23
 python_dateutil==2.9.0.post0
+rapidfuzz==3.7.0
+sympy==1.12
 texttable==1.7.0
 Wand==0.6.13
