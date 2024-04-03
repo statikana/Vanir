@@ -14,3 +14,5 @@ test.py
 
 etymwn/
 assets/dataset.txt
+pyrightconfig.json
+pyvenv.cfg
