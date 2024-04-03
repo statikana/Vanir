@@ -112,10 +112,9 @@ class Vanir(commands.Bot):
 
     async def display_shutil(self) -> None:
         resources = [
-            "latex",
+            "latex",  # pylatex
             "ffmpeg",
-            "ffprobe",
-            "imagemagick",
+            "ffprobe",  # via ffmpeg install
         ]
         for resource in resources:
             if shutil.which(resource) is None:
