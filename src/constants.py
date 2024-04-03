@@ -368,6 +368,9 @@ EMOJIS = {
         animated=False,
     ),
     "down_line": VanirEmoji(name="down_line", id=1224770890831761530, animated=False),
+    "software": VanirEmoji(name="software", id=1225074130806771884, animated=False),
+    "cpu": VanirEmoji(name="cpu", id=1225084275658064053, animated=False),
+    "gpu": VanirEmoji(name="gpu", id=1225084145219272734, animated=False),
 }
 
 TIMESTAMP_STYLES = {
