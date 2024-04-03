@@ -344,6 +344,8 @@ class Info(VanirCog):
         ctx: VanirContext,
         channel: discord.abc.GuildChannel = commands.param(
             description="The channel to view",
+            default=lambda ctx: ctx.channel,
+            displayed_default="This channel",
         ),
     ) -> None:
         """Shows information about a channel."""

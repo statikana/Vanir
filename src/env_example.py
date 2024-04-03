@@ -4,6 +4,8 @@
 
 # Needed for: Basic operation
 # If not included, breaks upon: Startup
+from __future__ import annotations
+
 DISCORD_TOKEN: str = ...
 
 # Needed for: Connection to the PostgreSQL database
@@ -13,7 +15,7 @@ PSQL_CONNECTION: dict[str, str | int] = {
     "port": ...,
     "database": ...,
     "user": ...,
-    "password": ...
+    "password": ...,
 }
 
 # Needed for: Translation cog

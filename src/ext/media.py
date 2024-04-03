@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import discord  # noqa: TCH002
+import discord  # noqa: TCH002 # import is required for runtime evaluation of typehints
 from discord.ext import commands
 
 from src.types.command import VanirCog, uses_sys_assets, vanir_command

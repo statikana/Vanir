@@ -366,7 +366,7 @@ class VanirPager(VanirView, Generic[VanirPagerT]):
                         await itx.response.edit_message(
                             embed=embed,
                             view=self,
-                            attachments=[file],
+                            attachments=[file] if file else [],
                         )
                     except discord.InteractionResponded:
                         await itx.edit_original_response(

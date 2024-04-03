@@ -1,25 +1,30 @@
+from __future__ import annotations
+
 import asyncio
 import inspect
+import os
 import pathlib
+import platform
+import shutil
+import sys
 import time
 from asyncio import subprocess
-import shutil
-import os
-import sys
-import platform
-import psutil
-import GPUtil as gputil
-import cpuinfo
+from typing import TYPE_CHECKING
 
+import cpuinfo
 import discord
+import GPUtil
+import psutil
 from discord.ext import commands
 
 from src.constants import ANSI, EMOJIS, GITHUB_ROOT
 from src.types.command import GitHubView, VanirCog, vanir_command
-from src.types.core import Vanir, VanirContext
 from src.types.util import timed
-from src.util.format import format_size, natural_join, format_children
 from src.util.cache import timed_lru_cache
+from src.util.format import format_children, format_size, natural_join
+
+if TYPE_CHECKING:
+    from src.types.core import Vanir, VanirContext
 
 
 class Bot(VanirCog):
@@ -189,12 +194,12 @@ class Bot(VanirCog):
             description=f"Since: {tot}",
         )
         await ctx.reply(embed=embed)
-    
+
     @vanir_command(name="shutil", aliases=["os", "sys"])
     async def sysinfo(
         self,
         ctx: VanirContext,
-    ):
+    ) -> None:
         """Display system information. Recaches every minute."""
         await ctx.typing()
 
@@ -204,7 +209,7 @@ class Bot(VanirCog):
         embed = ctx.embed(title="System Information")
         start = time.perf_counter()
         fields = await asyncio.to_thread(get_info)
-        
+
         for field in fields:
             embed.add_field(
                 name=field.name,
@@ -212,31 +217,33 @@ class Bot(VanirCog):
                 inline=field.inline,
             )
         end = time.perf_counter()
-        
+
         embed.set_footer(text=f"Fetched in {(end-start)*1000:.4f}ms")
 
         await ctx.reply(embed=embed)
 
+
 @timed_lru_cache(seconds=60)
-def get_info() -> list["discord.embeds._EmbedFieldProxy"]:
-    # use:
-    # total disk usage
-    # 
+def get_info() -> list[discord.embeds._EmbedFieldProxy]:
     major, minor, micro = sys.version_info[:3]
     disk = shutil.disk_usage("/")
-    # disk
-    d_total, d_free, d_used = map(lambda x: x / 1024**3, disk)
-    # vmem
-    v_total, v_avail, v_per, v_used, v_free = map(lambda x: x / 1024**3, psutil.virtual_memory())
-    # cpu
-    cpu_avg_util = sum(psutil.cpu_percent(interval=None, percpu=True)) / psutil.cpu_count()
-    
-    gpu: gputil.GPU = gputil.getGPUs()[0]
-    
+
+    d_total, d_free, d_used = (x / 1024**3 for x in disk)
+
+    v_total, v_avail, v_per, v_used, v_free = (
+        x / 1024**3 for x in psutil.virtual_memory()
+    )
+
+    cpu_avg_util = (
+        sum(psutil.cpu_percent(interval=None, percpu=True)) / psutil.cpu_count()
+    )
+
+    gpu: GPUtil.GPU = GPUtil.getGPUs()[0]
+
     embed = discord.Embed(
         title="System Information",
     )
-    
+
     # software
     name, value = format_children(
         emoji=EMOJIS["software"],
@@ -249,7 +256,7 @@ def get_info() -> list["discord.embeds._EmbedFieldProxy"]:
         as_field=True,
     )
     embed.add_field(name=name, value=value)
-    
+
     # hardware utilization
     name, value = format_children(
         emoji=EMOJIS["gear"],
@@ -262,13 +269,13 @@ def get_info() -> list["discord.embeds._EmbedFieldProxy"]:
         as_field=True,
     )
     embed.add_field(name=name, value=value)
-    
+
     # spacer
     embed.add_field(name="ㅤ", value="ㅤ")
-    
+
     # hardware specifiations
     cpu_info = cpuinfo.get_cpu_info()
-    
+
     name, value = format_children(
         emoji=EMOJIS["cpu"],
         title="CPU Information",
@@ -278,12 +285,15 @@ def get_info() -> list["discord.embeds._EmbedFieldProxy"]:
             ("Frequency", f"`{cpu_info['hz_actual_friendly']}`"),
             ("Version", f"`{cpu_info['cpuinfo_version_string']}`"),
             ("Architecture", f"`{cpu_info['arch_string_raw']} [{cpu_info['arch']}]`"),
-            ("Caches", f"`{format_size(cpu_info['l2_cache_size'])} L2, {format_size(cpu_info['l3_cache_size'])} L3`"),
+            (
+                "Caches",
+                f"`{format_size(cpu_info['l2_cache_size'])} L2, {format_size(cpu_info['l3_cache_size'])} L3`",
+            ),
         ],
         as_field=True,
     )
     embed.add_field(name=name, value=value, inline=False)
-    
+
     name, value = format_children(
         emoji=EMOJIS["gpu"],
         title="GPU Information",
@@ -297,8 +307,6 @@ def get_info() -> list["discord.embeds._EmbedFieldProxy"]:
     )
     embed.add_field(name=name, value=value, inline=False)
     return embed.fields
-        
-        
 
 
 async def setup(bot: Vanir) -> None:

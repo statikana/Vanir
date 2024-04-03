@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import discord
@@ -7,6 +9,7 @@ from src.constants import LANGUAGE_CODE_MAP
 from src.logging import book
 from src.types.command import VanirCog
 from src.types.core import TranslatedMessage, Vanir, VanirContext
+from src.types.snipe import SnipedMessage, SnipeType
 from src.util.command import cog_hidden
 
 if TYPE_CHECKING:
@@ -17,6 +20,50 @@ if TYPE_CHECKING:
 class Events(VanirCog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
+        await self.handle_tlink(message)
+
+    @commands.Cog.listener()
+    async def on_message_edit(
+        self,
+        before: discord.Message,
+        after: discord.Message,
+    ) -> None:
+        await self.handle_snipe(before, after)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message) -> None:
+        await self.handle_snipe(message)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(
+        self,
+        payload: discord.RawReactionActionEvent,
+    ) -> None:
+        await self.handle_starboard_reaction_add(payload)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(
+        self,
+        payload: discord.RawReactionActionEvent,
+    ) -> None:
+        await self.handle_starboard_reaction_remove(payload)
+
+    async def handle_snipe(
+        self,
+        before: discord.Message,
+        after: discord.Message | None = None,
+    ) -> None:
+        snipe_type = SnipeType.DELETED if after is None else SnipeType.EDITED
+
+        snipe = SnipedMessage(
+            message=before,
+            type=snipe_type,
+            sniped_at=discord.utils.utcnow(),
+        )
+
+        self.bot.cache.snipes.push(snipe)
+
+    async def handle_tlink(self, message: discord.Message) -> None:
         if message.channel.id in (
             (tlink := cached_tlink)["from_channel_id"]
             for cached_tlink in self.bot.cache.tlinks
@@ -74,8 +121,7 @@ class Events(VanirCog):
             else:
                 self.bot.cache.tlink_translated_messages[message.channel] = [tmes]
 
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(
+    async def handle_starboard_reaction_add(
         self,
         payload: discord.RawReactionActionEvent,
     ) -> None:
@@ -199,8 +245,7 @@ class Events(VanirCog):
                 return
                 # this will create a new one next reaction
 
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(
+    async def handle_starboard_reaction_remove(
         self,
         payload: discord.RawReactionActionEvent,
     ) -> None:

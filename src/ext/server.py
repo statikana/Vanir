@@ -125,6 +125,77 @@ class Server(VanirCog):
         embed.set_image(url=created.url)
         await ctx.send(embed=embed)
 
+    @vanir_command()
+    async def snipe(
+        self,
+        ctx: VanirContext,
+        index: commands.Range[int, 1, 30] = commands.param(
+            description="The index of the message to snipe (1 is the most recent message)",
+            default=1,
+        ),
+        channel: discord.TextChannel | None = commands.param(
+            description="The channel to snipe",
+            default=lambda ctx: ctx.channel,
+            displayed_default="Current channel",
+        ),
+    ) -> None:
+        """Snipes the last edited or deleted message in a channel."""
+        try:
+            snipes = self.bot.cache.snipes[channel.id]
+        except KeyError as err:
+            msg = "No messages to snipe."
+            raise ValueError(msg) from err
+        if not snipes:
+            msg = "No messages to snipe."
+            raise ValueError(msg)
+
+        try:
+            real_index = len(snipes) - index
+            snipe = snipes[real_index]
+        except IndexError as err:
+            msg = f"No message at that index. I only have {len(snipes)} snipes stored for {channel.name}."
+            raise ValueError(msg) from err
+
+        snipe = snipes.pop()
+
+        embed = ctx.embed(
+            description=snipe.message.content,
+        )
+        embed.set_author(
+            name=f"{snipe.message.author}",
+            icon_url=snipe.message.author.display_avatar.url,
+        )
+        embed.timestamp = snipe.sniped_at
+        embed.set_footer(
+            text=f"{snipe.type.value} by {snipe.message.author} | Snipe {index}/{len(snipes)+1}",
+        )
+
+        filenames = []
+        if snipe.message.attachments:
+            for file in snipe.message.attachments:
+                filenames.append(file.filename)
+                if file.content_type.startswith("image"):
+                    embed.set_image(url=file.url)
+
+            embed.add_field(
+                name="Attachments",
+                value="\n".join(
+                    f"[`{file.filename or "<no filename>"}`]({file.url})"
+                    for file in snipe.message.attachments
+                ),
+            )
+
+        if snipe.message.reference:
+            ref = snipe.message.reference.resolved
+            embed.add_field(
+                name="Replied to",
+                value=f"[`{ref.author}`]: {ref.content}",
+            )
+
+        embeds = [embed]
+        embeds.extend(snipe.message.embeds)
+        await ctx.send(embeds=embeds)
+
 
 class NewUsersPager(AutoTablePager):
     def __init__(

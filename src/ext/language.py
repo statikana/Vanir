@@ -129,14 +129,18 @@ class Language(VanirCog):
         if isinstance(target_lang, commands.Parameter):
             target_lang = target_lang.default
 
+        if text is None and target_lang is not None:
+            text = target_lang
+            target_lang = "EN"
+
         if target_lang is None:
             target_lang = "EN"
         elif target_lang.title() in LANGUAGE_NAMES:
             target_lang = LANGUAGE_NAME_MAP[target_lang.title()]
-        elif target_lang.upper() not in LANGUAGE_CODES:
+        elif target_lang.upper() in LANGUAGE_CODES:
             target_lang = target_lang.upper()
         else:
-            text = f"{target_lang} {text if text else ''}"
+            text = f"{target_lang} {text}"
             target_lang = "EN"
 
         source_lang = source_lang.upper()
@@ -157,9 +161,6 @@ class Language(VanirCog):
                     ):
                         text = m.content
                         break
-                else:
-                    msg = "No text could be found."
-                    raise ValueError(msg)
 
         text = text[:100]
 
@@ -203,7 +204,7 @@ class Language(VanirCog):
         tagged = nltk.pos_tag(tokens)
 
         tag_map = nltk.data.load("help/tagsets/upenn_tagset.pickle")
-        
+
         relavant_tags = {
             k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
         }

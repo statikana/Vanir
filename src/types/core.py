@@ -20,6 +20,7 @@ from src.logging import book
 from src.logging import main as init_logging
 from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
 from src.types.piston import PistonORM, PistonRuntime
+from src.types.snipe import Buckets, SnipedMessage
 from src.util.autocorrect import FuzzyAC, words
 
 SFType = TypeVar(
@@ -230,6 +231,11 @@ class BotCache:
 
         # channel id: (source_msg_id, translated_msg_id)
         self.tlink_translated_messages: dict[int, list[TranslatedMessage]] = {}
+
+        self.snipes = Buckets[SnipedMessage](
+            30,
+            per=lambda snipe: snipe.message.channel.id,
+        )
 
     async def init(self) -> None:
         book.info("Initializing TLink cache")
