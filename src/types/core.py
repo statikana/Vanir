@@ -237,7 +237,7 @@ class BotCache:
         if self.bot.connect_db_on_init:
             self.tlinks = await self.bot.db_link.get_all_links()
 
-        async with aiofiles.open("dataset.txt") as file:
+        async with aiofiles.open("assets/dataset.txt") as file:
             wordset = words(await file.read())
             counter = Counter(wordset)
             self.fuzzy_ac = FuzzyAC(counter)

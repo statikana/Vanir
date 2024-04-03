@@ -203,6 +203,7 @@ class Language(VanirCog):
         tagged = nltk.pos_tag(tokens)
 
         tag_map = nltk.data.load("help/tagsets/upenn_tagset.pickle")
+        
         relavant_tags = {
             k: v[0] for k, v in tag_map.items() if k in (t[1] for t in tagged)
         }
