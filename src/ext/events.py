@@ -13,11 +13,18 @@ from src.types.snipe import SnipedMessage, SnipeType
 from src.util.command import cog_hidden
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from src.types.orm import StarBoard as StarBoardDB
 
 
 @cog_hidden
 class Events(VanirCog):
+    def __init__(self, bot: Vanir) -> None:
+        self.bot = bot
+        self.status_cooldowns: dict[int, datetime] = {}
+        self.cooldown_time = 1  # second
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         await self.handle_tlink(message)
@@ -47,6 +54,39 @@ class Events(VanirCog):
         payload: discord.RawReactionActionEvent,
     ) -> None:
         await self.handle_starboard_reaction_remove(payload)
+
+    @commands.Cog.listener()
+    async def on_presence_update(
+        self,
+        before: discord.Member,
+        after: discord.Member,
+    ) -> None:
+        if before.status != after.status:
+            # this fires for every guild the member is in
+            cd = self.status_cooldowns.get(before.id)
+            if cd is None:
+                self.status_cooldowns[before.id] = discord.utils.utcnow()
+            else:
+                if (discord.utils.utcnow() - cd).total_seconds() < self.cooldown_time:
+                    return
+                self.status_cooldowns[before.id] = discord.utils.utcnow()
+
+            book.debug(
+                f"Member status changed from {before.status.name} to {after.status.name} [{before.name}]",
+                member=before,
+                before=before.status.name,
+                after=after.status.name,
+            )
+            name = after.status.name
+            if name == "do_not_disturb":
+                name = "dnd"
+            if name == "invisible":
+                name = "offline"
+
+            await self.bot.db_status.status_update(
+                before.id,
+                name,
+            )
 
     async def handle_snipe(
         self,

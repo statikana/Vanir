@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import datetime
 import importlib
+import io
 import time
 from typing import TYPE_CHECKING, NoReturn
 
 import aiohttp
+import dataframe_image as dfi
 import discord
+import pandas as pd
 from discord.ext import commands
 
 from src.types.command import VanirCog
@@ -245,6 +249,42 @@ class Dev(VanirCog):
         embed = ctx.embed("Reloaded")
         embed.description = "\n".join(log)
         await ctx.send(embed=embed)
+
+    @commands.command()
+    @commands.is_owner()
+    async def tt(self, ctx: VanirContext) -> None:
+        headers = ["Name", "Age", "Birthday"]
+        data = [
+            ("Alice", 24, datetime.date(1996, 2, 5)),
+            ("Bob", 19, datetime.date(2001, 3, 15)),
+            ("Charlie", 30, datetime.date(1990, 4, 25)),
+            ("David", 25, datetime.date(1995, 5, 5)),
+            ("Eve", 22, datetime.date(1998, 6, 15)),
+        ]
+        test_df = pd.DataFrame(data, columns=headers)
+
+        style = test_df.style.apply(
+            lambda x: ["color: red" if v > 25 else "color: green" for v in x],
+            subset=["Age"],
+        ).set_properties(
+            **{
+                "text-align": "left",
+                "border-collapse": "collapse",
+            },
+        )
+
+        buf = io.BytesIO()
+        time.perf_counter()
+        dfi.export(
+            style,
+            buf,
+            table_conversion="chrome",
+            chrome_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        )
+        buf.seek(0)
+        time.perf_counter()
+        # milisec
+        await ctx.send(file=discord.File(buf, filename="table.png"))
 
 
 async def setup(bot: Vanir) -> None:

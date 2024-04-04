@@ -148,3 +148,23 @@ def trim_codeblock(text: str) -> str:
     except IndexError:
         code = match.group("codeshort")
     return code.strip()
+
+
+def wrap_text(text: str, max_chars: int = 30, wrap_char: str = "<br>") -> str:
+    """
+    Wraps text at a character limit and returns a string
+    with line breaks (<br>) for each wrapped line.
+    """
+    words = text.split()  # Split text into words
+    wrapped_lines = []
+    current_line = ""
+    for word in words:
+        if len(current_line + word) <= max_chars:  # Check if word fits in current line
+            current_line += word + " "
+        else:
+            wrapped_lines.append(
+                current_line[:-1],
+            )  # Add previous line without trailing space
+            current_line = word + " "
+    wrapped_lines.append(current_line[:-1])  # Add the last line
+    return wrap_char.join(wrapped_lines)  # Join lines with line breaks

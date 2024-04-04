@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
@@ -28,6 +29,19 @@ class TLINK(TypedDict):
     to_channel_id: int
     from_lang_code: str
     to_lang_code: str
+
+
+class StatusRange(TypedDict):
+    user_id: int
+    start_time: datetime
+    end_time: datetime
+    status_type: str
+
+
+class StatusTracker(TypedDict):
+    user_id: int
+    start_time: datetime
+    status_type: str
 
 
 class StarBoard(DBBase):
@@ -304,4 +318,92 @@ class TLink(DBBase):
         return await self.pool.fetch(
             "DELETE FROM tlinks WHERE guild_id = $1 RETURNING *",
             guild_id,
+        )
+
+
+"""
+-- all completed status trackers
+CREATE TABLE status_ranges (
+    user_id BIGINT NOT NULL,
+    status_type VARCHAR(8) NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, start_time)
+);
+
+-- user changed their status, but it is not yet comfirmed how long this
+-- status will last
+-- waiting for another change to complete it, then will be moved to status_ranges
+-- with the end_time set
+CREATE TABLE status_trackers (
+    user_id BIGINT NOT NULL,
+    status_type VARCHAR(8) NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, start_time)
+);
+"""
+
+
+class Status(DBBase):
+    async def get(
+        self,
+        user_id: int,
+        after: datetime | None = None,
+        include_partial: bool = True,
+    ) -> list[StatusRange]:
+        if after is None:
+            after = datetime.min
+
+        after = after.replace(tzinfo=None)
+        confirmed = await self.pool.fetch(
+            "SELECT * FROM status_ranges WHERE user_id = $1 AND start_time >= $2",
+            user_id,
+            after,
+        )
+
+        if include_partial:
+            partial = await self.pool.fetch(
+                "SELECT * FROM status_trackers WHERE user_id = $1 AND start_time >= $2",
+                user_id,
+                after,
+            )
+            partial = [
+                {**entry, "end_time": datetime.now(tz=None)} for entry in partial
+            ]
+            return confirmed + partial
+
+        return confirmed
+
+    async def status_update(
+        self,
+        user_id: int,
+        status_type: str,
+    ) -> StatusTracker:
+        # first, find any outstanding status trackers
+        # and update them to the current time
+        # then move to status_ranges
+        # there should only be one outstanding status tracker
+        current = await self.pool.fetchrow(
+            "DELETE FROM status_trackers WHERE user_id = $1 RETURNING *",
+            user_id,
+        )
+        if current is not None:
+            current = {**current, "end_time": datetime.now(tz=None)}
+            await self.pool.execute(
+                "INSERT INTO status_ranges(user_id, status_type, start_time, end_time) "
+                "VALUES ($1, $2, $3, $4)",
+                current["user_id"],
+                current["status_type"],
+                current["start_time"],
+                current["end_time"],
+            )
+
+        # create a new status tracker
+        return await self.pool.fetchrow(
+            "INSERT INTO status_trackers(user_id, status_type, start_time) "
+            "VALUES ($1, $2, $3)"
+            "RETURNING *",
+            user_id,
+            status_type,
+            datetime.now(tz=None),
         )

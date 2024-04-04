@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import io
 from inspect import Parameter
 from typing import TYPE_CHECKING
 
+import dataframe_image as dfi
 import discord
+import pandas as pd
 from discord.ext import commands
 
 from src.types.command import (
@@ -14,6 +17,7 @@ from src.types.command import (
 )
 from src.types.interface import TaskIDConverter
 from src.util.command import safe_default
+from src.util.format import wrap_text
 from src.util.parse import fuzzysearch
 from src.util.ux import generate_modal
 
@@ -90,9 +94,9 @@ class Todo(VanirCog):
             await ctx.reply(embed=embed, ephemeral=True)
             return
 
-        embed, view = await create_task_gui(ctx, results)
+        embed, file, view = await create_task_gui(ctx, results)
         await view.update(update_content=False)
-        message = await ctx.reply(embed=embed, view=view)
+        message = await ctx.reply(embed=embed, file=file, view=view)
         view.message = message
 
     @todo.command(aliases=["finish", "done", "completed"])
@@ -149,9 +153,9 @@ class Todo(VanirCog):
         )
         trimmed = fuzzysearch(query, tasks, key=lambda t: t["title"], threshold=30)
 
-        embed, view = await create_task_gui(ctx, trimmed, autosort=False)
+        embed, file, view = await create_task_gui(ctx, trimmed, autosort=False)
         await view.update(update_content=False)
-        await ctx.reply(embed=embed, view=view)
+        await ctx.reply(embed=embed, file=file, view=view)
 
 
 async def create_task_gui(
@@ -160,7 +164,7 @@ async def create_task_gui(
     *,
     autosort: bool = True,
     start_page: int = 0,
-) -> tuple[discord.Embed, TaskPager]:
+) -> tuple[discord.Embed, discord.File, TaskPager]:
     if autosort:
         tasks.sort(
             key=lambda c: (c["completed"], c["timestamp_created"]),
@@ -175,16 +179,7 @@ async def create_task_gui(
         start_page=start_page,
     )
 
-    return await view.update_embed(), view
-
-
-def format_task_row(task: TASK) -> list[str]:
-    return [
-        task["title"],
-        task["completed"],
-        f"{task["timestamp_created"]:%x}",
-        str(task["todo_id"]),
-    ]
+    return *(await view.update_embed()), view
 
 
 class TaskPager(AutoTablePager):
@@ -211,6 +206,7 @@ class TaskPager(AutoTablePager):
             include_hline=include_hline,
             row_key=format_task_row,
             start_page=start_page,
+            include_spacer_image=True,
         )
         self.ctx = ctx
 
@@ -241,7 +237,49 @@ class TaskPager(AutoTablePager):
         self.remove_todo.options = self.current
         self.finish_todo.current_page = self.page
         self.remove_todo.current_page = self.page
-        await super().update(itx, source_button, update_content)
+        embed, file = await self.update_embed()
+
+        await super().update(itx, source_button, update_content=False)
+
+        if update_content and not itx.response.is_done():
+            embed.description = None
+            await itx.response.edit_message(embed=embed, attachments=[file], view=self)
+
+    async def update_embed(self) -> tuple[discord.Embed, discord.File]:
+        data: list[TASK] = self.current
+        fmted = [format_task_row(task) for task in data]
+        todo_df = (
+            pd.DataFrame(
+                data=fmted,
+                columns=self.headers,
+            )
+            .style.apply(
+                lambda done: [f"color: {"green" if v else "red"};" for v in done],
+                subset=["done?"],
+            )
+            .format_index(lambda _: "")
+            .set_properties(
+                **{
+                    "text-align": "left",
+                    "border-collapse": "collapse",
+                },
+            )
+            .set_table_styles(
+                [
+                    {"selector": "th", "props": [("text-align", "left")]},
+                ],
+            )
+        )
+        # col header align
+
+        buffer = io.BytesIO()
+        dfi.export(todo_df, buffer)
+        buffer.seek(0)
+
+        embed = self.ctx.embed()
+        file = discord.File(buffer, filename="tasks.png")
+        embed.set_image(url="attachment://tasks.png")
+        return embed, file
 
 
 class AddTodoButton(discord.ui.Button["TaskPager"]):
@@ -269,14 +307,14 @@ class AddTodoButton(discord.ui.Button["TaskPager"]):
         )
         task = await self.ctx.bot.db_todo.create(self.ctx.author.id, task)
         new_tasks = [task, *self.all]
-        embed, view = await create_task_gui(
+        embed, file, view = await create_task_gui(
             ctx=self.ctx,
             tasks=new_tasks,
             autosort=False,
             start_page=self.view.page,
         )
         await view.update(itx, update_content=False)
-        await itx.message.edit(embed=embed, view=view)
+        await itx.message.edit(embed=embed, attachments=[file], view=view)
 
 
 class FinishTodoButton(discord.ui.Button["TaskPager"]):
@@ -359,14 +397,14 @@ class FinishTodoDetachment(discord.ui.Select[VanirView]):
             elif task["todo_id"] in mark_as_not_done:
                 task["completed"] = False
 
-        embed, view = await create_task_gui(
+        embed, file, view = await create_task_gui(
             ctx=self.ctx,
             tasks=new_tasks,
             autosort=False,
             start_page=self.current_page,
         )
         await view.update(itx, update_content=False)
-        await self.source.edit(embed=embed, view=view)
+        await self.source.edit(embed=embed, attachments=[file], view=view)
 
 
 class RemoveTodoButton(discord.ui.Button["TaskPager"]):
@@ -439,14 +477,14 @@ class RemoveTodoDetachment(discord.ui.Select[VanirView]):
         await self.ctx.bot.db_todo.remove(*removed)
 
         new_tasks = [dict(task) for task in self.all if task["todo_id"] not in removed]
-        embed, view = await create_task_gui(
+        embed, file, view = await create_task_gui(
             ctx=self.ctx,
             tasks=new_tasks,
             autosort=False,
             start_page=self.current_page,
         )
         await view.update(itx, update_content=False)
-        await self.source.edit(embed=embed, view=view)
+        await self.source.edit(embed=embed, attachments=[file], view=view)
 
 
 class AfterEdit(VanirView):
@@ -468,13 +506,26 @@ class AfterEdit(VanirView):
             self.ctx.author.id,
             include_completed=True,
         )
-        embed, view = await create_task_gui(
+        embed, file, view = await create_task_gui(
             ctx=self.ctx,
             tasks=user_tasks,
             autosort=True,
         )
         await view.update(update_content=False)
-        await itx.response.edit_message(embed=embed, view=view)
+        await itx.response.edit_message(embed=embed, attachments=[file], view=view)
+
+
+def format_task_row(task: TASK) -> list[str]:
+    title = wrap_text(task["title"], 40, "<br> ")
+    completed = task["completed"]
+    timestamp = f"{task['timestamp_created']:%x}"
+    todo_id = str(task["todo_id"])
+    return [
+        title,
+        completed,
+        timestamp,
+        todo_id,
+    ]
 
 
 async def setup(bot: Vanir) -> None:

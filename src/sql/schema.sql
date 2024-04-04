@@ -38,4 +38,24 @@ CREATE TABLE tlinks (
     from_lang_code VARCHAR(2),
     to_lang_code VARCHAR(2) NOT NULL,
     PRIMARY KEY (from_channel_id, to_channel_id)
-)
+);
+
+-- all completed status trackers
+CREATE TABLE status_ranges (
+    user_id BIGINT NOT NULL,
+    status_type VARCHAR(8) NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, status_type, start_time)
+);
+
+-- user changed their status, but it is not yet comfirmed how long this
+-- status will last
+-- waiting for another change to complete it, then will be moved to status_ranges
+-- with the end_time set
+CREATE TABLE status_trackers (
+    user_id BIGINT NOT NULL,
+    status_type VARCHAR(8) NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    PRIMARY KEY (user_id, status_type, start_time)
+);

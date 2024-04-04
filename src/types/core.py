@@ -18,7 +18,7 @@ from src.env import DEEPL_API_KEY
 from src.ext import MODULE_PATHS
 from src.logging import book
 from src.logging import main as init_logging
-from src.types.orm import TLINK, Currency, DBBase, StarBoard, TLink, Todo
+from src.types.orm import TLINK, Currency, DBBase, StarBoard, Status, TLink, Todo
 from src.types.piston import PistonORM, PistonRuntime
 from src.types.snipe import Buckets, SnipedMessage
 from src.util.autocorrect import FuzzyAC, words
@@ -48,6 +48,7 @@ class Vanir(commands.Bot):
         self.db_currency = Currency()
         self.db_todo = Todo()
         self.db_link = TLink()
+        self.db_status = Status()
         self.session: VanirSession = VanirSession()
 
         self.cache: BotCache = BotCache(self)
@@ -83,6 +84,7 @@ class Vanir(commands.Bot):
                 self.db_currency,
                 self.db_todo,
                 self.db_link,
+                self.db_status,
             ]
             for db in databases:
                 db.start(self.pool)
