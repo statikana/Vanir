@@ -13,7 +13,7 @@ from src.constants import EMOJIS
 from src.types.command import CloseButton, VanirCog, VanirView, vanir_command
 from src.types.piston import PistonExecutable, PistonPackage, PistonRuntime
 from src.util.format import trim_codeblock
-from src.util.parse import fuzzysearch, language_from_codeblock
+from src.util.parse import fuzzysearch, language_from_codeblock, unique
 from src.util.ux import generate_modal
 
 if TYPE_CHECKING:
@@ -212,7 +212,9 @@ class Code(VanirCog):
                     name=rt.language,
                     value=rt.language,
                 )
-                for rt in self.bot.installed_piston_packages
+                for rt in unique(
+                    self.bot.installed_piston_packages, key=lambda rt: rt.language
+                )
             ][:25]
         )
 
@@ -222,7 +224,7 @@ class Code(VanirCog):
         itx: discord.Interaction,
         argument: str,
     ) -> list[discord.app_commands.Choice]:
-        language = itx.namespace.__dict__.get("package")
+        language = itx.namespace.__dict__.get("language")
         if language is None or language not in [
             p.language for p in self.bot.installed_piston_packages
         ]:
