@@ -213,7 +213,8 @@ class Code(VanirCog):
                     value=rt.language,
                 )
                 for rt in unique(
-                    self.bot.installed_piston_packages, key=lambda rt: rt.language
+                    self.bot.installed_piston_packages,
+                    key=lambda rt: rt.language,
                 )
             ][:25]
         )

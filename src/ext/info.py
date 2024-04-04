@@ -264,10 +264,10 @@ class Info(VanirCog):
         )[:25]
 
     @vanir_command(
-        aliases=["user", "member", "who", "userinfo", "ui"],
+        aliases=["user", "member", "who", "whois", "ui"],
         sf_receiver=discord.Member,
     )
-    async def whois(
+    async def userinfo(
         self,
         ctx: VanirContext,
         member: discord.Member = commands.param(
@@ -277,11 +277,11 @@ class Info(VanirCog):
         ),
     ) -> None:
         """Shows information about a member."""
-        embed = await self.whois_embed(ctx, member)
+        embed = await self.userinfo_embed(ctx, member)
         view = VanirView(self.bot, user=ctx.author, accept_itx=AcceptItx.ANY)
 
-        view.add_item(AvatarButton(member, self.whois_avatar_embed))
-        view.add_item(PermissionsButton(member, self.whois_permissions))
+        view.add_item(AvatarButton(member, self.userinfo_avatar_embed))
+        view.add_item(PermissionsButton(member, self.userinfo_permissions))
 
         await ctx.send(embed=embed, view=view)
 
@@ -364,37 +364,20 @@ class Info(VanirCog):
 
         await ctx.send(embed=embed, view=view)
 
-    async def whois_embed(self, ctx: VanirContext, member: discord.Member) -> None:
+    async def userinfo_embed(self, ctx: VanirContext, member: discord.Member) -> None:
         embed = ctx.embed(
             title=member.name,
             color=member.color,
         )
         embed.set_thumbnail(url=member.display_avatar.url)
 
-        name, value = format_whois_identity(member)
+        name, value = format_userinfo_identity(member)
         embed.add_field(
             name=name,
             value=value,
         )
 
-        name, value = format_whois_times(member)
-        embed.add_field(
-            name=name,
-            value=value,
-        )
-
-        embed.add_field(
-            name="ㅤ",
-            value="ㅤ",
-        )
-
-        name, value = format_whois_badges(member)
-        embed.add_field(
-            name=name,
-            value=value,
-        )
-
-        name, value = format_whois_roles(member)
+        name, value = format_userinfo_times(member)
         embed.add_field(
             name=name,
             value=value,
@@ -405,13 +388,30 @@ class Info(VanirCog):
             value="ㅤ",
         )
 
-        name, value = format_whois_statues(member)
+        name, value = format_userinfo_badges(member)
         embed.add_field(
             name=name,
             value=value,
         )
 
-        name, value = format_whois_boosting(member)
+        name, value = format_userinfo_roles(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+
+        embed.add_field(
+            name="ㅤ",
+            value="ㅤ",
+        )
+
+        name, value = format_userinfo_statues(member)
+        embed.add_field(
+            name=name,
+            value=value,
+        )
+
+        name, value = format_userinfo_boosting(member)
         embed.add_field(
             name=name,
             value=value,
@@ -423,7 +423,7 @@ class Info(VanirCog):
         )
         return embed
 
-    async def whois_avatar_embed(
+    async def userinfo_avatar_embed(
         self,
         itx: discord.Interaction,
         member: discord.Member,
@@ -436,7 +436,7 @@ class Info(VanirCog):
         embed.set_image(url=member.display_avatar.url)
         await itx.response.send_message(embed=embed, ephemeral=True)
 
-    async def whois_permissions(
+    async def userinfo_permissions(
         self,
         itx: discord.Interaction,
         member: discord.Member,
@@ -770,7 +770,7 @@ class Info(VanirCog):
         embed.add_field(name="Snowflake Info", value=format_dict(data), inline=False)
 
 
-def format_whois_times(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_times(member: discord.Member) -> tuple[str, str]:
     join_pos = sorted(member.guild.members, key=lambda m: m.joined_at).index(member) + 1
     children = [
         ("`Created`", f"<t:{round(member.created_at.timestamp())}:R>"),
@@ -785,7 +785,7 @@ def format_whois_times(member: discord.Member) -> tuple[str, str]:
     )
 
 
-def format_whois_badges(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_badges(member: discord.Member) -> tuple[str, str]:
     flags = [f.name for f in member.public_flags.all()]
     if member.premium_since:
         flags.append("nitro")
@@ -817,7 +817,7 @@ def format_whois_badges(member: discord.Member) -> tuple[str, str]:
         )
 
 
-def format_whois_identity(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_identity(member: discord.Member) -> tuple[str, str]:
     children = []
     children.append(
         ("`User`", member.name),
@@ -840,7 +840,7 @@ def format_whois_identity(member: discord.Member) -> tuple[str, str]:
     )
 
 
-def format_whois_roles(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_roles(member: discord.Member) -> tuple[str, str]:
     top_color_str = closest_color_name(str(member.color))[0]
     children = [
         ("`Amount`", f"`{len(member.roles) - 1}`")
@@ -862,7 +862,7 @@ def format_whois_roles(member: discord.Member) -> tuple[str, str]:
     )
 
 
-def format_whois_statues(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_statues(member: discord.Member) -> tuple[str, str]:
     device: str = ""
     if member.desktop_status.value != "offline":
         device = "desktop"
@@ -916,7 +916,7 @@ def format_whois_statues(member: discord.Member) -> tuple[str, str]:
     )
 
 
-def format_whois_boosting(member: discord.Member) -> tuple[str, str]:
+def format_userinfo_boosting(member: discord.Member) -> tuple[str, str]:
     boosting = member.premium_since
     if boosting:
         children = [

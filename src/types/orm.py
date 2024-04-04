@@ -348,28 +348,23 @@ class Status(DBBase):
     async def get(
         self,
         user_id: int,
-        after: datetime | None = None,
         include_partial: bool = True,
     ) -> list[StatusRange]:
-        if after is None:
-            after = datetime.min
-
-        after = after.replace(tzinfo=None)
         confirmed = await self.pool.fetch(
-            "SELECT * FROM status_ranges WHERE user_id = $1 AND start_time >= $2",
+            "SELECT * FROM status_ranges WHERE user_id = $1",
             user_id,
-            after,
         )
+        confirmed = list(map(dict, confirmed))
 
         if include_partial:
             partial = await self.pool.fetch(
-                "SELECT * FROM status_trackers WHERE user_id = $1 AND start_time >= $2",
+                "SELECT * FROM status_trackers WHERE user_id = $1",  # end_time would be NOW
                 user_id,
-                after,
             )
             partial = [
                 {**entry, "end_time": datetime.now(tz=None)} for entry in partial
             ]
+            partial = list(map(dict, partial))
             return confirmed + partial
 
         return confirmed

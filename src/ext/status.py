@@ -1,4 +1,6 @@
+import datetime
 import io
+from datetime import datetime as dt
 
 import discord
 from discord.ext import commands
@@ -21,20 +23,41 @@ class Status(VanirCog):
             default=lambda ctx: ctx.author,
             displayed_default="You",
         ),
+        *,
         after: str = commands.param(
             description="Time period to get the histogram for (from `time` to now)",
-            default="1 week",
+            default=None,
+            displayed_default="All time",
         ),
     ) -> None:
-        try:
-            after_dt = parse_time(after)
-        except ValueError as err:
-            msg = "Invalid time provided"
-            raise ValueError(msg) from err
+        if after is not None:
+            try:
+                after_dt = parse_time(after.removesuffix("ago").strip(), tz=None)
+            except ValueError as err:
+                msg = "Invalid time provided"
+                raise ValueError(msg) from err
 
-        after_dt.replace(tzinfo=None)
+            after_dt = after_dt.replace(tzinfo=None)
+
+            diff = after_dt - dt.now(tz=None)
+            after_dt = dt.now(tz=None) - diff  # place the dt in the past
 
         activity = await self.bot.db_status.get(member.id)
+
+        # filter out entries that are not in the time period
+        # and move the start time to the after_dt if it is before it
+        if after is None:
+            after_dt = min([r["start_time"] for r in activity], default=dt.now())
+
+        new = []
+        for entry in activity:
+            if entry["end_time"] < after_dt:
+                continue
+            if entry["start_time"] < after_dt:
+                entry["start_time"] = after_dt
+            new.append(entry)
+
+        activity = new
 
         times = {
             "online": 0,
@@ -42,7 +65,6 @@ class Status(VanirCog):
             "dnd": 0,
             "offline": 0,
         }
-
         for entry in activity:
             times[entry["status_type"]] += (
                 entry["end_time"] - entry["start_time"]
@@ -110,8 +132,7 @@ class Status(VanirCog):
         ax.spines["bottom"].set_linestyle("--")
         ax.spines["left"].set_linestyle("--")
 
-        ax.set_title(f"status distribution for {member.name}", color="white")
-        ax.title.set_fontsize(18)
+        # raise the title to not overlap with the bar labels
 
         # add percentages to the bars
         for i, (p, h) in enumerate(
@@ -121,14 +142,15 @@ class Status(VanirCog):
             ),
         ):
             hours = int(h // 3600)  # convert to hours
-            mins = round((h % 3600) / 60, 2)
+            mins = round((h % 3600) / 60)
             ax.text(
                 i,
                 p + 1,
-                f"{p:.2f}% [{hours}h {mins}m]",
+                f"{hours}h {mins}m\n{round(p, 2)}%",
                 ha="center",
                 va="bottom",
                 color="white",
+                fontweight="bold",
             )
 
         buf = io.BytesIO()
@@ -136,7 +158,17 @@ class Status(VanirCog):
         buf.seek(0)
 
         file = discord.File(buf, filename="histogram.png")
-        embed = ctx.embed(title="Status Histogram")
+        embed = ctx.embed(title=f"Status Histogram: {member.name}")
+        if abs(after_dt - dt.now()) > datetime.timedelta(minutes=1):
+            embed.description = f"<t:{round(after_dt.timestamp())}:R> to now"
+        else:
+            embed.description = ""
+
+        # percentage of time tracked, compared to the time period
+        p_tracked = total / (dt.now() - after_dt).total_seconds()
+        embed.description += (
+            f"\nTotal time tracked: {round(p_tracked * 100)}% of this time period"
+        )
         embed.set_image(url="attachment://histogram.png")
 
         await ctx.reply(file=file, embed=embed)
