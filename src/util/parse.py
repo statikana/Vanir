@@ -11,6 +11,9 @@ from fuzzywuzzy import fuzz
 from assets.color_db import COLOR_INDEX
 from src.util.regex import SLUG_REGEX
 
+if typing.TYPE_CHECKING:
+    from src.types.core import Vanir
+
 FuzzyT = typing.TypeVar("FuzzyT")
 T = typing.TypeVar("T")
 K = typing.TypeVar("K")
@@ -149,3 +152,26 @@ def soundex(string: str) -> str:
 
     result += "0" * (4 - count)
     return "".join(result)
+
+
+def language_from_codeblock(
+    bot: Vanir,
+    codeblock: str,
+) -> str | None:
+    # first, see if it's a codeblock
+    if not codeblock.startswith("```"):
+        return None
+
+    first = codeblock.split("\n", 1)
+    if not first:
+        return None
+    lang = first[0].strip(" `")
+
+    if not lang:
+        return None
+    lang = lang.lower()
+
+    for pkg in bot.installed_piston_packages:
+        if lang == pkg.language or lang in pkg.aliases:
+            return pkg.language
+    return None

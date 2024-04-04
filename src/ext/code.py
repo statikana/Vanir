@@ -13,7 +13,7 @@ from src.constants import EMOJIS
 from src.types.command import CloseButton, VanirCog, VanirView, vanir_command
 from src.types.piston import PistonExecutable, PistonPackage, PistonRuntime
 from src.util.format import trim_codeblock
-from src.util.parse import fuzzysearch
+from src.util.parse import fuzzysearch, language_from_codeblock
 from src.util.ux import generate_modal
 
 if TYPE_CHECKING:
@@ -29,8 +29,12 @@ class Code(VanirCog):
     async def exec(
         self,
         ctx: VanirContext,
-        package: str = commands.param(
+        language: str = commands.param(
             description="The language to execute the code in",
+            default=None,
+        ),
+        version: str = commands.param(
+            description="The version of the language to execute the code in",
             default=None,
         ),
         *,
@@ -47,7 +51,7 @@ class Code(VanirCog):
                     "Enter code to execute",
                     fields=[
                         discord.ui.TextInput(
-                            label=f"Enter {package} Code",
+                            label=f"Enter {language} Code",
                             placeholder="Enter code here",
                             min_length=1,
                             max_length=2000,
@@ -69,27 +73,66 @@ class Code(VanirCog):
                 except asyncio.TimeoutError as err:
                     msg = "Timed out waiting for code"
                     raise commands.CommandError(msg) from err
-        code = trim_codeblock(code)
 
-        package = package.strip("`")
-        code = code.strip("`")
-        valid_runtimes = list(
-            filter(
-                lambda rt: f"{rt.language} {rt.version}".lower().startswith(
-                    package.lower(),
-                )
-                or package.lower() in rt.aliases,
-                await self.bot.piston.runtimes(),
-            ),
+        if language is None:  # only happens in itx
+            language = language_from_codeblock(self.bot, code)
+            if language is None:
+                msg = "No language specified"
+                raise ValueError(msg)
+        elif language.startswith("```"):
+            language = language_from_codeblock(self.bot, language)
+            if language is None:
+                msg = "No language specified"
+                raise ValueError(msg)
+
+            code = f"```{version}\n{code}```\n"
+            version = None
+
+        else:
+            for p in self.bot.installed_piston_packages:
+                if p.language == language or language in p.aliases:
+                    language = p.language
+                    break
+            else:
+                msg = "Invalid language - please use the autocomplete menu to select a valid language."
+                raise ValueError(msg)
+
+        if version in (None, "latest"):
+            version = max(
+                (
+                    rt.version
+                    for rt in self.bot.installed_piston_packages
+                    if rt.language == language
+                ),
+                key=lambda v: tuple(int(x) for x in v.split(".")),
+            )
+        else:
+            version = version.strip("v`").lower()
+            real_ver = discord.utils.find(
+                lambda rt: rt.language == language
+                and (rt.version == version or version in rt.aliases),
+                self.bot.installed_piston_packages,
+            )
+            if real_ver is None:
+                msg = f"Invalid version: {version}"
+                raise ValueError(msg)
+            version = real_ver.version
+
+        code = code.replace("```", "\n```\n").strip("\n")
+
+        if code.startswith("```"):
+            code = code.split("\n", 1)[1]
+
+        code = trim_codeblock(code).strip("\n `")
+
+        runtime = discord.utils.get(
+            self.bot.installed_piston_packages,
+            language=language,
+            version=version,
         )
-
-        if not valid_runtimes:
-            return await ctx.reply(f"No runtimes available for {package}")
-
-        runtime = max(
-            valid_runtimes,
-            key=lambda rt: tuple(map(int, rt.version.split("."))),
-        )
+        if runtime is None:
+            msg = "No runtime found for language and version"
+            raise RuntimeError(msg)
 
         start_time = time.perf_counter()
         response = await self.bot.piston.execute(
@@ -146,33 +189,55 @@ class Code(VanirCog):
             )
         view = AfterCodeExecView(ctx, runtime, code)
         await ctx.reply(embeds=embeds, files=files, view=view)
-        return None
 
-    @exec.autocomplete("package")
-    async def _autocomplete_package(
+    @exec.autocomplete("language")
+    async def _autocomplete_language(
         self,
         itx: discord.Interaction,
         argument: str,
-    ) -> list[str]:
+    ) -> list[discord.app_commands.Choice]:
         return (
             fuzzysearch(
                 argument,
                 self.bot.installed_piston_packages,
                 output=lambda rt: discord.app_commands.Choice(
-                    name=f"{rt.language} [{rt.version}]",
-                    value=f"{rt.language} {rt.version}",
+                    name=rt.language,
+                    value=rt.language,
                 ),
                 threshold=70,
             )[:25]
             if argument
             else [
                 discord.app_commands.Choice(
-                    name=f"{rt.language} [{rt.version}]",
-                    value=f"{rt.language} {rt.version}",
+                    name=rt.language,
+                    value=rt.language,
                 )
                 for rt in self.bot.installed_piston_packages
             ][:25]
         )
+
+    @exec.autocomplete("version")
+    async def _autocomplete_version(
+        self,
+        itx: discord.Interaction,
+        argument: str,
+    ) -> list[discord.app_commands.Choice]:
+        language = itx.namespace.__dict__.get("package")
+        if language is None or language not in [
+            p.language for p in self.bot.installed_piston_packages
+        ]:
+            return [
+                discord.app_commands.Choice(name="No valid package selected", value=""),
+            ]
+
+        return [
+            discord.app_commands.Choice(
+                name=rt.version,
+                value=rt.version,
+            )
+            for rt in self.bot.installed_piston_packages
+            if rt.language == language
+        ][:25]
 
     def fmtpack(self, rt: PistonRuntime) -> str:
         return f"{rt.language} {rt.version}"
