@@ -223,9 +223,16 @@ class TaskPager(AutoTablePager):
             options=self.current,
             current_page=self.page,
         )
+        self.edit_todo = EditTodoButton(
+            self.ctx,
+            all_tasks=self.rows,
+            options=self.current,
+            current_page=self.page,
+        )
         self.add_item(self.add_todo)
         self.add_item(self.finish_todo)
         self.add_item(self.remove_todo)
+        self.add_item(self.edit_todo)
 
     async def update(
         self,
@@ -235,8 +242,10 @@ class TaskPager(AutoTablePager):
     ) -> None:
         self.finish_todo.options = self.current
         self.remove_todo.options = self.current
+        self.edit_todo.options = self.current
         self.finish_todo.current_page = self.page
         self.remove_todo.current_page = self.page
+        self.edit_todo.current_page = self.page
         embed, file = await self.update_embed()
 
         await super().update(itx, source_button, update_content=False)
@@ -477,6 +486,101 @@ class RemoveTodoDetachment(discord.ui.Select[VanirView]):
         await self.ctx.bot.db_todo.remove(*removed)
 
         new_tasks = [dict(task) for task in self.all if task["todo_id"] not in removed]
+        embed, file, view = await create_task_gui(
+            ctx=self.ctx,
+            tasks=new_tasks,
+            autosort=False,
+            start_page=self.current_page,
+        )
+        await view.update(itx, update_content=False)
+        await self.source.edit(embed=embed, attachments=[file], view=view)
+
+
+class EditTodoButton(discord.ui.Button["TaskPager"]):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        *,
+        all_tasks: list[TASK],
+        options: list[TASK],
+        current_page: int,
+    ) -> None:
+        super().__init__(
+            style=discord.ButtonStyle.secondary,
+            emoji="\N{PENCIL}",
+            label="Edit",
+        )
+        self.ctx = ctx
+        self.all = all_tasks
+        self.options = options
+        self.current_page = current_page
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        embed = self.ctx.embed("Select the task you want to edit")
+        view = VanirView(self.ctx.bot, user=self.ctx.author)
+        view.add_item(
+            EditTodoDetachment(
+                self.ctx,
+                all_tasks=self.all,
+                options=self.options,
+                source=itx.message,
+                current_page=self.current_page,
+            ),
+        )
+        await itx.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class EditTodoDetachment(discord.ui.Select[VanirView]):
+    def __init__(
+        self,
+        ctx: VanirContext,
+        *,
+        all_tasks: list,
+        options: list,
+        source: discord.Message,
+        current_page: int,
+    ) -> None:
+        select_options = [
+            discord.SelectOption(
+                label=task["title"][:100],
+                value=task["todo_id"],
+            )
+            for task in options
+        ]
+        super().__init__(
+            placeholder="Select task to edit...",
+            options=select_options,
+            max_values=1,
+        )
+        self.ctx = ctx
+        self.all = all_tasks
+        self.source = source
+        self.current_page = current_page
+
+    async def callback(self, itx: discord.Interaction) -> None:
+        task_id = int(self.values[0])
+        task = next(t for t in self.all if t["todo_id"] == task_id)
+
+        task, *_ = await generate_modal(
+            itx,
+            title="Edit a task",
+            fields=[
+                discord.ui.TextInput(
+                    style=discord.TextStyle.paragraph,
+                    label="Task",
+                    placeholder="What do you need to do?",
+                    default=task["title"],
+                    required=True,
+                ),
+            ],
+        )
+        await self.ctx.bot.db_todo.edit(task_id, task)
+
+        new_tasks = [dict(task) for task in self.all]
+        for to_up_task in new_tasks:
+            if to_up_task["todo_id"] == task_id:
+                to_up_task["title"] = task
+
         embed, file, view = await create_task_gui(
             ctx=self.ctx,
             tasks=new_tasks,

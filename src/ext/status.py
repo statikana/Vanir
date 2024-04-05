@@ -1,4 +1,3 @@
-import datetime
 import io
 from datetime import datetime as dt
 
@@ -6,8 +5,10 @@ import discord
 from discord.ext import commands
 from matplotlib import pyplot as plt
 
+from src.constants import EMOJIS
 from src.types.command import VanirCog, vanir_command
 from src.types.core import Vanir, VanirContext
+from src.util.format import format_children
 from src.util.time import parse_time
 
 
@@ -18,7 +19,7 @@ class Status(VanirCog):
     async def histogram(
         self,
         ctx: VanirContext,
-        member: discord.Member = commands.param(
+        user: discord.User = commands.param(
             description="Member to get the status histogram for",
             default=lambda ctx: ctx.author,
             displayed_default="You",
@@ -42,7 +43,7 @@ class Status(VanirCog):
             diff = after_dt - dt.now(tz=None)
             after_dt = dt.now(tz=None) - diff  # place the dt in the past
 
-        activity = await self.bot.db_status.get(member.id)
+        activity = await self.bot.db_status.get(user.id)
 
         # filter out entries that are not in the time period
         # and move the start time to the after_dt if it is before it
@@ -158,17 +159,32 @@ class Status(VanirCog):
         buf.seek(0)
 
         file = discord.File(buf, filename="histogram.png")
-        embed = ctx.embed(title=f"Status Histogram: {member.name}")
-        if abs(after_dt - dt.now()) > datetime.timedelta(minutes=1):
-            embed.description = f"<t:{round(after_dt.timestamp())}:R> to now"
-        else:
-            embed.description = ""
+        embed = ctx.embed(title=f"Status Histogram: {user.name}")
 
-        # percentage of time tracked, compared to the time period
-        p_tracked = total / (dt.now() - after_dt).total_seconds()
-        embed.description += (
-            f"\nTotal time tracked: {round(p_tracked * 100)}% of this time period"
+        children = [
+            (
+                "Range",
+                f"<t:{round(after_dt.timestamp())}:R> to <t:{round(dt.now().timestamp())}:R>",
+            ),
+            (
+                "% Tracked",
+                f"{round(total / (dt.now() - after_dt).total_seconds() * 100)}% of this range",
+            ),
+        ]
+
+        status = await self.bot.db_status.get_status(user.id)
+        if status is not None:
+            status_string = f"{EMOJIS[status]} {status.title()}"
+            children.append(("Current Status", status_string))
+
+        name, value = format_children(
+            title="Info",
+            emoji=EMOJIS["status"],
+            children=children,
+            as_field=True,
         )
+        embed.add_field(name=name, value=value)
+
         embed.set_image(url="attachment://histogram.png")
 
         await ctx.reply(file=file, embed=embed)

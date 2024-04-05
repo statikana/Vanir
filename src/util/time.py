@@ -93,7 +93,8 @@ def format_time(ts: float, from_ts: bool = True) -> str:
 
 
 def parse_time(
-    expr: str, tz: datetime.timezone | None = datetime.UTC
+    expr: str,
+    tz: datetime.timezone | None = datetime.UTC,
 ) -> datetime.datetime:
     string = re.sub(SPACE_FORMAT_REGEX, SPACE_SUB_REGEX, expr)
     diff = sum(ShortTime(part).dt.timestamp() - time.time() for part in string.split())

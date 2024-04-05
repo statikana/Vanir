@@ -57,5 +57,5 @@ CREATE TABLE status_trackers (
     user_id BIGINT NOT NULL,
     status_type VARCHAR(8) NOT NULL,
     start_time TIMESTAMP NOT NULL,
-    PRIMARY KEY (user_id, status_type, start_time)
+    PRIMARY KEY (user_id)
 );

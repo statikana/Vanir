@@ -263,6 +263,13 @@ class Todo(DBBase):
             user_id,
         )
 
+    async def edit(self, todo_id: int, title: str) -> TASK:
+        return await self.pool.fetchrow(
+            "UPDATE todo_data " "SET title = $2 " "WHERE todo_id = $1 " "RETURNING *",
+            todo_id,
+            title,
+        )
+
 
 class TLink(DBBase):
     async def create(
@@ -401,4 +408,10 @@ class Status(DBBase):
             user_id,
             status_type,
             datetime.now(tz=None),
+        )
+
+    async def get_status(self, user_id: int) -> str | None:
+        return await self.pool.fetchval(
+            "SELECT status_type FROM status_trackers WHERE user_id = $1",
+            user_id,
         )
