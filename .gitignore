@@ -17,3 +17,4 @@ assets/dataset.txt
 pyrightconfig.json
 pyvenv.cfg
 application.yml
+*.log
