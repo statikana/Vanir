@@ -11,6 +11,7 @@ import aiohttp
 import asyncpg
 import discord
 from discord.ext import commands
+import wavelink
 
 import config
 from src import env
@@ -37,7 +38,7 @@ SFType = TypeVar(
 class Vanir(commands.Bot):
     def __init__(self) -> None:
         super().__init__(
-            command_prefix=commands.when_mentioned_or("\\"),
+            command_prefix=commands.when_mentioned_or("+"),
             tree_cls=VanirTree,
             intents=discord.Intents.all(),
             help_command=None,
@@ -99,6 +100,7 @@ class Vanir(commands.Bot):
         await self.cache.init()
         await self.add_cogs()
         await self.display_shutil()
+        await self.create_node()
 
     async def add_cogs(self) -> None:
         asyncio.gather(*(self.load_extension(ext) for ext in MODULE_PATHS))
@@ -124,6 +126,12 @@ class Vanir(commands.Bot):
                 book.warning(f"SHUTIL: Could not find {resource} in PATH")
             else:
                 book.info(f"SHUTIL: Found {resource} in PATH")
+
+    async def create_node(self) -> None:
+        uri = "http://localhost:5678"
+        book.info(f"Connecting to Lavalink at {uri}")
+        node = wavelink.Node(uri=uri, password="youshallnotpass", client=self)
+        await wavelink.Pool.connect(nodes=[node])
 
     async def dispatch_sf(self, ctx: VanirContext, sf_object: SFType) -> None:
         for command in self.walk_commands():

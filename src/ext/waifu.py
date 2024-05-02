@@ -32,7 +32,7 @@ class Waifu(VanirCog):
         self,
         ctx: VanirContext,
         included_tags: str = commands.param(
-            description="Comma-separated list of tags to include in the search [see `\\wf tags`]",
+            description="Comma-separated list of tags to include in the search [see `+wf tags`]",
             default="",
         ),
         excluded_tags: str = commands.param(
@@ -85,7 +85,7 @@ class Waifu(VanirCog):
         self,
         ctx: VanirContext,
         included_tags: str = commands.param(
-            description="Comma-separated list of tags to include in the search [see `\\wf tags`]",
+            description="Comma-separated list of tags to include in the search [see `+wf tags`]",
             default="",
         ),
         excluded_tags: str = commands.param(

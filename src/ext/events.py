@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 @cog_hidden
-class Events(VanirCog):
+class CelloEvents(VanirCog):
     def __init__(self, bot: Vanir) -> None:
         self.bot = bot
         self.status_cooldowns: dict[int, datetime] = {}
@@ -332,4 +332,4 @@ class Events(VanirCog):
 
 
 async def setup(bot: Vanir) -> None:
-    await bot.add_cog(Events(bot))
+    await bot.add_cog(CelloEvents(bot))

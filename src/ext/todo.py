@@ -79,7 +79,7 @@ class Todo(VanirCog):
         )
 
         if not results:
-            embed = ctx.embed("You have no tasks. Use `\\todo <task>` to get started")
+            embed = ctx.embed("You have no tasks. Use `+todo <task>` to get started")
             await ctx.reply(embed=embed, ephemeral=True)
             return
 

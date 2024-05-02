@@ -110,7 +110,7 @@ class Errors(VanirCog):
             title=title,
             description=str(error)
             or error.__class__.__doc__
-            or "No error description - report with `\\bug`",
+            or "No error description - report with `+bug`",
             color=color,
             user=user,
         )
@@ -150,7 +150,7 @@ class Errors(VanirCog):
         command = results[0]
 
         embed = VanirContext.syn_embed(
-            description=f"I don't know that command.\nDid you mean `\\{command.qualified_name}`?\n>>> *{command.short_doc}*",
+            description=f"I don't know that command.\nDid you mean `+{command.qualified_name}`?\n>>> *{command.short_doc}*",
             user=user,
             color=discord.Color.red(),
         )

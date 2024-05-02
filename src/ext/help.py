@@ -17,11 +17,13 @@ from src.util.command import (
     discover_group,
     get_display_cogs,
     get_param_annotation,
+    cog_hidden
 )
 from src.util.format import format_dict
 from src.util.parse import fuzzysearch
 
 
+@cog_hidden
 class Help(VanirCog):
     @vanir_command()
     async def help(
@@ -43,6 +45,12 @@ class Help(VanirCog):
             for item in display_sel.options:
                 item.default = item.value == thing.qualified_name
             view.auto_add_item(display_sel)
+        
+            info_sel = CogDetailSelect(ctx, self, thing)
+            for item in info_sel.options:
+                item.default = item.value == thing.qualified_name
+            info_sel.row = 2
+            view.auto_add_item(info_sel)
 
         elif isinstance(thing, VanirHybridGroup):
             embed = await self.group_details_embed(thing, ctx.author)
@@ -87,13 +95,13 @@ class Help(VanirCog):
         )
 
         getting_help = (
-            "If you need help with a specific command, you can use the `\\help <command name>` "
+            "If you need help with a specific command, you can use the `+help <command name>` "
             "command to get more information on what it does and how to use it. "
             "You can also use the drop-down menu below to select a module to get more information on."
         )
         contacting = (
-            "If you encounter any bugs or issues, please use `\\bug` to report it to the developers (me!). "
-            "If you have any suggestions or feedback, you can use `\\suggest` to send it to me as well. "
+            "If you encounter any bugs or issues, please use `+bug` to report it to the developers (me!). "
+            "If you have any suggestions or feedback, you can use `+suggest` to send it to me as well. "
             "If you just want to talk, you can also send an email to me at `contact@statikana.dev`."
         )
 
@@ -148,7 +156,7 @@ class Help(VanirCog):
                 embed.add_field(
                     name=f"`{c.qualified_name}` Commands",
                     value="\n".join(
-                        f"`\\{sub.qualified_name}`\n➥*{sub.short_doc}*"
+                        f"`+{sub.qualified_name}`\n➥*{sub.short_doc}*"
                         for sub in discover_group(c)
                     ),
                 )
@@ -159,7 +167,7 @@ class Help(VanirCog):
             embed.add_field(
                 name=f"{len(other_commands)} Miscellaneous Command{'s' if len(other_commands) > 1 else ''}",
                 value="\n".join(
-                    f"`\\{o.qualified_name}`\n➥*{o.short_doc}*" for o in other_commands
+                    f"`+{o.qualified_name}`\n➥*{o.short_doc}*" for o in other_commands
                 ),
             )
 
@@ -177,7 +185,7 @@ class Help(VanirCog):
         )
 
         for c in discover_group(group):
-            embed.description += f"\n`\\{c.qualified_name}`\n➥*{c.short_doc}*"
+            embed.description += f"\n`+{c.qualified_name}`\n➥*{c.short_doc}*"
 
         return embed
 
@@ -188,7 +196,7 @@ class Help(VanirCog):
     ) -> discord.Embed:
         if command.aliases:
             alias_generator = (
-                f"`\\{command.full_parent_name}{' ' if command.parent else ''}{c}`"
+                f"`+{command.full_parent_name}{' ' if command.parent else ''}{c}`"
                 for c in command.aliases
             )
             alias_string = f"Aliases: {' '.join(alias_generator)}"
@@ -196,7 +204,7 @@ class Help(VanirCog):
             alias_string = ""
 
         embed = VanirContext.syn_embed(
-            title=f":information_source: `\\{command.qualified_name} {command.signature}`",
+            title=f":information_source: `+{command.qualified_name} {command.signature}`",
             description=f"{alias_string}\n*{command.description or command.short_doc or 'No Description'}*",
             user=user,
         )
@@ -352,11 +360,8 @@ class CogDetailSelect(discord.ui.Select[AutoCachedView]):
         command = self.ctx.bot.get_command(self.values[0])
 
         embed = await self.instance.command_details_embed(command, itx.user)
-        this: discord.ui.Select = discord.utils.find(
-            lambda x: isinstance(x, discord.ui.Select) and x.row == 1,
-            self.view.children,
-        )
-        for opt in this.options:
+        
+        for opt in self.options:
             opt.default = opt.value == self.values[0]
 
         await itx.response.edit_message(embed=embed, view=self.view)

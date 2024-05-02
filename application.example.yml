@@ -1,0 +1,55 @@
+server: # REST and WS server
+    port: 5678
+    address: 127.0.0.1
+        
+lavalink:
+    plugins:
+        - dependency: "com.github.lavalink-devs.lavaplayer-youtube-source:plugin:1.0.5"
+          repository: "https://jitpack.io"
+
+        - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.0.1"
+          repository: "https://maven.lavalink.dev/releases"
+    server:
+        password: "youshallnotpass"
+        port: 5678
+
+        sources:
+            youtube: false
+            http: true
+            local: false
+
+plugins:
+    lavasrc: # https://github.com/topi314/LavaSrc
+        enabled: true
+        sources:
+            youtube: false  # replaced by youtube-source
+            spotify: true
+        spotify:
+            clientId: "https://developer.spotify.com/dashboard/applications"
+            clientSecret: "https://developer.spotify.com/dashboard/applications"
+    youtube: # https://github.com/lavalink-devs/youtube-source
+        enabled: true
+        clients: ["MUSIC", "ANDROID", "WEB"]
+        
+logging:
+    file:
+        path: ./logs/
+
+    level:
+        root: INFO
+        lavalink: DEBUG
+
+    request:
+        enabled: true
+        includeClientInfo: true
+        includeHeaders: false
+        includeQueryString: true
+        includePayload: true
+        maxPayloadLength: 10000
+
+
+    logback:
+        rollingpolicy:
+            max-file-size: 1GB
+            max-history: 30
+        

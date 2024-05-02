@@ -147,7 +147,7 @@ class Info(VanirCog):
             embed = ctx.embed(
                 title=chars,
                 description="\n".join(
-                    f"`\\U{codepoint}`: {info_hot}"
+                    f"`+U{codepoint}`: {info_hot}"
                     for codepoint, info_hot in zip(codepoints, hotlinks)
                 ),
             )

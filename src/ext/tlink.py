@@ -215,7 +215,7 @@ class TLink(VanirCog):
         if not links:
             embed = ctx.embed(
                 title="No Translation Links",
-                description=f"Use `\\tlink {self.create.signature}` to create one.",
+                description=f"Use `+tlink {self.create.signature}` to create one.",
             )
             return await ctx.reply(embed=embed)
 

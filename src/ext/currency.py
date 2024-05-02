@@ -28,7 +28,7 @@ class Currency(VanirCog):
             displayed_default="you",
         ),
     ) -> None:
-        r"""Manage your coins [default: `\\coins balance <user=you>`]."""
+        r"""Manage your coins [default: `+coins balance <user=you>`]."""
         await ctx.invoke(self.balance, user)
 
     @coins.command(aliases=["bal", "check", "wallet", "wal"])
